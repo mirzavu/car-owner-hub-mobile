@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
-
+import 'screens/splash_screen.dart';
 void main() {
   runApp(const FintechApp());
 }
@@ -16,12 +16,13 @@ class FintechApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
-        // Matching the "bg-slate-50" and "font-sans" from React
-        scaffoldBackgroundColor: const Color(0xFFF8FAFC), // Slate-50
+        // Tailwind Slate-50 = #F8FAFC
+        scaffoldBackgroundColor: const Color(0xFFF8FAFC),
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFFDC2626), // Red-600
+          seedColor: const Color(0xFFDC2626), // Tailwind Red-600
           primary: const Color(0xFFDC2626),
-          surface: const Color(0xFFF8FAFC),
+          // Tailwind Slate-900 = #0F172A (For dark elements)
+          onSurface: const Color(0xFF0F172A),
         ),
         textTheme: GoogleFonts.interTextTheme(),
       ),
@@ -128,8 +129,9 @@ class _FintechAutoFlowState extends State<FintechAutoFlow> {
   Widget _buildCurrentStep() {
     switch (step) {
       case 'splash':
-        return const Center(child: Text("Splash Screen Placeholder")); 
-      case 'details':
+  return SplashScreen(
+    onNext: () => setStep('details'),
+  );case 'details':
         return const Center(child: Text("Soft Entry Placeholder"));
       case 'teaser':
         return const Center(child: Text("Teaser Placeholder"));
