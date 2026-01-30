@@ -2,6 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'screens/splash_screen.dart';
+import 'screens/soft_entry_screen.dart';
+import 'screens/teaser_screen.dart' as teaser;
+import 'screens/login_screen.dart';
+import 'screens/phone_capture_screen.dart';
+
 void main() {
   runApp(const FintechApp());
 }
@@ -16,6 +21,7 @@ class FintechApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
+        textTheme: GoogleFonts.outfitTextTheme(ThemeData.light().textTheme),
         // Tailwind Slate-50 = #F8FAFC
         scaffoldBackgroundColor: const Color(0xFFF8FAFC),
         colorScheme: ColorScheme.fromSeed(
@@ -24,7 +30,6 @@ class FintechApp extends StatelessWidget {
           // Tailwind Slate-900 = #0F172A (For dark elements)
           onSurface: const Color(0xFF0F172A),
         ),
-        textTheme: GoogleFonts.interTextTheme(),
       ),
       home: const FintechAutoFlow(),
     );
@@ -42,7 +47,8 @@ class _FintechAutoFlowState extends State<FintechAutoFlow> {
   // --- STATE MANAGEMENT (Matches React useState) ---
 
   // Flow State
-  String step = 'splash'; // splash, details, teaser, scan-intro, scanner, verify, main-app
+  String step =
+      'splash'; // splash, details, teaser, scan-intro, scanner, verify, main-app
   String activeTab = 'home'; // home, shop, garage
   String? overlayScreen; // null, 'cash-unlock', 'refinance'
 
@@ -57,7 +63,7 @@ class _FintechAutoFlowState extends State<FintechAutoFlow> {
     'model': 'Civic',
     'trim': 'EX',
     'vin': '2HGFC2F60MH59....',
-    'plate': 'BS4 92X'
+    'plate': 'BS4 92X',
   };
 
   Map<String, dynamic> financials = {
@@ -66,7 +72,7 @@ class _FintechAutoFlowState extends State<FintechAutoFlow> {
     'actualRate': 8.99,
     'monthlyPayment': 420.0,
     'lender': 'TD Auto Finance',
-    'equity': 0.0
+    'equity': 0.0,
   };
 
   @override
@@ -77,7 +83,8 @@ class _FintechAutoFlowState extends State<FintechAutoFlow> {
 
   void _calculateEquity() {
     setState(() {
-      financials['equity'] = financials['estimatedValue'] - financials['userEstimatedLoan'];
+      financials['equity'] =
+          financials['estimatedValue'] - financials['userEstimatedLoan'];
     });
   }
 
@@ -116,7 +123,7 @@ class _FintechAutoFlowState extends State<FintechAutoFlow> {
             children: [
               // Main Content Switcher
               _buildCurrentStep(),
-              
+
               // Overlays (if any)
               if (overlayScreen != null) _buildOverlay(),
             ],
@@ -129,12 +136,26 @@ class _FintechAutoFlowState extends State<FintechAutoFlow> {
   Widget _buildCurrentStep() {
     switch (step) {
       case 'splash':
-  return SplashScreen(
-    onNext: () => setStep('details'),
-  );case 'details':
-        return const Center(child: Text("Soft Entry Placeholder"));
+        return SplashScreen(onNext: () => setStep('details'));
+      case 'details':
+        return SoftEntryScreen(onNext: (nextStep) => setStep(nextStep));
       case 'teaser':
-        return const Center(child: Text("Teaser Placeholder"));
+        return teaser.TeaserScreen(
+          carDetails: teaser.CarDetails(
+            year: carDetails['year']!,
+            make: carDetails['make']!,
+            model: carDetails['model']!,
+          ),
+          financials: teaser.Financials(
+            estimatedValue: financials['estimatedValue'],
+            userEstimatedLoan: financials['userEstimatedLoan'],
+          ),
+          onNext: () => setStep('auth-login'),
+        );
+      case 'auth-login':
+        return LoginScreen(setStep: (nextStep) => setStep(nextStep));
+      case 'auth-phone':
+        return PhoneCaptureScreen(setStep: (nextStep) => setStep(nextStep));
       case 'scan-intro':
         return const Center(child: Text("Scan Intro Placeholder"));
       case 'scanner':
@@ -144,7 +165,7 @@ class _FintechAutoFlowState extends State<FintechAutoFlow> {
       case 'main-app':
         return const Center(child: Text("Main Dashboard Placeholder"));
       default:
-        return const Center(child: Text("Unknown Step"));
+        return Center(child: Text("Unknown Step: $step"));
     }
   }
 
