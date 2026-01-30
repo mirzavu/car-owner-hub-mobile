@@ -6,6 +6,8 @@ import 'screens/soft_entry_screen.dart';
 import 'screens/teaser_screen.dart' as teaser;
 import 'screens/login_screen.dart';
 import 'screens/phone_capture_screen.dart';
+import 'screens/scan_prompt_screen.dart';
+import 'screens/scanner_screen.dart';
 
 void main() {
   runApp(const FintechApp());
@@ -157,9 +159,9 @@ class _FintechAutoFlowState extends State<FintechAutoFlow> {
       case 'auth-phone':
         return PhoneCaptureScreen(setStep: (nextStep) => setStep(nextStep));
       case 'scan-intro':
-        return const Center(child: Text("Scan Intro Placeholder"));
+        return ScanPromptScreen(setStep: (nextStep) => setStep(nextStep));
       case 'scanner':
-        return const Center(child: Text("Scanner Placeholder"));
+        return ScannerScreen(setStep: (nextStep) => setStep(nextStep));
       case 'verify':
         return const Center(child: Text("Verify Placeholder"));
       case 'main-app':
