@@ -133,13 +133,7 @@ class _SoftEntryScreenState extends State<SoftEntryScreen> {
                       ),
                     ),
 
-                    // Dot Pattern: opacity-[0.05] bg-[radial-gradient(circle_at_center,#fff_1.5px,transparent_1.5px)] [background-size:20px_20px]
-                    Positioned.fill(
-                      child: Opacity(
-                        opacity: 0.05,
-                        child: CustomPaint(painter: DotPatternPainter()),
-                      ),
-                    ),
+                    // Removed dot pattern for cleaner appearance
 
                     // Background Ambience: top-[-50%] left-[50%] w-[400px] h-[400px] blur-[80px] mix-blend-overlay
                     Positioned.fill(
@@ -558,29 +552,6 @@ class _SoftEntryScreenState extends State<SoftEntryScreen> {
       ),
     );
   }
-}
-
-// Dot Pattern: opacity-[0.05] bg-[radial-gradient(circle_at_center,#fff_1.5px,transparent_1.5px)] [background-size:20px_20px]
-class DotPatternPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.white
-          .withOpacity(1.0) // Full opacity, parent handles it
-      ..style = PaintingStyle.fill;
-
-    const double gap = 20.0;
-    const double radius = 1.2;
-
-    for (double y = 0; y < size.height; y += gap) {
-      for (double x = 0; x < size.width; x += gap) {
-        canvas.drawCircle(Offset(x, y), radius, paint);
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(CustomPainter oldDelegate) => false;
 }
 
 // Background Ambience: absolute top-[-50%] left-[50%] -translate-x-1/2 w-[400px] h-[400px] bg-white/10 rounded-full blur-[80px] mix-blend-overlay

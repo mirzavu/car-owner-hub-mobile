@@ -209,13 +209,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
                 child: Stack(
                   children: [
-                    // Texture Overlay (Simulated)
-                    Positioned.fill(
-                      child: Opacity(
-                        opacity: 0.1,
-                        child: CustomPaint(painter: _PatternPainter()),
-                      ),
-                    ),
+                    // Removed texture pattern for cleaner appearance
 
                     // Content Wrapper
                     SafeArea(
@@ -1097,26 +1091,4 @@ class _ActivityItem extends StatelessWidget {
       ),
     );
   }
-}
-
-// Simple texture painter to replicate the "cubes" pattern
-class _PatternPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.white
-      ..strokeWidth = 1
-      ..style = PaintingStyle.stroke;
-
-    for (double i = 0; i < size.width; i += 20) {
-      for (double j = 0; j < size.height; j += 20) {
-        if ((i + j) % 40 == 0) {
-          canvas.drawCircle(Offset(i, j), 1, paint..style = PaintingStyle.fill);
-        }
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
