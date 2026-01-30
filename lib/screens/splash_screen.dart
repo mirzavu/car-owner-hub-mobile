@@ -13,46 +13,22 @@ class SplashScreen extends StatelessWidget {
     return Scaffold(
       body: Stack(
         children: [
-          // 1. MIDNIGHT NAVY GRADIENT BACKGROUND
+          // 1. MIDNIGHT NAVY GRADIENT BACKGROUND (same as dashboard)
           Container(
             decoration: const BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                // Midnight Navy gradient
                 colors: [
                   Color(0xFF003366), // Midnight Navy
-                  Color(0xFF002E5C), // Intermediate
-                  Color(0xFF002852), // Intermediate
-                  Color(0xFF002347), // Intermediate
-                  Color(0xFF002244), // Darker Navy
+                  Color(0xFF002852),
+                  Color(0xFF002244),
                 ],
-                stops: [0.0, 0.25, 0.5, 0.75, 1.0],
               ),
             ),
           ),
 
-          // 2. THE "BLOB" (Fixed using RadialGradient)
-          Positioned(
-            top: -100,
-            right: -100,
-            child: Container(
-              width: 350,
-              height: 350,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    Colors.white.withOpacity(0.15),
-                    Colors.white.withOpacity(0.0),
-                  ],
-                  stops: const [0.0, 0.7],
-                ),
-              ),
-            ),
-          ),
-
-          // 3. CONTENT
+          // 2. CONTENT
           SafeArea(
             child: Padding(
               // Tailwind p-8 = 32px

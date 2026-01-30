@@ -95,15 +95,15 @@ class _SoftEntryScreenState extends State<SoftEntryScreen> {
       backgroundColor: const Color(0xFFF8FAFC), // slate-50
       body: LayoutBuilder(
         builder: (context, constraints) {
-          // Header: h-[35vh] min-h-[280px]
-          final headerHeight = constraints.maxHeight * 0.35;
-          final minHeaderHeight = 280.0;
+          // Header: h-[45vh] min-h-[360px] - more room for padding
+          final headerHeight = constraints.maxHeight * 0.45;
+          final minHeaderHeight = 360.0;
           final actualHeaderHeight = headerHeight > minHeaderHeight
               ? headerHeight
               : minHeaderHeight;
 
-          // Overlap: -mt-10 = 40px
-          const overlapHeight = 40.0;
+          // Overlap: -mt-6 = 24px (reduced from 40px to prevent text overlap)
+          const overlapHeight = 24.0;
 
           return Stack(
             children: [
@@ -140,147 +140,157 @@ class _SoftEntryScreenState extends State<SoftEntryScreen> {
                       child: CustomPaint(painter: OverlayBlobPainter()),
                     ),
 
-                    // HEADER CONTENT - Centered
-                    Center(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 24,
-                        ), // px-6
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            // Icon: w-20 h-20 rounded-[2rem] with glassmorphism
-                            Container(
-                              width: 80,
-                              height: 80,
-                              margin: const EdgeInsets.only(bottom: 24), // mb-6
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(32),
-                                // This base color "blocks" the shadow from bleeding into the semi-transparent center
-                                color: Colors.white.withOpacity(0.05),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.12),
-                                    blurRadius: 25,
-                                    offset: const Offset(0, 10),
+                    // HEADER CONTENT - Centered with SafeArea
+                    SafeArea(
+                      bottom: false,
+                      child: Center(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 24,
+                          ), // px-6
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              // Icon: w-20 h-20 rounded-[2rem] with glassmorphism
+                              Container(
+                                width: 80,
+                                height: 80,
+                                margin: const EdgeInsets.only(
+                                  bottom: 24,
+                                ), // mb-6
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(32),
+                                  // This base color "blocks" the shadow from bleeding into the semi-transparent center
+                                  color: Colors.white.withOpacity(0.05),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.12),
+                                      blurRadius: 25,
+                                      offset: const Offset(0, 10),
+                                    ),
+                                  ],
+                                ),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(32),
+                                  child: BackdropFilter(
+                                    filter: ImageFilter.blur(
+                                      sigmaX: 12,
+                                      sigmaY: 12,
+                                    ), // Adjusted for vibrancy
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight,
+                                          colors: [
+                                            Colors.white.withOpacity(
+                                              0.15,
+                                            ), // Very light white
+                                            const Color(0xFFE6F0FA).withOpacity(
+                                              0.05,
+                                            ), // Hint of Ice Blue
+                                          ],
+                                        ),
+                                      ),
+                                      child: const Center(
+                                        child: CarIcon(
+                                          size: 40,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+
+                              // Headline: text-4xl font-bold leading-tight
+                              Column(
+                                children: [
+                                  Text(
+                                    "Value your vehicle",
+                                    textAlign: TextAlign.center,
+                                    style: GoogleFonts.outfit(
+                                      color: Colors.white,
+                                      fontSize: 36, // text-4xl
+                                      fontWeight: FontWeight
+                                          .w800, // slightly reduced from w900
+                                      height: 1.25, // leading-tight
+                                      letterSpacing:
+                                          -0.5, // slight letter spacing
+                                      shadows: [
+                                        Shadow(
+                                          color: Colors.black.withOpacity(0.15),
+                                          blurRadius: 2,
+                                          offset: const Offset(0, 1),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  Text(
+                                    "instantly.",
+                                    textAlign: TextAlign.center,
+                                    style: GoogleFonts.outfit(
+                                      color: const Color(
+                                        0xFFE6F0FA,
+                                      ).withOpacity(0.9), // Ice Blue/90
+                                      fontSize: 32.4, // text-[0.9em]
+                                      fontWeight: FontWeight
+                                          .w800, // slightly reduced from w900
+                                      height: 1.25,
+                                      letterSpacing:
+                                          -0.4, // slight letter spacing
+                                      shadows: [
+                                        Shadow(
+                                          color: Colors.black.withOpacity(0.15),
+                                          blurRadius: 2,
+                                          offset: const Offset(0, 1),
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 ],
                               ),
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(32),
+
+                              const SizedBox(height: 16), // mb-4 equivalent
+                              // Pill: text-xs font-bold uppercase tracking-[0.2em] bg-white/10 px-4 py-1.5 rounded-full backdrop-blur-md
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(
+                                  999,
+                                ), // rounded-full
                                 child: BackdropFilter(
                                   filter: ImageFilter.blur(
                                     sigmaX: 12,
                                     sigmaY: 12,
-                                  ), // Adjusted for vibrancy
+                                  ), // backdrop-blur-md
                                   child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 16, // px-4
+                                      vertical: 6, // py-1.5
+                                    ),
                                     decoration: BoxDecoration(
-                                      gradient: LinearGradient(
-                                        begin: Alignment.topLeft,
-                                        end: Alignment.bottomRight,
-                                        colors: [
-                                          Colors.white.withOpacity(
-                                            0.15,
-                                          ), // Very light white
-                                          const Color(0xFFE6F0FA).withOpacity(
-                                            0.05,
-                                          ), // Hint of Ice Blue
-                                        ],
-                                      ),
+                                      color: Colors.white.withOpacity(
+                                        0.1,
+                                      ), // bg-white/10
+                                      borderRadius: BorderRadius.circular(999),
                                     ),
-                                    child: const Center(
-                                      child: CarIcon(
-                                        size: 40,
-                                        color: Colors.white,
+                                    child: Text(
+                                      "NO VIN REQUIRED",
+                                      style: GoogleFonts.outfit(
+                                        color: const Color(
+                                          0xFFE6F0FA,
+                                        ), // Ice Blue
+                                        fontSize: 12, // text-xs
+                                        fontWeight: FontWeight.bold,
+                                        letterSpacing: 2.4, // tracking-[0.2em]
                                       ),
                                     ),
                                   ),
                                 ),
                               ),
-                            ),
-
-                            // Headline: text-4xl font-black leading-tight tracking-tighter
-                            Column(
-                              children: [
-                                Text(
-                                  "Value your vehicle",
-                                  textAlign: TextAlign.center,
-                                  style: GoogleFonts.outfit(
-                                    color: Colors.white,
-                                    fontSize: 36, // text-4xl
-                                    fontWeight: FontWeight.w900, // font-black
-                                    height: 1.25, // leading-tight
-                                    letterSpacing: -1.8, // tracking-tighter
-                                    shadows: [
-                                      Shadow(
-                                        color: Colors.black.withOpacity(0.15),
-                                        blurRadius: 2,
-                                        offset: const Offset(0, 1),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                Text(
-                                  "instantly.",
-                                  textAlign: TextAlign.center,
-                                  style: GoogleFonts.outfit(
-                                    color: const Color(
-                                      0xFFE6F0FA,
-                                    ).withOpacity(0.9), // Ice Blue/90
-                                    fontSize: 32.4, // text-[0.9em]
-                                    fontWeight: FontWeight.w900,
-                                    height: 1.25,
-                                    letterSpacing: -1.6,
-                                    shadows: [
-                                      Shadow(
-                                        color: Colors.black.withOpacity(0.15),
-                                        blurRadius: 2,
-                                        offset: const Offset(0, 1),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-
-                            const SizedBox(height: 16), // mb-4 equivalent
-                            // Pill: text-xs font-bold uppercase tracking-[0.2em] bg-white/10 px-4 py-1.5 rounded-full backdrop-blur-md
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(
-                                999,
-                              ), // rounded-full
-                              child: BackdropFilter(
-                                filter: ImageFilter.blur(
-                                  sigmaX: 12,
-                                  sigmaY: 12,
-                                ), // backdrop-blur-md
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 16, // px-4
-                                    vertical: 6, // py-1.5
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withOpacity(
-                                      0.1,
-                                    ), // bg-white/10
-                                    borderRadius: BorderRadius.circular(999),
-                                  ),
-                                  child: Text(
-                                    "NO VIN REQUIRED",
-                                    style: GoogleFonts.outfit(
-                                      color: const Color(
-                                        0xFFE6F0FA,
-                                      ), // Ice Blue
-                                      fontSize: 12, // text-xs
-                                      fontWeight: FontWeight.bold,
-                                      letterSpacing: 2.4, // tracking-[0.2em]
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
+                              const SizedBox(height: 24), // space below pill
+                            ],
+                          ),
                         ),
                       ),
                     ),
