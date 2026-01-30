@@ -25,14 +25,13 @@ class _PhoneCaptureScreenState extends State<PhoneCaptureScreen> {
   static const colorSlate400 = Color(0xFF94A3B8);
   static const colorSlate900 = Color(0xFF0F172A);
   static const colorRed50 = Color(0xFFFEF2F2);
-  static const colorRed100 = Color(0xFFFEE2E2);
   static const colorRed500 = Color(0xFFEF4444);
 
-  // Gradient colors matching oklch(0.47 0.19 27.61), oklch(0.46 0.21 28.71), oklch(0.39 0.13 24.93)
+  // Gradient colors - Midnight Navy palette
   static const gradientColors = [
-    Color(0xFFB91C1C), // red-700
-    Color(0xFF991B1B), // red-800
-    Color(0xFF7F1D1D), // red-900
+    Color(0xFF003366), // Midnight Navy
+    Color(0xFF002852), // Intermediate
+    Color(0xFF002244), // Navy Dark
   ];
 
   @override
@@ -108,9 +107,9 @@ class _PhoneCaptureScreenState extends State<PhoneCaptureScreen> {
           Container(
             width: double.infinity,
             padding: const EdgeInsets.only(
-              top: 48, // pt-12 = 48px
-              bottom: 64, // pb-16 = 64px
-              left: 24, // px-6 = 24px
+              top: 44, // reduced from 48px
+              bottom: 56, // reduced from 64px
+              left: 24,
               right: 24,
             ),
             decoration: BoxDecoration(
@@ -125,7 +124,9 @@ class _PhoneCaptureScreenState extends State<PhoneCaptureScreen> {
               ),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFF7F1D1D).withOpacity(0.2), // red-900/20
+                  color: const Color(
+                    0xFF002244,
+                  ).withOpacity(0.2), // Navy shadow
                   blurRadius: 25,
                   offset: const Offset(0, 10),
                 ),
@@ -182,7 +183,9 @@ class _PhoneCaptureScreenState extends State<PhoneCaptureScreen> {
                     "We use this to verify your identity and secure your account.",
                     textAlign: TextAlign.center,
                     style: GoogleFonts.outfit(
-                      color: colorRed100.withOpacity(0.8), // text-red-100/80
+                      color: const Color(
+                        0xFFE6F0FA,
+                      ).withOpacity(0.8), // Ice Blue/80
                       fontSize: 14, // text-sm = 14px
                       height: 1.625, // leading-relaxed
                     ),
@@ -195,177 +198,179 @@ class _PhoneCaptureScreenState extends State<PhoneCaptureScreen> {
           // --- 2. Input Section ---
           // flex-1 px-6 -mt-8 relative z-10
           Expanded(
-            child: Transform.translate(
-              offset: const Offset(0, -32), // -mt-8 = -32px
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                ), // px-6 = 24px
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // Input Container - bg-white rounded-3xl p-2 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border
-                    Center(
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 300),
-                        padding: const EdgeInsets.all(
-                          16,
-                        ), // Uniform p-4 equivalent
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(
+            child: SingleChildScrollView(
+              child: Transform.translate(
+                offset: const Offset(0, -32), // -mt-8 = -32px
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                  ), // px-6 = 24px
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // Input Container - bg-white rounded-3xl p-2 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border
+                      Center(
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 300),
+                          padding: const EdgeInsets.all(
                             16,
-                          ), // rounded-2xl = 16px
-                          border: Border.all(color: colorSlate100, width: 1),
-                          boxShadow: [
-                            // shadow-[0_8px_30px_rgb(0,0,0,0.04)]
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.04),
-                              blurRadius: 30,
-                              offset: const Offset(0, 8),
-                            ),
-                          ],
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            // Country Code Pill - flex flex-col items-center justify-center bg-slate-50 w-16 h-16 rounded-2xl mr-4 border border-slate-100
-                            Container(
-                              width: 64, // w-16 = 64px
-                              height: 64, // h-16 = 64px
-                              margin: const EdgeInsets.only(
-                                right: 16,
-                              ), // mr-4 = 16px
-                              decoration: BoxDecoration(
-                                color: colorSlate50,
-                                borderRadius: BorderRadius.circular(
-                                  16,
-                                ), // rounded-2xl = 16px
-                                border: Border.all(color: colorSlate100),
+                          ), // Uniform p-4 equivalent
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(
+                              16,
+                            ), // rounded-2xl = 16px
+                            border: Border.all(color: colorSlate100, width: 1),
+                            boxShadow: [
+                              // shadow-[0_8px_30px_rgb(0,0,0,0.04)]
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.04),
+                                blurRadius: 30,
+                                offset: const Offset(0, 8),
                               ),
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  // text-xl leading-none mb-1
-                                  const Text(
-                                    "🇨🇦",
-                                    style: TextStyle(
-                                      fontSize: 20, // text-xl = 20px
-                                      height: 1, // leading-none
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4), // mb-1 = 4px
-                                  // text-[10px] font-bold text-slate-400 font-mono
-                                  Text(
-                                    "+1",
-                                    style: GoogleFonts.jetBrainsMono(
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w700,
-                                      color: colorSlate400,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-
-                            // Input Field - flex-1 pr-4
-                            Container(
-                              width:
-                                  205, // wider fit for (555) 000-0000 to prevent '...'
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  // label - text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5
-                                  Text(
-                                    "MOBILE NUMBER",
-                                    style: GoogleFonts.outfit(
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w700,
-                                      color: colorSlate400,
-                                      letterSpacing: 0.8, // tracking-wider
-                                    ),
-                                  ),
-                                  const SizedBox(height: 2), // mb-0.5 = 2px
-                                  // input - text-2xl font-black text-slate-900 font-outfit placeholder:text-slate-200
-                                  TextField(
-                                    controller: _controller,
-                                    autofocus: true,
-                                    keyboardType: TextInputType.phone,
-                                    onChanged: _handlePhoneChange,
-                                    style: GoogleFonts.outfit(
-                                      fontSize: 24, // text-2xl = 24px
-                                      fontWeight: FontWeight.w900, // font-black
-                                      color: colorSlate900,
-                                    ),
-                                    decoration: InputDecoration(
-                                      isDense: true,
-                                      contentPadding: EdgeInsets.zero,
-                                      hintText: "(555) 000-0000",
-                                      hintStyle: GoogleFonts.outfit(
-                                        fontSize: 24,
-                                        fontWeight: FontWeight.w900,
-                                        color:
-                                            colorSlate200, // placeholder:text-slate-200
+                            ],
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              // Country Code Pill - flex flex-col items-center justify-center bg-slate-50 w-16 h-16 rounded-2xl mr-4 border border-slate-100
+                              Container(
+                                width: 56, // w-14 = 56px (reduced from 64)
+                                height: 56, // h-14 = 56px
+                                margin: const EdgeInsets.only(
+                                  right: 12,
+                                ), // mr-3 = 12px
+                                decoration: BoxDecoration(
+                                  color: colorSlate50,
+                                  borderRadius: BorderRadius.circular(
+                                    14,
+                                  ), // slightly smaller radius
+                                  border: Border.all(color: colorSlate100),
+                                ),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    // text-xl leading-none mb-1
+                                    const Text(
+                                      "🇨🇦",
+                                      style: TextStyle(
+                                        fontSize: 20, // text-xl = 20px
+                                        height: 1, // leading-none
                                       ),
-                                      border: InputBorder.none,
-                                      focusedBorder: InputBorder.none,
-                                      enabledBorder: InputBorder.none,
                                     ),
-                                    cursorColor: colorSlate900,
-                                  ),
-                                ],
+                                    const SizedBox(height: 4), // mb-1 = 4px
+                                    // text-[10px] font-bold text-slate-400 font-mono
+                                    Text(
+                                      "+1",
+                                      style: GoogleFonts.jetBrainsMono(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w700,
+                                        color: colorSlate400,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
 
-                    // Error Message - mt-4 flex items-center gap-2 text-red-500 text-xs font-medium bg-red-50 px-4 py-3 rounded-xl
-                    AnimatedOpacity(
-                      duration: const Duration(milliseconds: 300),
-                      opacity: _error.isNotEmpty ? 1.0 : 0.0,
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 300),
-                        margin: const EdgeInsets.only(top: 16), // mt-4 = 16px
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16, // px-4 = 16px
-                          vertical: 12, // py-3 = 12px
-                        ),
-                        decoration: BoxDecoration(
-                          color: colorRed50,
-                          borderRadius: BorderRadius.circular(
-                            12,
-                          ), // rounded-xl = 12px
-                        ),
-                        transform: Matrix4.translationValues(
-                          0,
-                          _error.isNotEmpty ? 0 : -8,
-                          0,
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(
-                              LucideIcons.alertCircle,
-                              size: 16,
-                              color: colorRed500,
-                            ),
-                            const SizedBox(width: 8), // gap-2 = 8px
-                            Text(
-                              _error,
-                              style: GoogleFonts.outfit(
-                                color: colorRed500,
-                                fontSize: 12, // text-xs = 12px
-                                fontWeight: FontWeight.w500, // font-medium
+                              // Input Field - constrained width
+                              SizedBox(
+                                width: 180, // more constrained width
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    // label - text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5
+                                    Text(
+                                      "MOBILE NUMBER",
+                                      style: GoogleFonts.outfit(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w700,
+                                        color: colorSlate400,
+                                        letterSpacing: 0.8, // tracking-wider
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2), // mb-0.5 = 2px
+                                    // input - text-2xl font-black text-slate-900 font-outfit placeholder:text-slate-200
+                                    TextField(
+                                      controller: _controller,
+                                      autofocus: true,
+                                      keyboardType: TextInputType.phone,
+                                      onChanged: _handlePhoneChange,
+                                      style: GoogleFonts.outfit(
+                                        fontSize: 24, // text-2xl = 24px
+                                        fontWeight:
+                                            FontWeight.w900, // font-black
+                                        color: colorSlate900,
+                                      ),
+                                      decoration: InputDecoration(
+                                        isDense: true,
+                                        contentPadding: EdgeInsets.zero,
+                                        hintText: "(555) 000-0000",
+                                        hintStyle: GoogleFonts.outfit(
+                                          fontSize: 24,
+                                          fontWeight: FontWeight.w900,
+                                          color:
+                                              colorSlate200, // placeholder:text-slate-200
+                                        ),
+                                        border: InputBorder.none,
+                                        focusedBorder: InputBorder.none,
+                                        enabledBorder: InputBorder.none,
+                                      ),
+                                      cursorColor: colorSlate900,
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+
+                      // Error Message - mt-4 flex items-center gap-2 text-red-500 text-xs font-medium bg-red-50 px-4 py-3 rounded-xl
+                      AnimatedOpacity(
+                        duration: const Duration(milliseconds: 300),
+                        opacity: _error.isNotEmpty ? 1.0 : 0.0,
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 300),
+                          margin: const EdgeInsets.only(top: 16), // mt-4 = 16px
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16, // px-4 = 16px
+                            vertical: 12, // py-3 = 12px
+                          ),
+                          decoration: BoxDecoration(
+                            color: colorRed50,
+                            borderRadius: BorderRadius.circular(
+                              12,
+                            ), // rounded-xl = 12px
+                          ),
+                          transform: Matrix4.translationValues(
+                            0,
+                            _error.isNotEmpty ? 0 : -8,
+                            0,
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                LucideIcons.alertCircle,
+                                size: 16,
+                                color: colorRed500,
+                              ),
+                              const SizedBox(width: 8), // gap-2 = 8px
+                              Text(
+                                _error,
+                                style: GoogleFonts.outfit(
+                                  color: colorRed500,
+                                  fontSize: 12, // text-xs = 12px
+                                  fontWeight: FontWeight.w500, // font-medium
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -388,26 +393,39 @@ class _PhoneCaptureScreenState extends State<PhoneCaptureScreen> {
                     width: double.infinity,
                     height: 56, // py-4 = 16px * 2 + ~24px line height
                     decoration: BoxDecoration(
-                      color: _isValid ? colorSlate900 : colorSlate100,
+                      color: _isValid ? const Color(0xFF00CA50) : colorSlate100,
                       borderRadius: BorderRadius.circular(
                         16,
                       ), // rounded-2xl = 16px
-                      boxShadow: [
-                        // shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1)
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
-                          blurRadius: 25,
-                          spreadRadius: -5,
-                          offset: const Offset(0, 20),
-                        ),
-                        // shadow-xl: 0 8px 10px -6px rgb(0 0 0 / 0.1)
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
-                          blurRadius: 10,
-                          spreadRadius: -6,
-                          offset: const Offset(0, 8),
-                        ),
-                      ],
+                      boxShadow: _isValid
+                          ? [
+                              BoxShadow(
+                                color: const Color(0xFF00CA50).withOpacity(0.3),
+                                blurRadius: 25,
+                                spreadRadius: -5,
+                                offset: const Offset(0, 20),
+                              ),
+                              BoxShadow(
+                                color: const Color(0xFF00CA50).withOpacity(0.2),
+                                blurRadius: 10,
+                                spreadRadius: -6,
+                                offset: const Offset(0, 8),
+                              ),
+                            ]
+                          : [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.1),
+                                blurRadius: 25,
+                                spreadRadius: -5,
+                                offset: const Offset(0, 20),
+                              ),
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.1),
+                                blurRadius: 10,
+                                spreadRadius: -6,
+                                offset: const Offset(0, 8),
+                              ),
+                            ],
                     ),
                     child: Material(
                       color: Colors.transparent,

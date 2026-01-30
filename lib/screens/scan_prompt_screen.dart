@@ -24,6 +24,7 @@ class _ScanPromptScreenState extends State<ScanPromptScreen>
   static const colorSlate900 = Color(0xFF0F172A);
   static const colorGreen100 = Color(0xFFDCFCE7);
   static const colorGreen600 = Color(0xFF16A34A);
+  static const colorVibrantGreen = Color(0xFF00CA50);
 
   @override
   void initState() {
@@ -134,8 +135,11 @@ class _ScanPromptScreenState extends State<ScanPromptScreen>
                     const SizedBox(height: 32), // mb-8
                     // Security Badge
                     Container(
+                      constraints: BoxConstraints(
+                        maxWidth: MediaQuery.of(context).size.width - 64,
+                      ),
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
+                        horizontal: 12,
                         vertical: 8,
                       ),
                       decoration: BoxDecoration(
@@ -151,12 +155,15 @@ class _ScanPromptScreenState extends State<ScanPromptScreen>
                             size: 14,
                             color: colorSlate400,
                           ),
-                          const SizedBox(width: 8), // gap-2
-                          Text(
-                            "Bank-level security. Data stays in Canada 🇨🇦",
-                            style: GoogleFonts.outfit(
-                              fontSize: 12, // text-xs
-                              color: colorSlate400,
+                          const SizedBox(width: 6),
+                          Flexible(
+                            child: Text(
+                              "Bank-level security. Data stays in Canada 🇨🇦",
+                              style: GoogleFonts.outfit(
+                                fontSize: 11,
+                                color: colorSlate400,
+                              ),
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ],
@@ -174,19 +181,18 @@ class _ScanPromptScreenState extends State<ScanPromptScreen>
                     width: double.infinity,
                     height: 60, // py-4 approx
                     decoration: BoxDecoration(
-                      color: colorSlate900,
+                      color: colorVibrantGreen,
                       borderRadius: BorderRadius.circular(12), // rounded-xl
                       boxShadow: [
-                        // shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1)
+                        // shadow-xl with green glow
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
+                          color: colorVibrantGreen.withOpacity(0.3),
                           blurRadius: 25,
                           spreadRadius: -5,
                           offset: const Offset(0, 20),
                         ),
-                        // shadow-xl: 0 8px 10px -6px rgb(0 0 0 / 0.1)
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
+                          color: colorVibrantGreen.withOpacity(0.2),
                           blurRadius: 10,
                           spreadRadius: -6,
                           offset: const Offset(0, 8),

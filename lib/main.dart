@@ -9,6 +9,7 @@ import 'screens/phone_capture_screen.dart';
 import 'screens/scan_prompt_screen.dart';
 import 'screens/scanner_screen.dart';
 import 'screens/verify_scan_screen.dart';
+import 'screens/dashboard_screen.dart';
 
 void main() {
   runApp(const FintechApp());
@@ -25,13 +26,13 @@ class FintechApp extends StatelessWidget {
       theme: ThemeData(
         useMaterial3: true,
         textTheme: GoogleFonts.outfitTextTheme(ThemeData.light().textTheme),
-        // Tailwind Slate-50 = #F8FAFC
-        scaffoldBackgroundColor: const Color(0xFFF8FAFC),
+        // Ice Blue = #E6F0FA
+        scaffoldBackgroundColor: const Color(0xFFE6F0FA),
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFFDC2626), // Tailwind Red-600
-          primary: const Color(0xFFDC2626),
-          // Tailwind Slate-900 = #0F172A (For dark elements)
-          onSurface: const Color(0xFF0F172A),
+          seedColor: const Color(0xFF003366), // Midnight Navy
+          primary: const Color(0xFF003366),
+          // Near Black = #1A1A1B (For text)
+          onSurface: const Color(0xFF1A1A1B),
         ),
       ),
       home: const FintechAutoFlow(),
@@ -166,7 +167,11 @@ class _FintechAutoFlowState extends State<FintechAutoFlow> {
       case 'verify':
         return VerifyScanScreen(setStep: (nextStep) => setStep(nextStep));
       case 'main-app':
-        return const Center(child: Text("Main Dashboard Placeholder"));
+        return DashboardScreen(
+          carDetails: CarDetails(year: '2022', make: 'Honda', model: 'Civic'),
+          setOverlayScreen: (screen) {},
+          setActiveTab: (tab) {},
+        );
       default:
         return Center(child: Text("Unknown Step: $step"));
     }

@@ -55,7 +55,7 @@ class _VerifyScanScreenState extends State<VerifyScanScreen>
     const colorSlate800 = Color(0xFF1E293B);
     const colorSlate900 = Color(0xFF0F172A);
     const colorGreen100 = Color(0xFFDCFCE7);
-    const colorGreen600 = Color(0xFF16A34A);
+    const colorVibrantGreen = Color(0xFF00CA50);
     const colorRed100 = Color(0xFFFEE2E2);
     const colorRed700 = Color(0xFFB91C1C);
 
@@ -153,7 +153,7 @@ class _VerifyScanScreenState extends State<VerifyScanScreen>
                           child: ElevatedButton(
                             onPressed: () => widget.setStep('main-app'),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: colorSlate900,
+                              backgroundColor: colorVibrantGreen,
                               foregroundColor: Colors.white,
                               padding: const EdgeInsets.symmetric(
                                 vertical: 18,
@@ -164,7 +164,7 @@ class _VerifyScanScreenState extends State<VerifyScanScreen>
                                 ), // increased from 12
                               ),
                               elevation: 4, // shadow-lg
-                              shadowColor: Colors.black.withValues(alpha: 0.3),
+                              shadowColor: colorVibrantGreen.withOpacity(0.3),
                             ),
                             child: Text(
                               "Looks Correct",
@@ -224,7 +224,7 @@ class _VerifyScanScreenState extends State<VerifyScanScreen>
                         child: Icon(
                           LucideIcons.checkCircle2,
                           size: 36, // increased from 32
-                          color: colorGreen600,
+                          color: colorVibrantGreen,
                         ),
                       ),
                     ),

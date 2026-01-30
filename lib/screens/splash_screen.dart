@@ -1,6 +1,7 @@
+import 'dart:ui'; // REQUIRED for ImageFilter
 import 'package:flutter/material.dart';
-import 'package:lucide_icons/lucide_icons.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 
 class SplashScreen extends StatelessWidget {
   final VoidCallback onNext;
@@ -12,58 +13,41 @@ class SplashScreen extends StatelessWidget {
     return Scaffold(
       body: Stack(
         children: [
-          // 1. EXACT GRADIENT BACKGROUND
-          // Matches Tailwind "bg-gradient-to-br from-red-600 to-red-800"
+          // 1. MIDNIGHT NAVY GRADIENT BACKGROUND
           Container(
             decoration: const BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
+                // Midnight Navy gradient
                 colors: [
-                  Color(0xFFDC2626), // Tailwind Red-600 (Start)
-                  Color(0xFF991B1B), // Tailwind Red-800 (End)
+                  Color(0xFF003366), // Midnight Navy
+                  Color(0xFF002E5C), // Intermediate
+                  Color(0xFF002852), // Intermediate
+                  Color(0xFF002347), // Intermediate
+                  Color(0xFF002244), // Darker Navy
                 ],
+                stops: [0.0, 0.25, 0.5, 0.75, 1.0],
               ),
             ),
           ),
 
-          // 2. DECORATIVE BLOB (Matches React "absolute top-0 right-0... blur-3xl")
-          // React: w-64 (256px), h-64 (256px), translate-x-1/2 (move right 50%), -translate-y-1/2 (move up 50%)
+          // 2. THE "BLOB" (Fixed using RadialGradient)
           Positioned(
-            top: -128, // Negative half of height (256/2)
-            right: -128, // Negative half of width (256/2)
+            top: -100,
+            right: -100,
             child: Container(
-              width: 256,
-              height: 256,
+              width: 350,
+              height: 350,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: Colors.white.withOpacity(0.1), // bg-white/10
-              ),
-              child: BackdropFilter(
-                filter:
-                    MaterialStateProperty.resolveAs(0, {}) == 0
-                        ? const ColorFilter.mode(Colors.transparent, BlendMode.dst)
-                        : null, // Hack to force redraw if needed, but mainly we rely on the container blur below
-              ),
-            ),
-          ),
-          // Applying the Blur separately to ensure it spreads like "blur-3xl"
-          Positioned(
-            top: -128,
-            right: -128,
-            child: Container(
-              width: 256,
-              height: 256,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white.withOpacity(0.1),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.white.withOpacity(0.1),
-                    blurRadius: 100, // Matches blur-3xl (approx 64px-100px spread)
-                    spreadRadius: 20,
-                  ),
-                ],
+                gradient: RadialGradient(
+                  colors: [
+                    Colors.white.withOpacity(0.15),
+                    Colors.white.withOpacity(0.0),
+                  ],
+                  stops: const [0.0, 0.7],
+                ),
               ),
             ),
           ),
@@ -71,77 +55,92 @@ class SplashScreen extends StatelessWidget {
           // 3. CONTENT
           SafeArea(
             child: Padding(
+              // Tailwind p-8 = 32px
               padding: const EdgeInsets.all(32.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const SizedBox(height: 40),
+                  // Tailwind mt-12 = 48px
+                  const SizedBox(height: 48),
 
-                  // BADGE
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2), // bg-white/20
-                      borderRadius: BorderRadius.circular(999), // rounded-full
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Text("🇨🇦", style: TextStyle(fontSize: 16)),
-                        const SizedBox(width: 8),
-                        Text(
-                          "Made for Canadian Owners",
-                          style: GoogleFonts.inter(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w500,
-                            fontSize: 14,
-                          ),
+                  // BADGE (With Glass Effect)
+                  // Matches: bg-white/20 backdrop-blur-sm rounded-full
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(9999), // rounded-full
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(
+                        sigmaX: 4.0,
+                        sigmaY: 4.0,
+                      ), // backdrop-blur-sm
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
                         ),
-                      ],
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2), // bg-white/20
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Text("🇨🇦", style: TextStyle(fontSize: 16)),
+                            const SizedBox(width: 8),
+                            Text(
+                              "Made for Canadian Owners",
+                              style: GoogleFonts.outfit(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w500,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
 
-                  const SizedBox(height: 32),
-
+                  const SizedBox(height: 24), // mb-6
                   // HEADLINE
                   Text(
                     "Is Your Car Making You Money?",
-                    style: GoogleFonts.inter(
+                    style: GoogleFonts.outfit(
                       color: Colors.white,
-                      fontSize: 44, // text-5xl
-                      fontWeight: FontWeight.bold,
-                      height: 1.1, // leading-tight
-                      letterSpacing: -1.0,
+                      fontSize: 48,
+                      fontWeight: FontWeight.w700,
+                      height: 1.25, // leading-tight
+                      letterSpacing: -1.2,
                     ),
                   ),
 
-                  const SizedBox(height: 16),
-
+                  const SizedBox(height: 16), // mb-4
                   // SUBTITLE
                   Text(
                     "Track equity, lower payments, and find hidden cash. No credit check required.",
-                    style: GoogleFonts.inter(
-                      color: const Color(0xFFFECACA), // Tailwind Red-100
-                      fontSize: 18, // text-lg
-                      height: 1.6, // leading-relaxed
+                    style: GoogleFonts.outfit(
+                      color: const Color(0xFFE6F0FA), // Ice Blue
+                      fontSize: 18,
+                      height: 1.625,
+                      fontWeight: FontWeight.w400,
                     ),
                   ),
 
                   const Spacer(),
 
-                  // BUTTON
+                  // CTA BUTTON - Vibrant Green
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
                       onPressed: onNext,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.white,
-                        foregroundColor: const Color(0xFFB91C1C), // Tailwind Red-700
-                        padding: const EdgeInsets.symmetric(vertical: 20),
-                        elevation: 10,
-                        shadowColor: Colors.black.withOpacity(0.2),
+                        backgroundColor: const Color(
+                          0xFF00CA50,
+                        ), // Vibrant Green
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        elevation: 4,
+                        shadowColor: const Color(0xFF00CA50).withOpacity(0.3),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16), // rounded-xl
+                          borderRadius: BorderRadius.circular(12),
                         ),
                       ),
                       child: Row(
@@ -149,18 +148,18 @@ class SplashScreen extends StatelessWidget {
                         children: [
                           Text(
                             "Get Started",
-                            style: GoogleFonts.inter(
+                            style: GoogleFonts.outfit(
                               fontSize: 18,
-                              fontWeight: FontWeight.bold,
+                              fontWeight: FontWeight.w700,
                             ),
                           ),
                           const SizedBox(width: 8),
-                          const Icon(LucideIcons.chevronRight, size: 24),
+                          const Icon(LucideIcons.chevronRight, size: 20),
                         ],
                       ),
                     ),
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 10),
                 ],
               ),
             ),

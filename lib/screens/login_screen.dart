@@ -17,9 +17,9 @@ class LoginScreen extends StatelessWidget {
     const colorSlate500 = Color(0xFF64748B);
     const colorSlate700 = Color(0xFF334155);
     const colorSlate900 = Color(0xFF0F172A);
-    const colorGreen50 = Color(0xFFF0FDF4);
     const colorGreen600 = Color(0xFF16A34A);
-    const colorOrange500 = Color(0xFFF97316);
+    const colorNavy = Color(0xFF003366);
+    const colorVibrantGreen = Color(0xFF00CA50);
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -100,7 +100,7 @@ class LoginScreen extends StatelessWidget {
                                   width: 20,
                                   height: 20,
                                   decoration: const BoxDecoration(
-                                    color: colorOrange500,
+                                    color: colorNavy,
                                     shape: BoxShape.circle,
                                   ),
                                   child: Center(
@@ -131,8 +131,8 @@ class LoginScreen extends StatelessWidget {
                           // Email Fallback Button
                           _LoginButton(
                             onTap: () => setStep('auth-phone'),
-                            backgroundColor: colorSlate900,
-                            shadowColor: colorSlate900.withOpacity(0.3),
+                            backgroundColor: colorVibrantGreen,
+                            shadowColor: colorVibrantGreen.withOpacity(0.3),
                             elevation: 8, // shadow-lg approx
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.center,
@@ -183,7 +183,7 @@ class LoginScreen extends StatelessWidget {
                       vertical: 6,
                     ),
                     decoration: BoxDecoration(
-                      color: colorGreen50,
+                      color: const Color(0xFFDCFCE7),
                       borderRadius: BorderRadius.circular(50),
                     ),
                     child: Row(

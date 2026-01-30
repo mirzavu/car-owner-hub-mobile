@@ -32,7 +32,7 @@ class _ScannerScreenState extends State<ScannerScreen>
   late AnimationController _pulseController;
   late Animation<double> _laserAnimation;
 
-  static const colorRed500 = Color(0xFFEF4444);
+  static const colorBrightBlue = Color(0xFF007BFF);
 
   @override
   void initState() {
@@ -291,7 +291,7 @@ class _ScannerScreenState extends State<ScannerScreen>
                                       width: 8,
                                       height: 8,
                                       decoration: const BoxDecoration(
-                                        color: colorRed500,
+                                        color: colorBrightBlue,
                                         shape: BoxShape.circle,
                                       ),
                                     ),
@@ -415,10 +415,10 @@ class _ScannerScreenState extends State<ScannerScreen>
                       child: Container(
                         height: 2,
                         decoration: const BoxDecoration(
-                          color: colorRed500,
+                          color: colorBrightBlue,
                           boxShadow: [
                             BoxShadow(
-                              color: colorRed500,
+                              color: colorBrightBlue,
                               blurRadius: 20,
                               spreadRadius: 2,
                             ),
