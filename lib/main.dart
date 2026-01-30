@@ -8,6 +8,7 @@ import 'screens/login_screen.dart';
 import 'screens/phone_capture_screen.dart';
 import 'screens/scan_prompt_screen.dart';
 import 'screens/scanner_screen.dart';
+import 'screens/verify_scan_screen.dart';
 
 void main() {
   runApp(const FintechApp());
@@ -163,7 +164,7 @@ class _FintechAutoFlowState extends State<FintechAutoFlow> {
       case 'scanner':
         return ScannerScreen(setStep: (nextStep) => setStep(nextStep));
       case 'verify':
-        return const Center(child: Text("Verify Placeholder"));
+        return VerifyScanScreen(setStep: (nextStep) => setStep(nextStep));
       case 'main-app':
         return const Center(child: Text("Main Dashboard Placeholder"));
       default:
