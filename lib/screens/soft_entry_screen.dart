@@ -3,12 +3,19 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../components/car_icon.dart';
+import '../services/api_service.dart'; // Import API Service
 
 class SoftEntryScreen extends StatefulWidget {
   final ValueChanged<String> onNext;
   final VoidCallback? onBack;
+  final Function(double value, Map<String, String> details)? onEstimateComplete;
 
-  const SoftEntryScreen({super.key, required this.onNext, this.onBack});
+  const SoftEntryScreen({
+    super.key,
+    required this.onNext,
+    this.onBack,
+    this.onEstimateComplete,
+  });
 
   @override
   State<SoftEntryScreen> createState() => _SoftEntryScreenState();
@@ -18,91 +25,149 @@ class _SoftEntryScreenState extends State<SoftEntryScreen> {
   bool loading = false;
   String loadingText = '';
 
-  // Form Values
-  String year = '2023';
-  String make = 'Honda';
-  String model = 'Civic';
-  String trim = 'EX';
+  // --- SELECTION STATE ---
+  String? selectedYear;
+  String? selectedMake;
+  String? selectedModel;
+  String? selectedTrim;
 
+  // --- DATA LISTS (From API) ---
+  List<String> years = [];
+  List<String> makes = [];
+  List<String> models = [];
+
+  // --- LOADING STATES FOR DROPDOWNS ---
+  bool isLoadingYears = true;
+  bool isLoadingMakes = false;
+  bool isLoadingModels = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadYears();
+  }
+
+  // --- API CALLS ---
+  Future<void> _loadYears() async {
+    final data = await ApiService.getVehicleOptions(type: 'years');
+    if (mounted)
+      setState(() {
+        years = data;
+        isLoadingYears = false;
+      });
+  }
+
+  Future<void> _loadMakes(String year) async {
+    setState(() {
+      isLoadingMakes = true;
+      makes = [];
+      selectedMake = null;
+      models = [];
+      selectedModel = null;
+      selectedTrim = null;
+    });
+
+    final data = await ApiService.getVehicleOptions(type: 'makes', year: year);
+    if (mounted)
+      setState(() {
+        makes = data;
+        isLoadingMakes = false;
+      });
+  }
+
+  Future<void> _loadModels(String make) async {
+    setState(() {
+      isLoadingModels = true;
+      models = [];
+      selectedModel = null;
+      selectedTrim = null; // Reset trim on model change
+    });
+
+    final data = await ApiService.getVehicleOptions(
+      type: 'models',
+      make: make,
+      year: selectedYear,
+    );
+    if (mounted)
+      setState(() {
+        models = data;
+        isLoadingModels = false;
+      });
+  }
+
+  // --- HANDLERS ---
   void handleNext() {
+    // Basic Validation
+    if (selectedYear == null || selectedMake == null || selectedModel == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please select your vehicle details")),
+      );
+      return;
+    }
+
     setState(() {
       loading = true;
       loadingText = 'Connecting to Canadian Black Book...';
     });
 
-    Future.delayed(const Duration(milliseconds: 1500), () {
-      if (!mounted) return;
-      setState(() {
-        loadingText = 'Analyzing local market trends...';
-      });
+    // Real API Call
+    ApiService.getEstimate(
+          year: int.parse(selectedYear!),
+          make: selectedMake!,
+          model: selectedModel!,
+          trim: selectedTrim,
+        )
+        .then((data) {
+          if (!mounted) return;
 
-      Future.delayed(const Duration(milliseconds: 1500), () {
-        if (!mounted) return;
-        setState(() {
-          loading = false;
+          setState(() => loadingText = 'Analyzing local market trends...');
+
+          // Artificial delay for UX (optional, kept for consistency)
+          Future.delayed(const Duration(milliseconds: 1000), () {
+            if (!mounted) return;
+            setState(() => loading = false);
+
+            final double val = (data['value'] as num).toDouble();
+
+            // Pass data back
+            if (widget.onEstimateComplete != null) {
+              widget.onEstimateComplete!(val, {
+                'year': selectedYear!,
+                'make': selectedMake!,
+                'model': selectedModel!,
+                'trim': selectedTrim ?? '',
+              });
+            }
+
+            widget.onNext('teaser');
+          });
+        })
+        .catchError((e) {
+          if (!mounted) return;
+          setState(() {
+            loading = false;
+          });
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text("Error getting estimate: $e")));
         });
-        widget.onNext('teaser');
-      });
-    });
   }
 
   @override
   Widget build(BuildContext context) {
-    // LOADING STATE - EXACT MATCH TO JSX
     if (loading) {
-      return Scaffold(
-        backgroundColor: Colors.white,
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // Spinner: navy theme
-              SizedBox(
-                width: 64,
-                height: 64,
-                child: CircularProgressIndicator(
-                  strokeWidth: 4,
-                  valueColor: const AlwaysStoppedAnimation<Color>(
-                    Color(0xFF003366),
-                  ), // Midnight Navy
-                  backgroundColor: const Color(0xFFE6F0FA), // Ice Blue
-                ),
-              ),
-              const SizedBox(height: 24), // mb-6
-              // Text: text-lg font-bold text-slate-800 animate-pulse
-              AnimatedOpacity(
-                duration: const Duration(milliseconds: 500),
-                opacity: 1.0,
-                child: Text(
-                  loadingText,
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.outfit(
-                    color: const Color(0xFF1E293B), // slate-800
-                    fontSize: 18, // text-lg
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: -0.5,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
+      return _buildLoadingScreen();
     }
 
-    // MAIN UI - EXACT MATCH TO JSX
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC), // slate-50
+      backgroundColor: const Color(0xFFF8FAFC),
       body: LayoutBuilder(
         builder: (context, constraints) {
-          // Header: h-[45vh] min-h-[360px] - more room for padding
           final headerHeight = constraints.maxHeight * 0.45;
-          final minHeaderHeight = 360.0;
+          const minHeaderHeight = 360.0;
           final actualHeaderHeight = headerHeight > minHeaderHeight
               ? headerHeight
               : minHeaderHeight;
-
-          // Overlap: -mt-6 = 24px (reduced from 40px to prevent text overlap)
           const overlapHeight = 24.0;
 
           return Stack(
@@ -113,338 +178,93 @@ class _SoftEntryScreenState extends State<SoftEntryScreen> {
                 left: 0,
                 right: 0,
                 height: actualHeaderHeight,
-                child: Stack(
-                  children: [
-                    // Gradient: Midnight Navy
-                    Container(
-                      decoration: const BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Color(0xFF003366), // Midnight Navy
-                            Color(0xFF002E5C), // Intermediate
-                            Color(0xFF002852), // Intermediate
-                            Color(0xFF002347), // Intermediate
-                            Color(0xFF002244), // Darker Navy
-                          ],
-                          stops: [0.0, 0.25, 0.5, 0.75, 1.0],
-                        ),
-                      ),
-                    ),
-
-                    // Removed dot pattern for cleaner appearance
-
-                    // Background Ambience: top-[-50%] left-[50%] w-[400px] h-[400px] blur-[80px] mix-blend-overlay
-                    Positioned.fill(
-                      child: CustomPaint(painter: OverlayBlobPainter()),
-                    ),
-
-                    // HEADER CONTENT - Centered with SafeArea
-                    SafeArea(
-                      bottom: false,
-                      child: Center(
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 24,
-                          ), // px-6
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              // Icon: w-20 h-20 rounded-[2rem] with glassmorphism
-                              Container(
-                                width: 80,
-                                height: 80,
-                                margin: const EdgeInsets.only(
-                                  bottom: 24,
-                                ), // mb-6
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(32),
-                                  // This base color "blocks" the shadow from bleeding into the semi-transparent center
-                                  color: Colors.white.withOpacity(0.05),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withOpacity(0.12),
-                                      blurRadius: 25,
-                                      offset: const Offset(0, 10),
-                                    ),
-                                  ],
-                                ),
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(32),
-                                  child: BackdropFilter(
-                                    filter: ImageFilter.blur(
-                                      sigmaX: 12,
-                                      sigmaY: 12,
-                                    ), // Adjusted for vibrancy
-                                    child: Container(
-                                      decoration: BoxDecoration(
-                                        gradient: LinearGradient(
-                                          begin: Alignment.topLeft,
-                                          end: Alignment.bottomRight,
-                                          colors: [
-                                            Colors.white.withOpacity(
-                                              0.15,
-                                            ), // Very light white
-                                            const Color(0xFFE6F0FA).withOpacity(
-                                              0.05,
-                                            ), // Hint of Ice Blue
-                                          ],
-                                        ),
-                                      ),
-                                      child: const Center(
-                                        child: CarIcon(
-                                          size: 40,
-                                          color: Colors.white,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-
-                              // Headline: text-4xl font-bold leading-tight
-                              Column(
-                                children: [
-                                  Text(
-                                    "Value your vehicle",
-                                    textAlign: TextAlign.center,
-                                    style: GoogleFonts.outfit(
-                                      color: Colors.white,
-                                      fontSize: 36, // text-4xl
-                                      fontWeight: FontWeight
-                                          .w800, // slightly reduced from w900
-                                      height: 1.25, // leading-tight
-                                      letterSpacing:
-                                          -0.5, // slight letter spacing
-                                      shadows: [
-                                        Shadow(
-                                          color: Colors.black.withOpacity(0.15),
-                                          blurRadius: 2,
-                                          offset: const Offset(0, 1),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  Text(
-                                    "instantly.",
-                                    textAlign: TextAlign.center,
-                                    style: GoogleFonts.outfit(
-                                      color: const Color(
-                                        0xFFE6F0FA,
-                                      ).withOpacity(0.9), // Ice Blue/90
-                                      fontSize: 32.4, // text-[0.9em]
-                                      fontWeight: FontWeight
-                                          .w800, // slightly reduced from w900
-                                      height: 1.25,
-                                      letterSpacing:
-                                          -0.4, // slight letter spacing
-                                      shadows: [
-                                        Shadow(
-                                          color: Colors.black.withOpacity(0.15),
-                                          blurRadius: 2,
-                                          offset: const Offset(0, 1),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-
-                              const SizedBox(height: 16), // mb-4 equivalent
-                              // Pill: text-xs font-bold uppercase tracking-[0.2em] bg-white/10 px-4 py-1.5 rounded-full backdrop-blur-md
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(
-                                  999,
-                                ), // rounded-full
-                                child: BackdropFilter(
-                                  filter: ImageFilter.blur(
-                                    sigmaX: 12,
-                                    sigmaY: 12,
-                                  ), // backdrop-blur-md
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 16, // px-4
-                                      vertical: 6, // py-1.5
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white.withOpacity(
-                                        0.1,
-                                      ), // bg-white/10
-                                      borderRadius: BorderRadius.circular(999),
-                                    ),
-                                    child: Text(
-                                      "NO VIN REQUIRED",
-                                      style: GoogleFonts.outfit(
-                                        color: const Color(
-                                          0xFFE6F0FA,
-                                        ), // Ice Blue
-                                        fontSize: 12, // text-xs
-                                        fontWeight: FontWeight.bold,
-                                        letterSpacing: 2.4, // tracking-[0.2em]
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 24), // space below pill
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+                child: _buildHeader(),
               ),
 
               // --- GRID SYSTEM BODY ---
-              // -mt-10 overlap, bg-slate-50, p-6, gap-5, rounded-t-3xl, shadow-inner
               Positioned(
                 top: actualHeaderHeight - overlapHeight,
                 left: 0,
                 right: 0,
                 bottom: 0,
                 child: Container(
-                  padding: const EdgeInsets.all(24), // p-6
+                  padding: const EdgeInsets.all(24),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF8FAFC), // slate-50
-                    borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(24), // rounded-t-3xl
-                      topRight: Radius.circular(24),
+                    color: const Color(0xFFF8FAFC),
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(24),
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(
-                          0.03,
-                        ), // subtle shadow-inner
+                        color: Colors.black.withOpacity(0.03),
                         blurRadius: 4,
                         offset: const Offset(0, -2),
                       ),
                     ],
                   ),
-                  child: Column(
-                    children: [
-                      // ROW 1: YEAR - h-20
-                      _buildTile(
-                        label: "YEAR",
-                        value: year,
-                        items: ['2023', '2022', '2021'],
-                        onChanged: (v) => setState(() => year = v!),
-                        chevronRight: 24,
-                      ),
-                      const SizedBox(height: 20), // gap-5
-                      // ROW 2: MAKE - h-20
-                      _buildTile(
-                        label: "MAKE",
-                        value: make,
-                        items: ['Honda', 'Toyota', 'Ford'],
-                        onChanged: (v) => setState(() => make = v!),
-                        chevronRight: 24,
-                      ),
-                      const SizedBox(height: 20),
-
-                      // ROW 3: SPLIT TILES - Model & Trim - h-20
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _buildTile(
-                              label: "MODEL",
-                              value: model,
-                              items: ['Civic', 'CR-V'],
-                              fontSize: 20, // text-xl
-                              chevronRight: 16,
-                              onChanged: (v) => setState(() => model = v!),
-                            ),
-                          ),
-                          const SizedBox(width: 20), // gap-5
-                          Expanded(
-                            child: _buildTile(
-                              label: "TRIM",
-                              value: trim,
-                              items: ['EX', 'Touring'],
-                              fontSize: 20,
-                              chevronRight: 16,
-                              onChanged: (v) => setState(() => trim = v!),
-                            ),
-                          ),
-                        ],
-                      ),
-
-                      const SizedBox(height: 20), // pt-2-ish
-                      // ACTION BUTTON - h-20 rounded-3xl
-                      SizedBox(
-                        height: 80, // h-20
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: handleNext,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(
-                              0xFF00CA50,
-                            ), // Vibrant Green
-                            foregroundColor: Colors.white,
-                            elevation: 8, // shadow-xl
-                            shadowColor: const Color(
-                              0xFF00CA50,
-                            ).withOpacity(0.3), // Green shadow
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(
-                                24,
-                              ), // rounded-3xl
-                            ),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 32,
-                            ), // px-8
-                          ),
-                          child: Stack(
-                            children: [
-                              // Button content
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(
-                                    "Get Estimate",
-                                    style: GoogleFonts.outfit(
-                                      fontSize: 20, // text-xl
-                                      fontWeight: FontWeight.w700, // font-bold
-                                    ),
-                                  ),
-                                  // Circle Icon: w-12 h-12 bg-white/10
-                                  Container(
-                                    width: 48, // w-12
-                                    height: 48, // h-12
-                                    decoration: BoxDecoration(
-                                      color: Colors.white.withOpacity(
-                                        0.1,
-                                      ), // bg-white/10
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: const Icon(
-                                      LucideIcons.chevronRight,
-                                      color: Colors.white, // White on green
-                                      size: 24,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              // Hover gradient overlay effect
-                              Positioned.fill(
-                                child: Material(
-                                  color: Colors.transparent,
-                                  child: InkWell(
-                                    onTap: handleNext,
-                                    borderRadius: BorderRadius.circular(24),
-                                    splashColor: Colors.white.withOpacity(0.05),
-                                    highlightColor: Colors.transparent,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
+                  child: SingleChildScrollView(
+                    child: Column(
+                      children: [
+                        // ROW 1: YEAR
+                        _buildTile(
+                          label: "YEAR",
+                          value: selectedYear,
+                          items: years,
+                          isLoading: isLoadingYears,
+                          onChanged: (v) {
+                            setState(() => selectedYear = v);
+                            if (v != null) _loadMakes(v);
+                          },
                         ),
-                      ),
-                    ],
+                        const SizedBox(height: 20),
+
+                        // ROW 2: MAKE
+                        _buildTile(
+                          label: "MAKE",
+                          value: selectedMake,
+                          items: makes,
+                          isLoading: isLoadingMakes,
+                          onChanged: (v) {
+                            setState(() => selectedMake = v);
+                            if (v != null) _loadModels(v);
+                          },
+                        ),
+                        const SizedBox(height: 20),
+
+                        // ROW 3: MODEL & TRIM
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _buildTile(
+                                label: "MODEL",
+                                value: selectedModel,
+                                items: models,
+                                fontSize: 20,
+                                isLoading: isLoadingModels,
+                                chevronRight: 16,
+                                onChanged: (v) {
+                                  setState(() => selectedModel = v);
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 20),
+                            Expanded(
+                              child: _buildTextTile(
+                                label: "TRIM (OPTIONAL)",
+                                value: selectedTrim,
+                                onChanged: (v) =>
+                                    setState(() => selectedTrim = v),
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 20),
+
+                        // ACTION BUTTON
+                        _buildSubmitButton(),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -455,105 +275,335 @@ class _SoftEntryScreenState extends State<SoftEntryScreen> {
     );
   }
 
-  // HELPER: Tile Component - EXACT MATCH TO JSX
-  Widget _buildTile({
+  // --- WIDGET HELPERS ---
+
+  Widget _buildTextTile({
     required String label,
-    required String value,
-    required List<String> items,
-    required ValueChanged<String?> onChanged,
-    double fontSize = 24, // Default text-2xl
-    double chevronRight = 24, // Default right-6 (24px)
+    required String? value,
+    required ValueChanged<String> onChanged,
   }) {
     return SizedBox(
-      height: 80, // h-20
+      height: 80,
       child: Stack(
         children: [
-          // Background: bg-white rounded-3xl border border-slate-100 shadow-sm
           Container(
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(24), // rounded-3xl
-              border: Border.all(
-                color: const Color(0xFFF1F5F9), // border-slate-100
-                width: 1,
-              ),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: const Color(0xFFF1F5F9)),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.02), // shadow-sm
+                  color: Colors.black.withOpacity(0.02),
                   blurRadius: 2,
                   offset: const Offset(0, 1),
                 ),
               ],
             ),
           ),
-
-          // Label: absolute top-3 left-6 text-[10px] font-black text-slate-400 uppercase tracking-widest z-10
           Positioned(
-            top: 12, // top-3
-            left: chevronRight == 24
-                ? 24
-                : 20, // left-6 (24px) or left-5 (20px)
+            top: 12,
+            left: 20,
             child: Text(
               label,
               style: GoogleFonts.outfit(
-                color: const Color(0xFF94A3B8), // text-slate-400
-                fontSize: 10, // text-[10px]
-                fontWeight: FontWeight.w900, // font-black
-                letterSpacing: 1.0, // tracking-widest (0.1em)
+                color: const Color(0xFF94A3B8),
+                fontSize: 10,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 1.0,
               ),
             ),
           ),
-
-          // Dropdown: relative w-full h-full bg-transparent px-6/pt-5 text-2xl font-black text-slate-800
           Positioned.fill(
             child: Padding(
-              padding: EdgeInsets.only(
-                left: chevronRight == 24
-                    ? 24
-                    : 20, // px-6 (24px) or px-5 (20px)
-                right: chevronRight + 12, // Make space for chevron
-                top: 20, // pt-5
-              ),
-              child: DropdownButtonHideUnderline(
-                child: DropdownButton<String>(
-                  value: value,
-                  icon: const SizedBox.shrink(), // Hide default icon
-                  style: GoogleFonts.outfit(
-                    color: const Color(0xFF1E293B), // text-slate-800
-                    fontSize: fontSize, // text-2xl (24px) or text-xl (20px)
-                    fontWeight: FontWeight.w900, // font-black
-                  ),
-                  dropdownColor: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  items: items.map((String item) {
-                    return DropdownMenuItem<String>(
-                      value: item,
-                      child: Text(item),
-                    );
-                  }).toList(),
+              padding: const EdgeInsets.only(left: 20, right: 20, bottom: 8),
+              child: Center(
+                child: TextField(
+                  controller: TextEditingController(text: value)
+                    ..selection = TextSelection.fromPosition(
+                      TextPosition(offset: value?.length ?? 0),
+                    ),
                   onChanged: onChanged,
-                  isExpanded: true,
-                  menuMaxHeight: 300,
+                  style: GoogleFonts.outfit(
+                    color: const Color(0xFF1E293B),
+                    fontSize: 20,
+                    fontWeight: FontWeight.w900,
+                  ),
+                  decoration: InputDecoration(
+                    hintText: "SE / SEL",
+                    hintStyle: GoogleFonts.outfit(
+                      color: Colors.grey.shade300,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w900,
+                    ),
+                    border: InputBorder.none,
+                    contentPadding: const EdgeInsets.only(top: 24),
+                  ),
                 ),
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
 
-          // Chevron: absolute right-6 top-1/2 -translate-y-1/2 text-slate-300
-          // OR right-4 for split tiles
+  Widget _buildLoadingScreen() {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            SizedBox(
+              width: 64,
+              height: 64,
+              child: CircularProgressIndicator(
+                strokeWidth: 4,
+                valueColor: const AlwaysStoppedAnimation<Color>(
+                  Color(0xFF003366),
+                ),
+                backgroundColor: const Color(0xFFE6F0FA),
+              ),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              loadingText,
+              textAlign: TextAlign.center,
+              style: GoogleFonts.outfit(
+                color: const Color(0xFF1E293B),
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                letterSpacing: -0.5,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeader() {
+    return Stack(
+      children: [
+        Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [Color(0xFF003366), Color(0xFF002244)],
+            ),
+          ),
+        ),
+        Positioned.fill(child: CustomPaint(painter: OverlayBlobPainter())),
+        SafeArea(
+          bottom: false,
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  width: 80,
+                  height: 80,
+                  margin: const EdgeInsets.only(bottom: 24),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(32),
+                    color: Colors.white.withOpacity(0.05),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(32),
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                      child: const Center(
+                        child: CarIcon(size: 40, color: Colors.white),
+                      ),
+                    ),
+                  ),
+                ),
+                Text(
+                  "Value your vehicle",
+                  style: GoogleFonts.outfit(
+                    color: Colors.white,
+                    fontSize: 36,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                Text(
+                  "instantly.",
+                  style: GoogleFonts.outfit(
+                    color: const Color(0xFFE6F0FA).withOpacity(0.9),
+                    fontSize: 32,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    "NO VIN REQUIRED",
+                    style: GoogleFonts.outfit(
+                      color: const Color(0xFFE6F0FA),
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 2.4,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSubmitButton() {
+    return SizedBox(
+      height: 80,
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: handleNext,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF00CA50),
+          foregroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              "Get Estimate",
+              style: GoogleFonts.outfit(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                LucideIcons.chevronRight,
+                color: Colors.white,
+                size: 24,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTile({
+    required String label,
+    required String? value,
+    required List<String> items,
+    required ValueChanged<String?> onChanged,
+    bool isLoading = false,
+    double fontSize = 24,
+    double chevronRight = 24,
+  }) {
+    return SizedBox(
+      height: 80,
+      child: Stack(
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: const Color(0xFFF1F5F9)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.02),
+                  blurRadius: 2,
+                  offset: const Offset(0, 1),
+                ),
+              ],
+            ),
+          ),
           Positioned(
-            right: chevronRight == 24
-                ? 24
-                : 16, // right-6 (24px) or right-4 (16px)
+            top: 12,
+            left: chevronRight == 24 ? 24 : 20,
+            child: Text(
+              label,
+              style: GoogleFonts.outfit(
+                color: const Color(0xFF94A3B8),
+                fontSize: 10,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 1.0,
+              ),
+            ),
+          ),
+          Positioned.fill(
+            child: Padding(
+              padding: EdgeInsets.only(
+                left: chevronRight == 24 ? 24 : 20,
+                right: chevronRight + 12,
+                top: 20,
+              ),
+              child: isLoading
+                  ? const Align(
+                      alignment: Alignment.centerLeft,
+                      child: SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    )
+                  : DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        value: value,
+                        hint: Text(
+                          "Select",
+                          style: GoogleFonts.outfit(
+                            color: Colors.grey.shade300,
+                            fontSize: fontSize,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        icon: const SizedBox.shrink(),
+                        style: GoogleFonts.outfit(
+                          color: const Color(0xFF1E293B),
+                          fontSize: fontSize,
+                          fontWeight: FontWeight.w900,
+                        ),
+                        dropdownColor: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        items: items.map((String item) {
+                          return DropdownMenuItem<String>(
+                            value: item,
+                            child: Text(item),
+                          );
+                        }).toList(),
+                        onChanged: onChanged,
+                        isExpanded: true,
+                        menuMaxHeight: 300,
+                      ),
+                    ),
+            ),
+          ),
+          Positioned(
+            right: chevronRight == 24 ? 24 : 16,
             top: 0,
             bottom: 0,
             child: IgnorePointer(
               child: Transform.rotate(
-                angle: 1.5708, // rotate-90 (90 degrees)
+                angle: 1.5708,
                 child: Icon(
                   LucideIcons.chevronRight,
-                  size: 22, // size={22}
-                  color: const Color(0xFFCBD5E1), // text-slate-300
+                  size: 22,
+                  color: const Color(0xFFCBD5E1),
                 ),
               ),
             ),
@@ -564,25 +614,16 @@ class _SoftEntryScreenState extends State<SoftEntryScreen> {
   }
 }
 
-// Background Ambience: absolute top-[-50%] left-[50%] -translate-x-1/2 w-[400px] h-[400px] bg-white/10 rounded-full blur-[80px] mix-blend-overlay
 class OverlayBlobPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = Colors.white
-          .withOpacity(0.1) // bg-white/10
-      ..blendMode = BlendMode
-          .overlay // mix-blend-overlay
-      ..maskFilter = const MaskFilter.blur(
-        BlurStyle.normal,
-        80,
-      ); // blur-[80px] approximation
-
-    // Position: top-[-50%] left-[50%] -translate-x-1/2
+      ..color = Colors.white.withOpacity(0.1)
+      ..blendMode = BlendMode.overlay
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 80);
     final centerX = size.width / 2;
-    final centerY = -size.height * 0.25; // -50% of header height
-    const radius = 200.0; // w-[400px] h-[400px] -> radius 200
-
+    final centerY = -size.height * 0.25;
+    const radius = 200.0;
     canvas.drawCircle(Offset(centerX, centerY), radius, paint);
   }
 

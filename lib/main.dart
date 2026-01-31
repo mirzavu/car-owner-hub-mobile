@@ -17,7 +17,11 @@ import 'screens/shop_screen.dart';
 import 'screens/garage_screen.dart';
 import 'screens/success_screen.dart';
 
-void main() {
+import 'package:mobile_app/services/auth_service.dart'; // Import AuthService
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  AuthService().init();
   runApp(const FintechApp());
 }
 
@@ -148,7 +152,23 @@ class _FintechAutoFlowState extends State<FintechAutoFlow> {
       case 'splash':
         return SplashScreen(onNext: () => setStep('details'));
       case 'details':
-        return SoftEntryScreen(onNext: (nextStep) => setStep(nextStep));
+        return SoftEntryScreen(
+          onNext: (nextStep) => setStep(nextStep),
+          onEstimateComplete: (value, details) {
+            setState(() {
+              financials['estimatedValue'] = value;
+              // Map details to carDetails
+              carDetails['year'] = details['year']!;
+              carDetails['make'] = details['make']!;
+              carDetails['model'] = details['model']!;
+              carDetails['trim'] = details['trim']!;
+              // Reset VIN/Plate as we don't have them yet from this flow
+              carDetails['vin'] = 'Fetching...';
+              carDetails['plate'] = 'Pending';
+            });
+            _calculateEquity();
+          },
+        );
       case 'teaser':
         return teaser.TeaserScreen(
           carDetails: teaser.CarDetails(
