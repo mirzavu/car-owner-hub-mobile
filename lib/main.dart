@@ -11,6 +11,7 @@ import 'screens/scanner_screen.dart';
 import 'screens/verify_scan_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/refinance_screen.dart';
+import 'screens/cash_unlock_screen.dart';
 
 void main() {
   runApp(const FintechApp());
@@ -188,6 +189,16 @@ class _FintechAutoFlowState extends State<FintechAutoFlow> {
         onClose: () => setOverlay(null),
         onStartRefinance: () {
           // TODO: handle refinance start
+          setOverlay(null);
+        },
+      );
+    }
+    if (overlayScreen == 'cash-unlock') {
+      return CashUnlockScreen(
+        financials: financials,
+        onClose: () => setOverlay(null),
+        onSelectCash: () {
+          // TODO: handle cash selection
           setOverlay(null);
         },
       );
