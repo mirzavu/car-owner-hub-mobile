@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 import 'package:intl/intl.dart';
 import 'screens/splash_screen.dart';
 import 'screens/soft_entry_screen.dart';
@@ -13,6 +14,7 @@ import 'screens/dashboard_screen.dart';
 import 'screens/refinance_screen.dart';
 import 'screens/cash_unlock_screen.dart';
 import 'screens/shop_screen.dart';
+import 'screens/garage_screen.dart';
 import 'screens/success_screen.dart';
 
 void main() {
@@ -175,23 +177,113 @@ class _FintechAutoFlowState extends State<FintechAutoFlow> {
       case 'verify':
         return VerifyScanScreen(setStep: (nextStep) => setStep(nextStep));
       case 'main-app':
-        // Check Tabs
-        if (activeTab == 'shop') {
-          return ShopScreen(
-            financials: financials,
-            setOverlayScreen: (screen) => setOverlay(screen),
-            setActiveTab: (tab) => setActiveTab(tab),
-          );
-        }
-        // Default to Dashboard
-        return DashboardScreen(
-          carDetails: CarDetails(year: '2022', make: 'Honda', model: 'Civic'),
-          setOverlayScreen: (screen) => setOverlay(screen),
-          setActiveTab: (tab) => setActiveTab(tab),
+        return Stack(
+          children: [
+            // 1. Content
+            _buildMainAppContent(),
+
+            // 2. Professional Sleek Bottom Nav
+            Positioned(
+              left: 48,
+              right: 48,
+              bottom: 24,
+              child: _buildBottomNavBar(),
+            ),
+          ],
         );
       default:
         return Center(child: Text("Unknown Step: $step"));
     }
+  }
+
+  Widget _buildMainAppContent() {
+    if (activeTab == 'shop') {
+      return ShopScreen(
+        financials: financials,
+        setOverlayScreen: (screen) => setOverlay(screen),
+        setActiveTab: (tab) => setActiveTab(tab),
+      );
+    }
+    if (activeTab == 'garage') {
+      return GarageScreen(
+        carDetails: carDetails,
+        setActiveTab: (tab) => setActiveTab(tab),
+      );
+    }
+    // Default to Dashboard
+    return DashboardScreen(
+      carDetails: CarDetails(year: '2022', make: 'Honda', model: 'Civic'),
+      setOverlayScreen: (screen) => setOverlay(screen),
+      setActiveTab: (tab) => setActiveTab(tab),
+    );
+  }
+
+  Widget _buildBottomNavBar() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFF003366), // Midnight Navy bg
+        borderRadius: BorderRadius.circular(50),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF003366).withOpacity(0.25), // Lighter shadow
+            blurRadius: 12, // Reduced blur
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          _buildNavItem('home', LucideIcons.home, "Home"),
+          _buildNavItem('shop', LucideIcons.car, "Shop"),
+          _buildNavItem('garage', LucideIcons.wrench, "Garage"),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNavItem(String tabKey, IconData icon, String label) {
+    final bool isActive = activeTab == tabKey;
+    const colorActive = Colors.white; // White for active
+    final colorInactive = Colors.white.withOpacity(
+      0.5,
+    ); // Faded white for inactive
+
+    return GestureDetector(
+      onTap: () => setActiveTab(tabKey),
+      behavior: HitTestBehavior.opaque,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: EdgeInsets.symmetric(
+          horizontal: isActive ? 16 : 10,
+          vertical: 6,
+        ),
+        decoration: BoxDecoration(
+          color: isActive
+              ? Colors.white.withOpacity(0.15)
+              : Colors.transparent, // Glassy active pill
+          borderRadius: BorderRadius.circular(30),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 20, color: isActive ? colorActive : colorInactive),
+            if (isActive) ...[
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: GoogleFonts.outfit(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: colorActive,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildOverlay() {

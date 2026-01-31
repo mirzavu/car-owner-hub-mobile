@@ -20,7 +20,20 @@ class ShopScreen extends StatefulWidget {
 }
 
 class _ShopScreenState extends State<ShopScreen> {
-  bool _keepPayment = true;
+  // Initialize with a default, will update in initState or build if needed
+  double _maxPayment = 0.0;
+  bool _isInit = true;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_isInit) {
+      // Set initial max payment to user's current payment
+      final double userPayment = widget.financials['monthlyPayment'] ?? 420.0;
+      _maxPayment = userPayment;
+      _isInit = false;
+    }
+  }
 
   // Mock Inventory Data
   final List<Map<String, dynamic>> _inventory = [
@@ -64,160 +77,237 @@ class _ShopScreenState extends State<ShopScreen> {
     // Colors
     const colorBg = Color(0xFFE6F0FA); // Ice Blue background
     const colorSlate800 = Color(0xFF1E293B);
-    const colorSlate500 = Color(0xFF64748B);
     const colorGreen = Color(0xFF00CA50);
     const colorNavy = Color(0xFF003366);
 
     // Derived Financials
+    // Derived Financials
     final double userPayment = widget.financials['monthlyPayment'] ?? 420.0;
+    // Ensure _maxPayment is at least userPayment (fixes hot-reload 0.0 value)
+    if (_maxPayment < userPayment) {
+      _maxPayment = userPayment;
+    }
+
     final double equity = widget.financials['equity'] ?? 0.0;
 
-    // Filter Logic
-    final displayInventory = _keepPayment
-        ? (_inventory.toList()..sort(
-            (a, b) =>
-                (a['payment'] as double).compareTo(b['payment'] as double),
-          ))
-        : _inventory;
+    // Filter Logic (Placeholder for now)
+    final displayInventory = _inventory;
 
     return Scaffold(
-      backgroundColor: colorBg,
+      backgroundColor: colorBg, // Match Refinance Light Blue
       body: SafeArea(
         child: Column(
           children: [
-            // --- 1. Sticky Header ---
-            Container(
-              padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                border: Border(
-                  bottom: BorderSide(color: Colors.blueGrey.shade50),
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+            // --- 1. Minimal Fixed Header ---
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+              child: Row(
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        "Upgrade Power",
-                        style: GoogleFonts.outfit(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: colorSlate800,
-                        ),
-                      ),
-                      // Temporary Home Button (until BottomNav is added)
-                      IconButton(
-                        onPressed: () => widget.setActiveTab('home'),
-                        icon: const Icon(
-                          LucideIcons.home,
-                          color: colorSlate500,
-                        ),
-                        tooltip: "Back to Dashboard",
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  RichText(
-                    text: TextSpan(
-                      style: GoogleFonts.outfit(
-                        fontSize: 14,
-                        color: colorSlate500,
-                      ),
-                      children: [
-                        const TextSpan(text: "Using your "),
-                        TextSpan(
-                          text: _fmt(equity),
-                          style: GoogleFonts.outfit(
-                            fontWeight: FontWeight.bold,
-                            color: colorGreen,
+                  GestureDetector(
+                    onTap: () => widget.setActiveTab('home'),
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.05),
+                            blurRadius: 10,
                           ),
-                        ),
-                        const TextSpan(text: " equity as down payment."),
-                      ],
+                        ],
+                      ),
+                      child: const Icon(
+                        LucideIcons.chevronLeft,
+                        size: 24,
+                        color: Color(0xFF1E293B),
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 16),
-
-                  // Filter Toggle
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                    decoration: BoxDecoration(
-                      color: colorBg,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.blueGrey.shade100),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          "Keep payment same (${_fmt(userPayment)}/mo)",
-                          style: GoogleFonts.outfit(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: colorSlate800,
-                          ),
-                        ),
-                        GestureDetector(
-                          onTap: () =>
-                              setState(() => _keepPayment = !_keepPayment),
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 200),
-                            width: 48,
-                            height: 28,
-                            decoration: BoxDecoration(
-                              color: _keepPayment
-                                  ? colorGreen
-                                  : Colors.blueGrey.shade300,
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Stack(
-                              children: [
-                                AnimatedPositioned(
-                                  duration: const Duration(milliseconds: 200),
-                                  curve: Curves.easeOutBack,
-                                  left: _keepPayment ? 22 : 2,
-                                  top: 2,
-                                  child: Container(
-                                    width: 24,
-                                    height: 24,
-                                    decoration: BoxDecoration(
-                                      color: Colors.white,
-                                      shape: BoxShape.circle,
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: Colors.black.withOpacity(0.1),
-                                          blurRadius: 4,
-                                          offset: const Offset(0, 2),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
+                  const SizedBox(width: 16),
+                  Text(
+                    "Upgrade Power",
+                    style: GoogleFonts.outfit(
+                      fontSize: 20, // Match Refinance Title Size
+                      fontWeight: FontWeight.bold,
+                      color: colorSlate800,
                     ),
                   ),
                 ],
               ),
             ),
 
-            // --- 2. Scrollable Inventory ---
+            // --- 2. Scrollable Content (Equity + Filters + List) ---
             Expanded(
               child: ListView.builder(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 8,
+                ),
                 physics: const BouncingScrollPhysics(),
-                itemCount: displayInventory.length,
+                itemCount: displayInventory.length + 1,
                 itemBuilder: (context, index) {
-                  final car = displayInventory[index];
+                  // Index 0: Header Content (Equity & Filter)
+                  if (index == 0) {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Equity Badge
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.white),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.02),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                LucideIcons.trendingUp,
+                                size: 16,
+                                color: colorGreen,
+                              ),
+                              const SizedBox(width: 8),
+                              RichText(
+                                text: TextSpan(
+                                  style: GoogleFonts.outfit(
+                                    fontSize: 14,
+                                    color: colorSlate800,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                  children: [
+                                    const TextSpan(text: "You have "),
+                                    TextSpan(
+                                      text: _fmt(equity),
+                                      style: GoogleFonts.outfit(
+                                        fontWeight: FontWeight.bold,
+                                        color: colorGreen,
+                                      ),
+                                    ),
+                                    const TextSpan(text: " equity to use."),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+
+                        // Payment Slider Control
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(20),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.02),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    "Max Payment",
+                                    style: GoogleFonts.outfit(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                      color: colorSlate800,
+                                    ),
+                                  ),
+                                  Text(
+                                    _fmt(_maxPayment),
+                                    style: GoogleFonts.outfit(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: colorGreen,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: SliderTheme(
+                                      data: SliderTheme.of(context).copyWith(
+                                        activeTrackColor: colorGreen,
+                                        inactiveTrackColor:
+                                            Colors.blueGrey.shade100,
+                                        trackHeight: 4.0,
+                                        thumbShape: const RoundSliderThumbShape(
+                                          enabledThumbRadius: 10,
+                                        ),
+                                        overlayShape:
+                                            const RoundSliderOverlayShape(
+                                              overlayRadius: 20,
+                                            ),
+                                        thumbColor: Colors.white,
+                                        overlayColor: colorGreen.withOpacity(
+                                          0.1,
+                                        ),
+                                      ),
+                                      child: Slider(
+                                        value: _maxPayment,
+                                        min: userPayment,
+                                        max: userPayment + 500,
+                                        divisions: 50,
+                                        onChanged: (value) {
+                                          setState(() {
+                                            _maxPayment = value;
+                                          });
+                                        },
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Container(
+                                    decoration: BoxDecoration(
+                                      color: colorNavy,
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: IconButton(
+                                      icon: const Icon(
+                                        LucideIcons.check,
+                                        size: 20,
+                                        color: Colors.white,
+                                      ),
+                                      onPressed: () {
+                                        // TODO: Implement actual filtering
+                                      },
+                                      constraints: const BoxConstraints(
+                                        minWidth: 44,
+                                        minHeight: 44,
+                                      ),
+                                      padding: EdgeInsets.zero,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                      ],
+                    );
+                  }
+
+                  // Inventory Items
+                  final car = displayInventory[index - 1];
                   return _buildCarCard(car, userPayment, colorNavy, colorGreen);
                 },
               ),
