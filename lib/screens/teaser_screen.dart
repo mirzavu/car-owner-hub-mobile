@@ -23,12 +23,14 @@ class TeaserScreen extends StatefulWidget {
   final CarDetails carDetails;
   final Financials financials;
   final VoidCallback onNext;
+  final VoidCallback? onBack;
 
   const TeaserScreen({
     super.key,
     required this.carDetails,
     required this.financials,
     required this.onNext,
+    this.onBack,
   });
 
   @override
@@ -198,6 +200,20 @@ class _TeaserScreenState extends State<TeaserScreen> {
                         ],
                       ),
                     ),
+                  ),
+                ),
+
+                // Back Button (Moved to end to be on top)
+                Positioned(
+                  top: 48,
+                  left: 16,
+                  child: IconButton(
+                    icon: const Icon(
+                      LucideIcons.arrowLeft,
+                      color: Colors.white,
+                    ),
+                    onPressed:
+                        widget.onBack ?? () => Navigator.of(context).pop(),
                   ),
                 ),
               ],

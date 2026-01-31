@@ -100,377 +100,356 @@ class _PhoneCaptureScreenState extends State<PhoneCaptureScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: colorSlate50,
-      body: Column(
+      body: Stack(
         children: [
-          // --- 1. Elegant Header ---
-          // pt-12 pb-16 px-6 rounded-b-[2.5rem] shadow-2xl shadow-red-900/20
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.only(
-              top: 44, // reduced from 48px
-              bottom: 56, // reduced from 64px
-              left: 24,
-              right: 24,
-            ),
-            decoration: BoxDecoration(
-              borderRadius: const BorderRadius.only(
-                bottomLeft: Radius.circular(40), // 2.5rem = 40px
-                bottomRight: Radius.circular(40),
+          // --- 1. Header (Background) ---
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: Container(
+              padding: const EdgeInsets.only(
+                top: 44,
+                bottom: 48,
+                left: 24,
+                right: 24,
               ),
-              gradient: const LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: gradientColors,
+              decoration: BoxDecoration(
+                borderRadius: const BorderRadius.only(
+                  bottomLeft: Radius.circular(40),
+                  bottomRight: Radius.circular(40),
+                ),
+                gradient: const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: gradientColors,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF002244).withOpacity(0.2),
+                    blurRadius: 25,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
               ),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(
-                    0xFF002244,
-                  ).withOpacity(0.2), // Navy shadow
-                  blurRadius: 25,
-                  offset: const Offset(0, 10),
-                ),
-              ],
-            ),
-            child: Column(
-              children: [
-                // Icon Circle - w-14 h-14 rounded-2xl bg-white/10 border border-white/20 mb-6 mx-auto
-                Container(
-                  width: 56, // w-14 = 56px
-                  height: 56, // h-14 = 56px
-                  margin: const EdgeInsets.only(bottom: 24), // mb-6 = 24px
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.1), // bg-white/10
-                    borderRadius: BorderRadius.circular(
-                      16,
-                    ), // rounded-2xl = 16px
-                    border: Border.all(
-                      color: Colors.white.withOpacity(0.2), // border-white/20
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: const Center(
-                    child: Icon(
-                      LucideIcons.smartphone,
-                      color: Colors.white,
-                      size: 28,
-                    ),
-                  ),
-                ),
-
-                // Heading - text-3xl font-bold text-white mb-2 tracking-tight text-center
-                Text(
-                  "What is your number?",
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.outfit(
-                    color: Colors.white,
-                    fontSize: 30, // text-3xl = 30px
-                    fontWeight: FontWeight.w700, // font-bold
-                    letterSpacing: -0.5, // tracking-tight
-                  ),
-                ),
-                const SizedBox(height: 8), // mb-2 = 8px
-                // Subtitle - text-red-100/80 text-sm leading-relaxed max-w-[80%] text-center mx-auto
-                SizedBox(
-                  width: MediaQuery.of(context).size.width * 0.8, // max-w-[80%]
-                  child: Text(
-                    "We use this to verify your identity and secure your account.",
-                    textAlign: TextAlign.center,
-                    style: GoogleFonts.outfit(
-                      color: const Color(
-                        0xFFE6F0FA,
-                      ).withOpacity(0.8), // Ice Blue/80
-                      fontSize: 14, // text-sm = 14px
-                      height: 1.625, // leading-relaxed
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // --- 2. Input Section ---
-          // flex-1 px-6 -mt-8 relative z-10
-          Expanded(
-            child: SingleChildScrollView(
-              child: Transform.translate(
-                offset: const Offset(0, -32), // -mt-8 = -32px
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                  ), // px-6 = 24px
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      // Input Container - bg-white rounded-3xl p-2 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border
-                      Center(
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 300),
-                          padding: const EdgeInsets.all(
-                            16,
-                          ), // Uniform p-4 equivalent
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(
-                              16,
-                            ), // rounded-2xl = 16px
-                            border: Border.all(color: colorSlate100, width: 1),
-                            boxShadow: [
-                              // shadow-[0_8px_30px_rgb(0,0,0,0.04)]
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.04),
-                                blurRadius: 30,
-                                offset: const Offset(0, 8),
-                              ),
-                            ],
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              // Country Code Pill - flex flex-col items-center justify-center bg-slate-50 w-16 h-16 rounded-2xl mr-4 border border-slate-100
-                              Container(
-                                width: 56, // w-14 = 56px (reduced from 64)
-                                height: 56, // h-14 = 56px
-                                margin: const EdgeInsets.only(
-                                  right: 12,
-                                ), // mr-3 = 12px
-                                decoration: BoxDecoration(
-                                  color: colorSlate50,
-                                  borderRadius: BorderRadius.circular(
-                                    14,
-                                  ), // slightly smaller radius
-                                  border: Border.all(color: colorSlate100),
-                                ),
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    // text-xl leading-none mb-1
-                                    const Text(
-                                      "🇨🇦",
-                                      style: TextStyle(
-                                        fontSize: 20, // text-xl = 20px
-                                        height: 1, // leading-none
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4), // mb-1 = 4px
-                                    // text-[10px] font-bold text-slate-400 font-mono
-                                    Text(
-                                      "+1",
-                                      style: GoogleFonts.jetBrainsMono(
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.w700,
-                                        color: colorSlate400,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-
-                              // Input Field - constrained width
-                              SizedBox(
-                                width: 180, // more constrained width
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    // label - text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5
-                                    Text(
-                                      "MOBILE NUMBER",
-                                      style: GoogleFonts.outfit(
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.w700,
-                                        color: colorSlate400,
-                                        letterSpacing: 0.8, // tracking-wider
-                                      ),
-                                    ),
-                                    const SizedBox(height: 2), // mb-0.5 = 2px
-                                    // input - text-2xl font-black text-slate-900 font-outfit placeholder:text-slate-200
-                                    TextField(
-                                      controller: _controller,
-                                      autofocus: true,
-                                      keyboardType: TextInputType.phone,
-                                      onChanged: _handlePhoneChange,
-                                      style: GoogleFonts.outfit(
-                                        fontSize: 24, // text-2xl = 24px
-                                        fontWeight:
-                                            FontWeight.w900, // font-black
-                                        color: colorSlate900,
-                                      ),
-                                      decoration: InputDecoration(
-                                        isDense: true,
-                                        contentPadding: EdgeInsets.zero,
-                                        hintText: "(555) 000-0000",
-                                        hintStyle: GoogleFonts.outfit(
-                                          fontSize: 24,
-                                          fontWeight: FontWeight.w900,
-                                          color:
-                                              colorSlate200, // placeholder:text-slate-200
-                                        ),
-                                        border: InputBorder.none,
-                                        focusedBorder: InputBorder.none,
-                                        enabledBorder: InputBorder.none,
-                                      ),
-                                      cursorColor: colorSlate900,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-
-                      // Error Message - mt-4 flex items-center gap-2 text-red-500 text-xs font-medium bg-red-50 px-4 py-3 rounded-xl
-                      AnimatedOpacity(
-                        duration: const Duration(milliseconds: 300),
-                        opacity: _error.isNotEmpty ? 1.0 : 0.0,
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 300),
-                          margin: const EdgeInsets.only(top: 16), // mt-4 = 16px
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16, // px-4 = 16px
-                            vertical: 12, // py-3 = 12px
-                          ),
-                          decoration: BoxDecoration(
-                            color: colorRed50,
-                            borderRadius: BorderRadius.circular(
-                              12,
-                            ), // rounded-xl = 12px
-                          ),
-                          transform: Matrix4.translationValues(
-                            0,
-                            _error.isNotEmpty ? 0 : -8,
-                            0,
-                          ),
-                          child: Row(
-                            children: [
-                              const Icon(
-                                LucideIcons.alertCircle,
-                                size: 16,
-                                color: colorRed500,
-                              ),
-                              const SizedBox(width: 8), // gap-2 = 8px
-                              Text(
-                                _error,
-                                style: GoogleFonts.outfit(
-                                  color: colorRed500,
-                                  fontSize: 12, // text-xs = 12px
-                                  fontWeight: FontWeight.w500, // font-medium
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-
-          // --- 3. Footer Action ---
-          // p-6 mt-auto bg-white/50 backdrop-blur-sm
-          Container(
-            padding: const EdgeInsets.all(24), // p-6 = 24px
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.5), // bg-white/50
-            ),
-            child: SafeArea(
-              top: false,
               child: Column(
                 children: [
-                  // Button - w-full py-4 rounded-2xl font-bold text-base shadow-xl
-                  AnimatedContainer(
-                    duration: const Duration(milliseconds: 300),
-                    width: double.infinity,
-                    height: 56, // py-4 = 16px * 2 + ~24px line height
+                  // Icon Circle
+                  Container(
+                    width: 52,
+                    height: 52,
+                    margin: const EdgeInsets.only(bottom: 20),
                     decoration: BoxDecoration(
-                      color: _isValid ? const Color(0xFF00CA50) : colorSlate100,
-                      borderRadius: BorderRadius.circular(
-                        16,
-                      ), // rounded-2xl = 16px
-                      boxShadow: _isValid
-                          ? [
-                              BoxShadow(
-                                color: const Color(0xFF00CA50).withOpacity(0.3),
-                                blurRadius: 25,
-                                spreadRadius: -5,
-                                offset: const Offset(0, 20),
-                              ),
-                              BoxShadow(
-                                color: const Color(0xFF00CA50).withOpacity(0.2),
-                                blurRadius: 10,
-                                spreadRadius: -6,
-                                offset: const Offset(0, 8),
-                              ),
-                            ]
-                          : [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.1),
-                                blurRadius: 25,
-                                spreadRadius: -5,
-                                offset: const Offset(0, 20),
-                              ),
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.1),
-                                blurRadius: 10,
-                                spreadRadius: -6,
-                                offset: const Offset(0, 8),
-                              ),
-                            ],
+                      color: Colors.white.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.white.withOpacity(0.2)),
                     ),
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        onTap: _isValid ? _handleContinue : null,
-                        borderRadius: BorderRadius.circular(16),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
+                    child: const Center(
+                      child: Icon(
+                        LucideIcons.smartphone,
+                        color: Colors.white,
+                        size: 24,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    "What is your number?",
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.outfit(
+                      color: Colors.white,
+                      fontSize: 28,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: -0.5,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Text(
+                      "We'll send you a 6-digit code to verify your account.",
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.outfit(
+                        color: Colors.white.withOpacity(0.8),
+                        fontSize: 14,
+                        height: 1.5,
+                      ),
+                    ),
+                  ),
+                  // Extra padding at bottom to account for the overlap safe area
+                  const SizedBox(height: 24),
+                ],
+              ),
+            ),
+          ),
+
+          // --- 2. Input & Footer (Foreground) ---
+          Positioned.fill(
+            child: Column(
+              children: [
+                Expanded(
+                  child: ListView(
+                    padding: EdgeInsets.zero,
+                    children: [
+                      // Spacer to push content down - adjusted to overlap header
+                      // Header content is approx 44+48+52+20+28+8+14+24 = ~240px
+                      const SizedBox(height: 240),
+
+                      // Input Section
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 0,
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            Text(
-                              "Continue",
-                              style: GoogleFonts.outfit(
-                                color: _isValid ? Colors.white : colorSlate300,
-                                fontSize: 16, // text-base = 16px
-                                fontWeight: FontWeight.w700,
+                            // Input Container
+                            AnimatedContainer(
+                              duration: const Duration(milliseconds: 300),
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                  color: colorSlate100,
+                                  width: 1,
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.04),
+                                    blurRadius: 30,
+                                    offset: const Offset(0, 8),
+                                  ),
+                                ],
+                              ),
+                              child: Row(
+                                children: [
+                                  // Country Code Pill
+                                  Container(
+                                    width: 56,
+                                    height: 56,
+                                    margin: const EdgeInsets.only(right: 12),
+                                    decoration: BoxDecoration(
+                                      color: colorSlate50,
+                                      borderRadius: BorderRadius.circular(14),
+                                      border: Border.all(color: colorSlate100),
+                                    ),
+                                    child: Column(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        const Text(
+                                          "🇨🇦",
+                                          style: TextStyle(
+                                            fontSize: 20,
+                                            height: 1,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          "+1",
+                                          style: GoogleFonts.jetBrainsMono(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w700,
+                                            color: colorSlate400,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+
+                                  // Input Field
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Text(
+                                          "MOBILE NUMBER",
+                                          style: GoogleFonts.outfit(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w700,
+                                            color: colorSlate400,
+                                            letterSpacing: 0.8,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        TextField(
+                                          controller: _controller,
+                                          autofocus: true,
+                                          keyboardType: TextInputType.phone,
+                                          onChanged: _handlePhoneChange,
+                                          style: GoogleFonts.outfit(
+                                            fontSize: 24,
+                                            fontWeight: FontWeight.w900,
+                                            color: colorSlate900,
+                                          ),
+                                          decoration: InputDecoration(
+                                            isDense: true,
+                                            contentPadding: EdgeInsets.zero,
+                                            hintText: "(555) 000-0000",
+                                            hintStyle: GoogleFonts.outfit(
+                                              fontSize: 24,
+                                              fontWeight: FontWeight.w900,
+                                              color: colorSlate200,
+                                            ),
+                                            border: InputBorder.none,
+                                            focusedBorder: InputBorder.none,
+                                            enabledBorder: InputBorder.none,
+                                          ),
+                                          cursorColor: colorSlate900,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
-                            const SizedBox(width: 8), // gap-2 = 8px
-                            Icon(
-                              LucideIcons.chevronRight,
-                              size: 18,
-                              color: _isValid ? Colors.white : colorSlate300,
+
+                            // Error Message
+                            AnimatedOpacity(
+                              duration: const Duration(milliseconds: 300),
+                              opacity: _error.isNotEmpty ? 1.0 : 0.0,
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 300),
+                                margin: const EdgeInsets.only(top: 16),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 12,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: colorRed50,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                transform: Matrix4.translationValues(
+                                  0,
+                                  _error.isNotEmpty ? 0 : -8,
+                                  0,
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(
+                                      LucideIcons.alertCircle,
+                                      size: 16,
+                                      color: colorRed500,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      _error,
+                                      style: GoogleFonts.outfit(
+                                        color: colorRed500,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
                             ),
                           ],
                         ),
                       ),
+                      // Bottom spacing for list view
+                      const SizedBox(height: 24),
+                    ],
+                  ),
+                ),
+
+                // Footer Action
+                Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.5),
+                  ),
+                  child: SafeArea(
+                    top: false,
+                    child: Column(
+                      children: [
+                        AnimatedContainer(
+                          duration: const Duration(milliseconds: 300),
+                          width: double.infinity,
+                          height: 56,
+                          decoration: BoxDecoration(
+                            color: _isValid
+                                ? const Color(0xFF00CA50)
+                                : colorSlate100,
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: _isValid
+                                ? [
+                                    BoxShadow(
+                                      color: const Color(
+                                        0xFF00CA50,
+                                      ).withOpacity(0.3),
+                                      blurRadius: 25,
+                                      spreadRadius: -5,
+                                      offset: const Offset(0, 20),
+                                    ),
+                                  ]
+                                : [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.1),
+                                      blurRadius: 25,
+                                      spreadRadius: -5,
+                                      offset: const Offset(0, 20),
+                                    ),
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.1),
+                                      blurRadius: 10,
+                                      spreadRadius: -6,
+                                      offset: const Offset(0, 8),
+                                    ),
+                                  ],
+                          ),
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              onTap: _isValid ? _handleContinue : null,
+                              borderRadius: BorderRadius.circular(16),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    "Continue",
+                                    style: GoogleFonts.outfit(
+                                      color: _isValid
+                                          ? Colors.white
+                                          : colorSlate300,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Icon(
+                                    LucideIcons.chevronRight,
+                                    size: 18,
+                                    color: _isValid
+                                        ? Colors.white
+                                        : colorSlate300,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 32),
+                          child: Text(
+                            "By clicking Continue, you agree to receive SMS notifications. Message rates may apply.",
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.outfit(
+                              color: colorSlate400,
+                              fontSize: 10,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 16), // mt-4 = 16px
-                  // Disclaimer - text-center text-[10px] text-slate-400 px-8
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 32,
-                    ), // px-8 = 32px
-                    child: Text(
-                      "By clicking Continue, you agree to receive SMS notifications. Message rates may apply.",
-                      textAlign: TextAlign.center,
-                      style: GoogleFonts.outfit(
-                        color: colorSlate400,
-                        fontSize: 10,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ],

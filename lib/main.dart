@@ -155,6 +155,7 @@ class _FintechAutoFlowState extends State<FintechAutoFlow> {
             userEstimatedLoan: financials['userEstimatedLoan'],
           ),
           onNext: () => setStep('auth-login'),
+          onBack: () => setStep('details'),
         );
       case 'auth-login':
         return LoginScreen(setStep: (nextStep) => setStep(nextStep));
