@@ -13,6 +13,7 @@ import 'screens/dashboard_screen.dart';
 import 'screens/refinance_screen.dart';
 import 'screens/cash_unlock_screen.dart';
 import 'screens/shop_screen.dart';
+import 'screens/success_screen.dart';
 
 void main() {
   runApp(const FintechApp());
@@ -198,8 +199,7 @@ class _FintechAutoFlowState extends State<FintechAutoFlow> {
       return RefinanceScreen(
         onClose: () => setOverlay(null),
         onStartRefinance: () {
-          // TODO: handle refinance start
-          setOverlay(null);
+          setOverlay('success');
         },
       );
     }
@@ -208,10 +208,12 @@ class _FintechAutoFlowState extends State<FintechAutoFlow> {
         financials: financials,
         onClose: () => setOverlay(null),
         onSelectCash: () {
-          // TODO: handle cash selection
-          setOverlay(null);
+          setOverlay('success');
         },
       );
+    }
+    if (overlayScreen == 'success') {
+      return SuccessScreen(onClose: () => setOverlay(null));
     }
     return Positioned.fill(
       child: Container(
