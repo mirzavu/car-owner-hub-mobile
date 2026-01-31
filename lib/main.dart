@@ -10,6 +10,7 @@ import 'screens/scan_prompt_screen.dart';
 import 'screens/scanner_screen.dart';
 import 'screens/verify_scan_screen.dart';
 import 'screens/dashboard_screen.dart';
+import 'screens/refinance_screen.dart';
 
 void main() {
   runApp(const FintechApp());
@@ -173,8 +174,8 @@ class _FintechAutoFlowState extends State<FintechAutoFlow> {
       case 'main-app':
         return DashboardScreen(
           carDetails: CarDetails(year: '2022', make: 'Honda', model: 'Civic'),
-          setOverlayScreen: (screen) {},
-          setActiveTab: (tab) {},
+          setOverlayScreen: (screen) => setOverlay(screen),
+          setActiveTab: (tab) => setActiveTab(tab),
         );
       default:
         return Center(child: Text("Unknown Step: $step"));
@@ -182,10 +183,19 @@ class _FintechAutoFlowState extends State<FintechAutoFlow> {
   }
 
   Widget _buildOverlay() {
+    if (overlayScreen == 'refinance') {
+      return RefinanceScreen(
+        onClose: () => setOverlay(null),
+        onStartRefinance: () {
+          // TODO: handle refinance start
+          setOverlay(null);
+        },
+      );
+    }
     return Positioned.fill(
       child: Container(
         color: Colors.black54,
-        child: Center(child: Text("Overlay: $overlayScreen")),
+        child: Center(child: Text("Overlay: $overlayScreen (Not Implemented)")),
       ),
     );
   }
