@@ -12,6 +12,7 @@ import 'screens/verify_scan_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/refinance_screen.dart';
 import 'screens/cash_unlock_screen.dart';
+import 'screens/shop_screen.dart';
 
 void main() {
   runApp(const FintechApp());
@@ -173,6 +174,15 @@ class _FintechAutoFlowState extends State<FintechAutoFlow> {
       case 'verify':
         return VerifyScanScreen(setStep: (nextStep) => setStep(nextStep));
       case 'main-app':
+        // Check Tabs
+        if (activeTab == 'shop') {
+          return ShopScreen(
+            financials: financials,
+            setOverlayScreen: (screen) => setOverlay(screen),
+            setActiveTab: (tab) => setActiveTab(tab),
+          );
+        }
+        // Default to Dashboard
         return DashboardScreen(
           carDetails: CarDetails(year: '2022', make: 'Honda', model: 'Civic'),
           setOverlayScreen: (screen) => setOverlay(screen),
