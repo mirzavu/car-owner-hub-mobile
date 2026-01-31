@@ -162,7 +162,10 @@ class _FintechAutoFlowState extends State<FintechAutoFlow> {
       case 'auth-phone':
         return PhoneCaptureScreen(setStep: (nextStep) => setStep(nextStep));
       case 'scan-intro':
-        return ScanPromptScreen(setStep: (nextStep) => setStep(nextStep));
+        return ScanPromptScreen(
+          setStep: (nextStep) => setStep(nextStep),
+          onBack: () => setStep('auth-phone'),
+        );
       case 'scanner':
         return ScannerScreen(setStep: (nextStep) => setStep(nextStep));
       case 'verify':

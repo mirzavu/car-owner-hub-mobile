@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:intl/intl.dart';
@@ -31,7 +32,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
   final ScrollController _scrollController = ScrollController();
 
   // State to track scroll for animations
-  bool _isScrolled = false;
+  // Scroll State
+  // Scroll State
+  double _expandedHeaderOpacity = 1.0;
+  bool _showStickyHeader = false;
+  bool _useDarkBackground = false;
 
   // Derived Numbers
   final double vehicleValue = 22500;
@@ -45,14 +50,30 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   void _scrollListener() {
-    setState(() {
-      // Trigger "Scrolled" state slightly before the top to smooth the transition
-      if (_scrollController.offset > 50 && !_isScrolled) {
-        _isScrolled = true;
-      } else if (_scrollController.offset <= 50 && _isScrolled) {
-        _isScrolled = false;
-      }
-    });
+    final offset = _scrollController.offset;
+
+    // 1. Fade out the expanded header slowly (0 to 200px)
+    // We want it to be fully gone before the sticky header appears
+    double newOpacity = (1.0 - (offset / 200)).clamp(0.0, 1.0);
+
+    // 2. Trigger sticky header ONLY when Quick Actions (approx) reaches top
+    // Expanded Height (420) - Collapsed Height (60) = 360
+    bool shouldShowSticky =
+        offset >= 350; // 350 for slightly earlier trigger for smoothness
+
+    // 3. Switch background color earlier to avoid "flash of white"
+    // User requested "halfway through", so around 150-200px.
+    bool shouldUseDarkBg = offset > 160;
+
+    if (newOpacity != _expandedHeaderOpacity ||
+        shouldShowSticky != _showStickyHeader ||
+        shouldUseDarkBg != _useDarkBackground) {
+      setState(() {
+        _expandedHeaderOpacity = newOpacity;
+        _showStickyHeader = shouldShowSticky;
+        _useDarkBackground = shouldUseDarkBg;
+      });
+    }
   }
 
   @override
@@ -92,102 +113,113 @@ class _DashboardScreenState extends State<DashboardScreen> {
           // --- 1. MORPHING HEADER (SliverAppBar) ---
           SliverAppBar(
             expandedHeight: 420.0, // Height of the open header
-            collapsedHeight: 80.0, // Height of the sticky bar
-            toolbarHeight: 80.0,
+            collapsedHeight: 60.0, // Height of the sticky bar
+            toolbarHeight: 60.0,
             pinned: true,
             stretch: true,
-            backgroundColor: gradientColors[1], // Fallback color
-            elevation: _isScrolled ? 10 : 0,
+            backgroundColor: _useDarkBackground
+                ? gradientColors[1]
+                : colorSlate50, // Matches scaffold to show rounded corners
+            systemOverlayStyle: SystemUiOverlayStyle.light,
+            elevation: _showStickyHeader ? 10 : 0,
             shadowColor: const Color(0xFF002244).withOpacity(0.3),
 
             // --- The Compact Sticky Title (Visible when scrolled) ---
             title: AnimatedOpacity(
-              duration: const Duration(milliseconds: 300),
-              opacity: _isScrolled ? 1.0 : 0.0,
-              child: Row(
-                children: [
-                  // Avatar
-                  Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.2),
-                        width: 2,
+              duration: const Duration(milliseconds: 400),
+              curve: Curves.easeOut,
+              opacity: _showStickyHeader ? 1.0 : 0.0,
+              child: AnimatedSlide(
+                duration: const Duration(milliseconds: 400),
+                curve: Curves.easeOut,
+                offset: _showStickyHeader
+                    ? Offset.zero
+                    : const Offset(0, 0.5), // Slide up from 50% down
+                child: Row(
+                  children: [
+                    // Avatar
+                    Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.2),
+                          width: 2,
+                        ),
+                        gradient: LinearGradient(
+                          colors: [
+                            Colors.blueGrey.shade200,
+                            Colors.blueGrey.shade400,
+                          ],
+                        ),
                       ),
-                      gradient: LinearGradient(
-                        colors: [
-                          Colors.blueGrey.shade200,
-                          Colors.blueGrey.shade400,
-                        ],
-                      ),
-                    ),
-                    child: Center(
-                      child: Text(
-                        "MW",
-                        style: GoogleFonts.outfit(
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          color: colorSlate800,
+                      child: Center(
+                        child: Text(
+                          "MW",
+                          style: GoogleFonts.outfit(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: colorSlate800,
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                  const Spacer(),
-                  // Compact Stats
-                  Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        fmt(equity),
-                        style: GoogleFonts.outfit(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
+                    const Spacer(),
+                    // Compact Stats
+                    Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          fmt(equity),
+                          style: GoogleFonts.outfit(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
                         ),
-                      ),
-                      Text(
-                        "EQUITY",
-                        style: GoogleFonts.outfit(
-                          fontSize: 9,
-                          fontWeight: FontWeight.bold,
-                          color: const Color(0xFFE6F0FA), // Ice Blue
+                        Text(
+                          "EQUITY",
+                          style: GoogleFonts.outfit(
+                            fontSize: 9,
+                            fontWeight: FontWeight.bold,
+                            color: const Color(0xFFE6F0FA), // Ice Blue
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                  Container(
-                    height: 24,
-                    width: 1,
-                    color: Colors.white24,
-                    margin: const EdgeInsets.symmetric(horizontal: 16),
-                  ),
-                  Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        fmt(loanBalance),
-                        style: GoogleFonts.outfit(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
+                      ],
+                    ),
+                    Container(
+                      height: 24,
+                      width: 1,
+                      color: Colors.white24,
+                      margin: const EdgeInsets.symmetric(horizontal: 16),
+                    ),
+                    Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          fmt(loanBalance),
+                          style: GoogleFonts.outfit(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
                         ),
-                      ),
-                      Text(
-                        "LOAN",
-                        style: GoogleFonts.outfit(
-                          fontSize: 9,
-                          fontWeight: FontWeight.bold,
-                          color: const Color(0xFFE6F0FA), // Ice Blue
+                        Text(
+                          "LOAN",
+                          style: GoogleFonts.outfit(
+                            fontSize: 9,
+                            fontWeight: FontWeight.bold,
+                            color: const Color(0xFFE6F0FA), // Ice Blue
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                  const Spacer(),
-                  // Bell Icon
-                  const _BellButton(),
-                ],
+                      ],
+                    ),
+                    const Spacer(),
+                    // Bell Icon
+                    const _BellButton(),
+                  ],
+                ),
               ),
             ),
             centerTitle: true,
@@ -223,9 +255,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           children: [
                             // Top Row (Expanded State - Avatar & Bell)
                             // We hide this with Opacity as we scroll up
-                            AnimatedOpacity(
-                              duration: const Duration(milliseconds: 200),
-                              opacity: _isScrolled ? 0.0 : 1.0,
+                            Opacity(
+                              opacity: _expandedHeaderOpacity,
                               child: Row(
                                 mainAxisAlignment:
                                     MainAxisAlignment.spaceBetween,
