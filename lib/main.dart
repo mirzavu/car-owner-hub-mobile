@@ -183,6 +183,27 @@ class _FintechAutoFlowState extends State<FintechAutoFlow> {
           onNext: () => setStep('auth-login'),
           onBack: () => setStep('details'),
         );
+      case 'loading':
+        return Scaffold(
+          backgroundColor: Colors.white,
+          body: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const CircularProgressIndicator(color: Color(0xFF003366)),
+                const SizedBox(height: 24),
+                Text(
+                  "Connecting securely...",
+                  style: GoogleFonts.outfit(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: const Color(0xFF0F172A),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
       case 'auth-login':
         return LoginScreen(setStep: (nextStep) => setStep(nextStep));
       case 'auth-phone':

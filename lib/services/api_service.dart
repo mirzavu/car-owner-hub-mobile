@@ -99,7 +99,7 @@ class ApiService {
       }
     } catch (e) {
       debugPrint("Error fetching vehicle options: $e");
-      return [];
+      rethrow;
     }
   }
 

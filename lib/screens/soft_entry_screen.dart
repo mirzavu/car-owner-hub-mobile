@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../components/car_icon.dart';
 import '../services/api_service.dart'; // Import API Service
+import '../services/config.dart' as app_config;
 
 class SoftEntryScreen extends StatefulWidget {
   final ValueChanged<String> onNext;
@@ -40,6 +41,7 @@ class _SoftEntryScreenState extends State<SoftEntryScreen> {
   bool isLoadingYears = true;
   bool isLoadingMakes = false;
   bool isLoadingModels = false;
+  String debugInfo = ''; // Added for debugging
 
   @override
   void initState() {
@@ -49,12 +51,31 @@ class _SoftEntryScreenState extends State<SoftEntryScreen> {
 
   // --- API CALLS ---
   Future<void> _loadYears() async {
-    final data = await ApiService.getVehicleOptions(type: 'years');
-    if (mounted)
-      setState(() {
-        years = data;
-        isLoadingYears = false;
-      });
+    setState(() {
+      debugInfo =
+          'Fetching years from: ${app_config.Config.baseUrl}/api/vehicle-options?type=years';
+    });
+    try {
+      final data = await ApiService.getVehicleOptions(type: 'years');
+      if (mounted) {
+        setState(() {
+          years = data;
+          isLoadingYears = false;
+          if (data.isEmpty) {
+            debugInfo = 'No years returned from API. Status: Success, Count: 0';
+          } else {
+            debugInfo = 'Loaded ${data.length} years successfully.';
+          }
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          isLoadingYears = false;
+          debugInfo = 'Error loading years: $e';
+        });
+      }
+    }
   }
 
   Future<void> _loadMakes(String year) async {
@@ -263,6 +284,23 @@ class _SoftEntryScreenState extends State<SoftEntryScreen> {
 
                         // ACTION BUTTON
                         _buildSubmitButton(),
+
+                        const SizedBox(height: 20),
+                        // DEBUG INFO
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.05),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: SelectableText(
+                            debugInfo,
+                            style: GoogleFonts.outfit(
+                              fontSize: 10,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                   ),
