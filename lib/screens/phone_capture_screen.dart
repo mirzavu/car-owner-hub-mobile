@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import '../services/auth_service.dart';
 
 class PhoneCaptureScreen extends StatefulWidget {
   final Function(String) setStep;
@@ -16,6 +17,7 @@ class _PhoneCaptureScreenState extends State<PhoneCaptureScreen> {
 
   String _error = '';
   bool _isValid = false;
+  bool _isUpdating = false;
 
   // Tailwind Color Palette (exact hex values)
   static const colorSlate50 = Color(0xFFF8FAFC);
@@ -86,14 +88,32 @@ class _PhoneCaptureScreenState extends State<PhoneCaptureScreen> {
     });
   }
 
-  void _handleContinue() {
+  Future<void> _handleContinue() async {
     if (!_isValid) {
       setState(() {
         _error = 'Please enter a valid 10-digit number.';
       });
       return;
     }
-    widget.setStep('scan-intro');
+
+    setState(() {
+      _isUpdating = true;
+      _error = '';
+    });
+
+    try {
+      // Save phone to PocketBase
+      await AuthService().updatePhone(_controller.text);
+
+      if (!mounted) return;
+      widget.setStep('scan-intro');
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isUpdating = false;
+        _error = 'Failed to save phone: $e';
+      });
+    }
   }
 
   @override
@@ -405,29 +425,42 @@ class _PhoneCaptureScreenState extends State<PhoneCaptureScreen> {
                           child: Material(
                             color: Colors.transparent,
                             child: InkWell(
-                              onTap: _isValid ? _handleContinue : null,
+                              onTap: (_isValid && !_isUpdating)
+                                  ? _handleContinue
+                                  : null,
                               borderRadius: BorderRadius.circular(16),
                               child: Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
+                                  if (_isUpdating)
+                                    const SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  if (_isUpdating) const SizedBox(width: 12),
                                   Text(
-                                    "Continue",
+                                    _isUpdating ? "Saving..." : "Continue",
                                     style: GoogleFonts.outfit(
-                                      color: _isValid
+                                      color: (_isValid && !_isUpdating)
                                           ? Colors.white
                                           : colorSlate300,
                                       fontSize: 16,
                                       fontWeight: FontWeight.w700,
                                     ),
                                   ),
-                                  const SizedBox(width: 8),
-                                  Icon(
-                                    LucideIcons.chevronRight,
-                                    size: 18,
-                                    color: _isValid
-                                        ? Colors.white
-                                        : colorSlate300,
-                                  ),
+                                  if (!_isUpdating) const SizedBox(width: 8),
+                                  if (!_isUpdating)
+                                    Icon(
+                                      LucideIcons.chevronRight,
+                                      size: 18,
+                                      color: _isValid
+                                          ? Colors.white
+                                          : colorSlate300,
+                                    ),
                                 ],
                               ),
                             ),

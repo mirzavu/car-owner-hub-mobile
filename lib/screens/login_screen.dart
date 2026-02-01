@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import '../services/auth_service.dart';
 
 class LoginScreen extends StatelessWidget {
   final Function(String) setStep;
@@ -86,8 +87,19 @@ class LoginScreen extends StatelessWidget {
                       child: Column(
                         children: [
                           // Google Button Mock
+                          // Google Button Mock
                           _LoginButton(
-                            onTap: () => setStep('auth-phone'),
+                            onTap: () async {
+                              setStep('loading');
+                              try {
+                                await AuthService().loginWithGoogle();
+                                // After successful Google OAuth, go to phone capture
+                                setStep('auth-phone');
+                              } catch (e) {
+                                debugPrint("Google Login Error: $e");
+                                setStep('auth-login'); // Back to login on error
+                              }
+                            },
                             backgroundColor: Colors.white,
                             borderColor: colorSlate300,
                             shadowColor: Colors.black.withOpacity(0.05),
