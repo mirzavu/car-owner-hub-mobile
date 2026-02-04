@@ -299,6 +299,7 @@ class _FintechAutoFlowState extends State<FintechAutoFlow> {
       carDetails: CarDetails(year: '2022', make: 'Honda', model: 'Civic'),
       setOverlayScreen: (screen) => setOverlay(screen),
       setActiveTab: (tab) => setActiveTab(tab),
+      onLogout: () => setStep('auth-login'),
     );
   }
 

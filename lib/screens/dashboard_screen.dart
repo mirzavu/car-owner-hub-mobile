@@ -3,6 +3,9 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:intl/intl.dart';
+import 'profile_screen.dart';
+import 'notification_screen.dart';
+import 'activity_history_screen.dart';
 
 // --- Types for Props ---
 class CarDetails {
@@ -16,12 +19,14 @@ class DashboardScreen extends StatefulWidget {
   final CarDetails carDetails;
   final Function(String) setOverlayScreen;
   final Function(String) setActiveTab;
+  final VoidCallback onLogout;
 
   const DashboardScreen({
     super.key,
     required this.carDetails,
     required this.setOverlayScreen,
     required this.setActiveTab,
+    required this.onLogout,
   });
 
   @override
@@ -154,13 +159,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           ],
                         ),
                       ),
-                      child: Center(
-                        child: Text(
-                          "MW",
-                          style: GoogleFonts.outfit(
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                            color: colorSlate800,
+                      child: GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  ProfileScreen(onLogout: widget.onLogout),
+                            ),
+                          );
+                        },
+                        child: Center(
+                          child: Text(
+                            "MW",
+                            style: GoogleFonts.outfit(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              color: colorSlate800,
+                            ),
                           ),
                         ),
                       ),
@@ -217,7 +233,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                     const Spacer(),
                     // Bell Icon
-                    const _BellButton(),
+                    _BellButton(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const NotificationScreen(),
+                          ),
+                        );
+                      },
+                    ),
                   ],
                 ),
               ),
@@ -263,35 +288,48 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 children: [
                                   Row(
                                     children: [
-                                      Container(
-                                        width: 44,
-                                        height: 44,
-                                        padding: const EdgeInsets.all(2),
-                                        decoration: BoxDecoration(
-                                          shape: BoxShape.circle,
-                                          border: Border.all(
-                                            color: Colors.white.withValues(
-                                              alpha: 0.2,
+                                      GestureDetector(
+                                        onTap: () {
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (context) =>
+                                                  ProfileScreen(
+                                                    onLogout: widget.onLogout,
+                                                  ),
                                             ),
-                                          ),
-                                        ),
+                                          );
+                                        },
                                         child: Container(
+                                          width: 44,
+                                          height: 44,
+                                          padding: const EdgeInsets.all(2),
                                           decoration: BoxDecoration(
                                             shape: BoxShape.circle,
-                                            gradient: LinearGradient(
-                                              colors: [
-                                                Colors.blueGrey.shade200,
-                                                Colors.blueGrey.shade400,
-                                              ],
+                                            border: Border.all(
+                                              color: Colors.white.withValues(
+                                                alpha: 0.2,
+                                              ),
                                             ),
                                           ),
-                                          child: Center(
-                                            child: Text(
-                                              "MW",
-                                              style: GoogleFonts.outfit(
-                                                fontSize: 12,
-                                                fontWeight: FontWeight.bold,
-                                                color: colorSlate800,
+                                          child: Container(
+                                            decoration: BoxDecoration(
+                                              shape: BoxShape.circle,
+                                              gradient: LinearGradient(
+                                                colors: [
+                                                  Colors.blueGrey.shade200,
+                                                  Colors.blueGrey.shade400,
+                                                ],
+                                              ),
+                                            ),
+                                            child: Center(
+                                              child: Text(
+                                                "MW",
+                                                style: GoogleFonts.outfit(
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: colorSlate800,
+                                                ),
                                               ),
                                             ),
                                           ),
@@ -323,7 +361,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                       ),
                                     ],
                                   ),
-                                  const _BellButton(),
+                                  _BellButton(
+                                    onTap: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) =>
+                                              const NotificationScreen(),
+                                        ),
+                                      );
+                                    },
+                                  ),
                                 ],
                               ),
                             ),
@@ -750,12 +798,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           color: colorSlate800,
                         ),
                       ),
-                      Text(
-                        "See all",
-                        style: GoogleFonts.outfit(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.blueGrey.shade300,
+                      GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  const ActivityHistoryScreen(),
+                            ),
+                          );
+                        },
+                        child: Text(
+                          "See all",
+                          style: GoogleFonts.outfit(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.blueGrey.shade300,
+                          ),
                         ),
                       ),
                     ],
@@ -829,41 +888,45 @@ class _DashboardScreenState extends State<DashboardScreen> {
 // --- SUB-WIDGETS ---
 
 class _BellButton extends StatelessWidget {
-  const _BellButton();
+  final VoidCallback onTap;
+  const _BellButton({required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 40,
-      height: 40,
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.1),
-        shape: BoxShape.circle,
-        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-      ),
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          const Icon(LucideIcons.bell, color: Colors.white, size: 18),
-          Positioned(
-            top: 10,
-            right: 10,
-            child: Container(
-              width: 8,
-              height: 8,
-              decoration: BoxDecoration(
-                color: Colors.red.shade400,
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.red.shade400.withValues(alpha: 0.5),
-                    blurRadius: 6,
-                  ),
-                ],
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.1),
+          shape: BoxShape.circle,
+          border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+        ),
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            const Icon(LucideIcons.bell, color: Colors.white, size: 18),
+            Positioned(
+              top: 10,
+              right: 10,
+              child: Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  color: Colors.red.shade400,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.red.shade400.withValues(alpha: 0.5),
+                      blurRadius: 6,
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
