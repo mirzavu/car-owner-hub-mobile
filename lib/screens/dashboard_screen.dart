@@ -222,7 +222,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           ),
                         ),
                         Text(
-                          "LOAN",
+                          "EST. BAL",
                           style: GoogleFonts.outfit(
                             fontSize: 9,
                             fontWeight: FontWeight.bold,
@@ -530,7 +530,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                                 CrossAxisAlignment.start,
                                             children: [
                                               Text(
-                                                "LOAN BAL",
+                                                "EST. BALANCE",
                                                 style: GoogleFonts.outfit(
                                                   color: const Color(
                                                     0xFFE6F0FA,
@@ -560,13 +560,30 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
                             const SizedBox(height: 16),
                             Center(
-                              child: Text(
-                                "Break-even date passed 4 months ago",
-                                style: GoogleFonts.outfit(
-                                  color: Colors.white.withValues(alpha: 0.4),
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w500,
-                                ),
+                              child: Column(
+                                children: [
+                                  Text(
+                                    "Break-even date passed 4 months ago",
+                                    style: GoogleFonts.outfit(
+                                      color: Colors.white.withValues(
+                                        alpha: 0.4,
+                                      ),
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    "*Balance estimated based on standard payment schedule.",
+                                    style: GoogleFonts.outfit(
+                                      color: Colors.white.withValues(
+                                        alpha: 0.3,
+                                      ),
+                                      fontSize: 9,
+                                      fontStyle: FontStyle.italic,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                             const SizedBox(height: 24),

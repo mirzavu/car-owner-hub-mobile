@@ -231,4 +231,31 @@ class ApiService {
       throw Exception('Failed to get estimate: ${response.body}');
     }
   }
+
+  // 7. Calculate Loan Equity (Time Travel)
+  static Future<Map<String, dynamic>> calculateLoanEquity({
+    required double originalBalance,
+    required double interestRate,
+    required int termMonths,
+    required String startDate,
+    required double monthlyPayment,
+  }) async {
+    final response = await http.post(
+      Uri.parse(Config.calculateEquity),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'original_balance': originalBalance,
+        'interest_rate': interestRate,
+        'term_months': termMonths,
+        'start_date': startDate,
+        'monthly_payment': monthlyPayment,
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to calculate equity: ${response.body}');
+    }
+  }
 }

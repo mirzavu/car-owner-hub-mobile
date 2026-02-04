@@ -45,4 +45,5 @@ class Config {
   static String get inventory => '$baseUrl/api/inventory';
   static String get submitLead => '$baseUrl/api/submit-lead';
   static String get estimateValue => '$baseUrl/api/estimate-value';
+  static String get calculateEquity => '$baseUrl/api/calculate-equity';
 }

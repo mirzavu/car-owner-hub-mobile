@@ -12,6 +12,7 @@ import 'screens/scan_prompt_screen.dart';
 import 'screens/scanner_screen.dart';
 import 'screens/verify_scan_screen.dart';
 import 'screens/dashboard_screen.dart';
+import 'services/api_service.dart';
 import 'screens/refinance_screen.dart';
 import 'screens/cash_unlock_screen.dart';
 import 'screens/shop_screen.dart';
@@ -144,6 +145,46 @@ class _FintechAutoFlowState extends State<FintechAutoFlow> {
     });
   }
 
+  Future<void> _runTimeTravel() async {
+    if (lastScanData == null) return;
+
+    final originalBalance = (lastScanData!['current_balance'] ?? 0).toDouble();
+    final interestRate = (lastScanData!['interest_rate'] ?? 0).toDouble();
+    final termMonths = (lastScanData!['term_months'] ?? 0).toInt();
+    final startDate = lastScanData!['contract_date']?.toString();
+    final monthlyPayment =
+        (lastScanData!['monthly_payment'] ??
+                (lastScanData!['bi_weekly_payment'] ?? 0) * 2.16)
+            .toDouble();
+
+    if (originalBalance == 0 ||
+        interestRate == 0 ||
+        termMonths == 0 ||
+        startDate == null) {
+      return;
+    }
+
+    try {
+      final result = await ApiService.calculateLoanEquity(
+        originalBalance: originalBalance,
+        interestRate: interestRate,
+        termMonths: termMonths,
+        startDate: startDate,
+        monthlyPayment: monthlyPayment,
+      );
+
+      setState(() {
+        if (result['calculated_balance'] != null) {
+          financials['userEstimatedLoan'] = result['calculated_balance']
+              .toDouble();
+          _calculateEquity();
+        }
+      });
+    } catch (e) {
+      debugPrint("Time Travel Error: $e");
+    }
+  }
+
   void setActiveTab(String tab) => setState(() => activeTab = tab);
   void setOverlay(String? overlay) => setState(() => overlayScreen = overlay);
 
@@ -250,7 +291,12 @@ class _FintechAutoFlowState extends State<FintechAutoFlow> {
         );
       case 'verify':
         return VerifyScanScreen(
-          setStep: (nextStep) => setStep(nextStep),
+          setStep: (nextStep) async {
+            if (nextStep == 'main-app') {
+              await _runTimeTravel();
+            }
+            setStep(nextStep);
+          },
           scanData: lastScanData ?? {},
           carDetails: carDetails,
           onUpdateCarDetails: (updates) {

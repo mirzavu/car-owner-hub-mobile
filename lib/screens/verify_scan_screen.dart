@@ -33,6 +33,16 @@ class _VerifyScanScreenState extends State<VerifyScanScreen>
   bool _isVinLookupInProgress = false;
   String? _vinLookupError;
 
+  bool _isEditing = false;
+  late TextEditingController _vehicleController;
+  late TextEditingController _vinController;
+  late TextEditingController _dateController;
+  late TextEditingController _termController;
+  late TextEditingController _lenderController;
+  late TextEditingController _aprController;
+  late TextEditingController _paymentController;
+  late TextEditingController _balanceController;
+
   @override
   void initState() {
     super.initState();
@@ -53,12 +63,68 @@ class _VerifyScanScreenState extends State<VerifyScanScreen>
 
     _controller.forward();
 
+    _initControllers();
     _loadVinDetails();
+  }
+
+  void _initControllers() {
+    final userVehicle = _formatVehicle(
+      widget.carDetails['year'],
+      widget.carDetails['make'],
+      widget.carDetails['model'],
+    );
+    _vehicleController = TextEditingController(text: userVehicle);
+    _vinController = TextEditingController(
+      text: _normalizeVin(widget.scanData['vin']?.toString()),
+    );
+    _dateController = TextEditingController(
+      text: widget.scanData['contract_date']?.toString() ?? "",
+    );
+    _termController = TextEditingController(
+      text: widget.scanData['term_months']?.toString() ?? "",
+    );
+    _lenderController = TextEditingController(
+      text: widget.scanData['lender_name']?.toString() ?? "",
+    );
+    _aprController = TextEditingController(
+      text: widget.scanData['interest_rate']?.toString() ?? "",
+    );
+
+    String paymentStr = "";
+    if (widget.scanData['bi_weekly_payment'] != null) {
+      paymentStr = NumberFormat.currency(
+        symbol: '\$',
+        decimalDigits: 2,
+      ).format(widget.scanData['bi_weekly_payment']);
+    } else if (widget.scanData['monthly_payment'] != null) {
+      paymentStr = NumberFormat.currency(
+        symbol: '\$',
+        decimalDigits: 2,
+      ).format(widget.scanData['monthly_payment']);
+    }
+    _paymentController = TextEditingController(text: paymentStr);
+
+    _balanceController = TextEditingController(
+      text: widget.scanData['current_balance'] != null
+          ? NumberFormat.currency(
+              symbol: '\$',
+              decimalDigits: 0,
+            ).format(widget.scanData['current_balance'])
+          : "",
+    );
   }
 
   @override
   void dispose() {
     _controller.dispose();
+    _vehicleController.dispose();
+    _vinController.dispose();
+    _dateController.dispose();
+    _termController.dispose();
+    _lenderController.dispose();
+    _aprController.dispose();
+    _paymentController.dispose();
+    _balanceController.dispose();
     super.dispose();
   }
 
@@ -159,7 +225,47 @@ class _VerifyScanScreenState extends State<VerifyScanScreen>
     widget.setStep('main-app');
   }
 
-  void _handleLooksCorrect() async {
+  void _handleVerify() async {
+    if (_isEditing) {
+      // 1. Update Scan Data from controllers
+      final balanceText = _balanceController.text.replaceAll(
+        RegExp(r'[^0-9.]'),
+        '',
+      );
+      final paymentText = _paymentController.text.replaceAll(
+        RegExp(r'[^0-9.]'),
+        '',
+      );
+      final aprText = _aprController.text.replaceAll(RegExp(r'[^0-9.]'), '');
+      final termText = _termController.text.replaceAll(RegExp(r'[^0-9]'), '');
+
+      widget.scanData['vin'] = _vinController.text.trim();
+      widget.scanData['contract_date'] = _dateController.text.trim();
+      widget.scanData['term_months'] = int.tryParse(termText);
+      widget.scanData['lender_name'] = _lenderController.text.trim();
+      widget.scanData['interest_rate'] = double.tryParse(aprText);
+
+      if (widget.scanData['bi_weekly_payment'] != null) {
+        widget.scanData['bi_weekly_payment'] = double.tryParse(paymentText);
+      } else {
+        widget.scanData['monthly_payment'] = double.tryParse(paymentText);
+      }
+      widget.scanData['current_balance'] = double.tryParse(balanceText);
+
+      // 2. Update Car Details if vehicle string was changed
+      final vehicleText = _vehicleController.text.trim();
+      final vehicleParts = vehicleText.split(' ');
+      if (vehicleParts.length >= 3) {
+        final updates = {
+          'year': vehicleParts[0],
+          'make': vehicleParts[1],
+          'model': vehicleParts.sublist(2).join(' '),
+        };
+        widget.onUpdateCarDetails(updates);
+        await ApiService.updateVehicleDetails(updates);
+      }
+    }
+
     final normalizedVin = _normalizeVin(widget.scanData['vin']?.toString());
     if (normalizedVin.isNotEmpty) {
       widget.onUpdateCarDetails({'vin': normalizedVin});
@@ -542,20 +648,23 @@ class _VerifyScanScreenState extends State<VerifyScanScreen>
                                   // Details List
                                   Column(
                                     children: [
-                                      if (!hasConflict) // Only show Vehicle row if no conflict (since conflict shows it above)
-                                        _DetailRow(
-                                          label: "Vehicle",
-                                          value: userVehicle,
-                                          colorSlate100: colorSlate100,
-                                          colorSlate500: colorSlate500,
-                                          colorSlate800: colorSlate800,
-                                        ),
+                                      _DetailRow(
+                                        label: "Vehicle",
+                                        value: userVehicle,
+                                        isEditing: _isEditing,
+                                        controller: _vehicleController,
+                                        colorSlate100: colorSlate100,
+                                        colorSlate500: colorSlate500,
+                                        colorSlate800: colorSlate800,
+                                      ),
                                       _DetailRow(
                                         label: "VIN",
                                         value: normalizedVin.isNotEmpty
                                             ? normalizedVin
                                             : "Not detected",
                                         isMono: true,
+                                        isEditing: _isEditing,
+                                        controller: _vinController,
                                         colorSlate100: colorSlate100,
                                         colorSlate500: colorSlate500,
                                         colorSlate800: colorSlate800,
@@ -567,6 +676,8 @@ class _VerifyScanScreenState extends State<VerifyScanScreen>
                                                 null
                                             ? "${widget.scanData['term_months']} months"
                                             : "N/A",
+                                        isEditing: _isEditing,
+                                        controller: _termController,
                                         colorSlate100: colorSlate100,
                                         colorSlate500: colorSlate500,
                                         colorSlate800: colorSlate800,
@@ -576,6 +687,19 @@ class _VerifyScanScreenState extends State<VerifyScanScreen>
                                         value:
                                             widget.scanData['lender_name'] ??
                                             "Unknown",
+                                        isEditing: _isEditing,
+                                        controller: _lenderController,
+                                        colorSlate100: colorSlate100,
+                                        colorSlate500: colorSlate500,
+                                        colorSlate800: colorSlate800,
+                                      ),
+                                      _DetailRow(
+                                        label: "Contract Date",
+                                        value:
+                                            widget.scanData['contract_date'] ??
+                                            "Unknown",
+                                        isEditing: _isEditing,
+                                        controller: _dateController,
                                         colorSlate100: colorSlate100,
                                         colorSlate500: colorSlate500,
                                         colorSlate800: colorSlate800,
@@ -591,6 +715,8 @@ class _VerifyScanScreenState extends State<VerifyScanScreen>
                                             (widget.scanData['interest_rate'] ??
                                                 0) >
                                             10,
+                                        isEditing: _isEditing,
+                                        controller: _aprController,
                                         colorSlate100: colorSlate100,
                                         colorSlate500: colorSlate500,
                                         colorSlate800: colorSlate800,
@@ -607,12 +733,14 @@ class _VerifyScanScreenState extends State<VerifyScanScreen>
                                                   null
                                             ? "${NumberFormat.currency(symbol: '\$', decimalDigits: 2).format(widget.scanData['monthly_payment'])}/mo"
                                             : "N/A",
+                                        isEditing: _isEditing,
+                                        controller: _paymentController,
                                         colorSlate100: colorSlate100,
                                         colorSlate500: colorSlate500,
                                         colorSlate800: colorSlate800,
                                       ),
                                       _DetailRow(
-                                        label: "Est. Balance",
+                                        label: "Financed Amount",
                                         value:
                                             widget.scanData['current_balance'] !=
                                                 null
@@ -624,6 +752,8 @@ class _VerifyScanScreenState extends State<VerifyScanScreen>
                                                     .scanData['current_balance'],
                                               )
                                             : "N/A",
+                                        isEditing: _isEditing,
+                                        controller: _balanceController,
                                         colorSlate100: colorSlate100,
                                         colorSlate500: colorSlate500,
                                         colorSlate800: colorSlate800,
@@ -690,7 +820,7 @@ class _VerifyScanScreenState extends State<VerifyScanScreen>
                                     SizedBox(
                                       width: double.infinity,
                                       child: ElevatedButton(
-                                        onPressed: _handleLooksCorrect,
+                                        onPressed: _handleVerify,
                                         style: ElevatedButton.styleFrom(
                                           backgroundColor: colorVibrantGreen,
                                           foregroundColor: Colors.white,
@@ -707,7 +837,9 @@ class _VerifyScanScreenState extends State<VerifyScanScreen>
                                               .withValues(alpha: 0.3),
                                         ),
                                         child: Text(
-                                          "Looks Correct",
+                                          _isEditing
+                                              ? "Save & Verify"
+                                              : "Looks Correct",
                                           style: GoogleFonts.outfit(
                                             fontSize: 18,
                                             fontWeight: FontWeight.bold,
@@ -717,7 +849,11 @@ class _VerifyScanScreenState extends State<VerifyScanScreen>
                                     ),
                                     const SizedBox(height: 12),
                                     TextButton(
-                                      onPressed: () {},
+                                      onPressed: () {
+                                        setState(() {
+                                          _isEditing = !_isEditing;
+                                        });
+                                      },
                                       style: TextButton.styleFrom(
                                         foregroundColor: colorSlate400,
                                         minimumSize: const Size(
@@ -726,7 +862,9 @@ class _VerifyScanScreenState extends State<VerifyScanScreen>
                                         ),
                                       ),
                                       child: Text(
-                                        "Edit manually",
+                                        _isEditing
+                                            ? "Cancel editing"
+                                            : "Edit manually",
                                         style: GoogleFonts.outfit(
                                           fontSize: 16,
                                           fontWeight: FontWeight.w500,
@@ -790,6 +928,9 @@ class _DetailRow extends StatelessWidget {
   final String value;
   final bool isHigh;
   final bool isMono;
+  final bool isEditing;
+  final TextEditingController? controller;
+  final Color colorSlate50 = const Color(0xFFF8FAFC);
   final Color colorSlate100;
   final Color colorSlate500;
   final Color colorSlate800;
@@ -801,6 +942,8 @@ class _DetailRow extends StatelessWidget {
     required this.value,
     this.isHigh = false,
     this.isMono = false,
+    this.isEditing = false,
+    this.controller,
     required this.colorSlate100,
     required this.colorSlate500,
     required this.colorSlate800,
@@ -822,40 +965,81 @@ class _DetailRow extends StatelessWidget {
             label,
             style: GoogleFonts.outfit(color: colorSlate500, fontSize: 16),
           ),
-          Row(
-            children: [
-              if (isHigh) ...[
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 6,
-                    vertical: 2,
-                  ),
-                  margin: const EdgeInsets.only(right: 8),
-                  decoration: BoxDecoration(
-                    color: colorRed100,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    "HIGH",
-                    style: GoogleFonts.outfit(
-                      color: colorRed700,
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
+          const SizedBox(width: 16),
+          Expanded(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                if (isHigh && !isEditing) ...[
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
+                    margin: const EdgeInsets.only(right: 8),
+                    decoration: BoxDecoration(
+                      color: colorRed100,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      "HIGH",
+                      style: GoogleFonts.outfit(
+                        color: colorRed700,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
-                ),
-              ],
-              Text(
-                value,
-                style:
-                    (isMono ? GoogleFonts.robotoMono() : GoogleFonts.outfit())
-                        .copyWith(
-                          color: colorSlate800,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
+                ],
+                if (isEditing && controller != null)
+                  Flexible(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: colorSlate50,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: TextField(
+                        controller: controller,
+                        textAlign: TextAlign.right,
+                        style:
+                            (isMono
+                                    ? GoogleFonts.robotoMono()
+                                    : GoogleFonts.outfit())
+                                .copyWith(
+                                  color: colorSlate800,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                        decoration: const InputDecoration(
+                          isDense: true,
+                          border: InputBorder.none,
+                          contentPadding: EdgeInsets.zero,
                         ),
-              ),
-            ],
+                      ),
+                    ),
+                  )
+                else
+                  Flexible(
+                    child: Text(
+                      value,
+                      textAlign: TextAlign.right,
+                      style:
+                          (isMono
+                                  ? GoogleFonts.robotoMono()
+                                  : GoogleFonts.outfit())
+                              .copyWith(
+                                color: colorSlate800,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                    ),
+                  ),
+              ],
+            ),
           ),
         ],
       ),
