@@ -22,7 +22,7 @@ class _RefinanceScreenState extends State<RefinanceScreen> {
   @override
   Widget build(BuildContext context) {
     // Colors
-    const colorBg = Color(0xFFE6F0FA); // Ice Blue
+    const colorBg = Color(0xFFF8FAFC); // Slate 50 (matches Profile)
     const colorTextDark = Color(0xFF1A1A1B);
     const colorGreen = Color(0xFF00CA50);
     const colorNavy = Color(0xFF003366);
@@ -82,9 +82,9 @@ class _RefinanceScreenState extends State<RefinanceScreen> {
                         // Removed border, relying on shadow and clean bg
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.04),
-                            blurRadius: 20,
-                            offset: const Offset(0, 10),
+                            color: Colors.black.withOpacity(0.08),
+                            blurRadius: 24,
+                            offset: const Offset(0, 12),
                           ),
                         ],
                       ),

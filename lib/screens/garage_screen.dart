@@ -23,7 +23,7 @@ class _GarageScreenState extends State<GarageScreen> {
 
   @override
   Widget build(BuildContext context) {
-    const colorBg = Color(0xFFE6F0FA); // Ice Blue
+    const colorBg = Color(0xFFF8FAFC); // Slate 50
     const colorSlate800 = Color(0xFF1E293B);
     const colorGreen = Color(0xFF00CA50);
     const colorNavy = Color(0xFF003366);
