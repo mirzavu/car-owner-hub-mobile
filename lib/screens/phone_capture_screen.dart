@@ -39,6 +39,15 @@ class _PhoneCaptureScreenState extends State<PhoneCaptureScreen> {
   @override
   void initState() {
     super.initState();
+
+    // Safety check: if phone is already present, skip this screen
+    if (AuthService().isAuthenticated && AuthService().userPhone.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        widget.setStep('scan-intro');
+      });
+      return;
+    }
+
     // Auto focus on start
     WidgetsBinding.instance.addPostFrameCallback((_) {
       FocusScope.of(context).requestFocus(

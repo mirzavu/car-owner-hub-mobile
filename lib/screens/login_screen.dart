@@ -90,13 +90,28 @@ class LoginScreen extends StatelessWidget {
                           // Google Button Mock
                           _LoginButton(
                             onTap: () async {
+                              debugPrint("Google Login Tapped");
                               setStep('loading');
                               try {
                                 await AuthService().loginWithGoogle();
-                                // After successful Google OAuth, go to phone capture
-                                setStep('auth-phone');
-                              } catch (e) {
+                                // Check if phone is already present
+                                if (AuthService().userPhone.isNotEmpty) {
+                                  setStep('scan-intro');
+                                } else {
+                                  setStep('auth-phone');
+                                }
+                              } catch (e, stackTrace) {
                                 debugPrint("Google Login Error: $e");
+                                debugPrint("Stack Trace: $stackTrace");
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text("Login Failed: $e"),
+                                      backgroundColor: Colors.red,
+                                      duration: const Duration(seconds: 5),
+                                    ),
+                                  );
+                                }
                                 setStep('auth-login'); // Back to login on error
                               }
                             },

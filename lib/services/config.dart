@@ -35,7 +35,8 @@ class Config {
   // PocketBase URL (Usually on port 8090)
   static String get pbUrl {
     // Force production URL for debugging auth flow
-    return 'https://pb.carowner.demotesting.co.uk';
+    // Domain is currently down (Parked), using local IP temporarily
+    return 'http://192.168.29.174:8097';
   }
 
   // API Endpoints

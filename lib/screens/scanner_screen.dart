@@ -1,15 +1,17 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:permission_handler/permission_handler.dart';
+import '../services/api_service.dart';
 
-enum ScanPhase { align, scanning, complete }
+enum ScanPhase { align, scanning, complete, error }
 
 class ScannerScreen extends StatefulWidget {
-  final Function(String) setStep;
+  final Function(String, Map<String, dynamic>?) setStep;
 
   const ScannerScreen({super.key, required this.setStep});
 
@@ -21,6 +23,8 @@ class _ScannerScreenState extends State<ScannerScreen>
     with TickerProviderStateMixin {
   ScanPhase _scanPhase = ScanPhase.align;
   String _statusText = 'Position document within frame';
+  XFile? _capturedFile;
+  Map<String, dynamic>? _scanResult;
 
   // Camera Controllers
   CameraController? _cameraController;
@@ -103,39 +107,72 @@ class _ScannerScreenState extends State<ScannerScreen>
   }
 
   void _handleCapture() async {
-    setState(() {
-      _scanPhase = ScanPhase.scanning;
-    });
+    if (_cameraController == null || !_cameraController!.value.isInitialized) {
+      return;
+    }
 
-    _laserController.repeat();
-    _runScanSequence();
+    try {
+      final image = await _cameraController!.takePicture();
+      setState(() {
+        _capturedFile = image;
+        _scanPhase = ScanPhase.scanning;
+      });
+
+      _laserController.repeat();
+      _runScanSequence(image.path);
+    } catch (e) {
+      debugPrint("Error capturing image: $e");
+      setState(() {
+        _statusText = "Capture failed. Try again.";
+        _scanPhase = ScanPhase.align;
+      });
+    }
   }
 
-  Future<void> _runScanSequence() async {
-    setState(() => _statusText = "Enhancing image...");
+  Future<void> _runScanSequence(String filePath) async {
+    try {
+      setState(() => _statusText = "Enhancing image...");
+      await Future.delayed(const Duration(milliseconds: 1000));
 
-    await Future.delayed(const Duration(milliseconds: 1200));
-    if (!mounted) return;
-    setState(() => _statusText = "Scanning document...");
+      if (!mounted) return;
+      setState(() => _statusText = "Extracting details...");
 
-    await Future.delayed(const Duration(milliseconds: 1300));
-    if (!mounted) return;
-    setState(() => _statusText = "Extracting details...");
+      // Call real OCR API
+      final result = await ApiService.scanDocument(filePath);
 
-    await Future.delayed(const Duration(milliseconds: 1000));
-    if (!mounted) return;
-    setState(() {
-      _statusText = "Scan Complete!";
-      _laserController.stop();
-    });
+      if (!mounted) return;
 
-    await Future.delayed(const Duration(milliseconds: 500));
-    if (!mounted) return;
-    setState(() => _scanPhase = ScanPhase.complete);
+      if (result.containsKey('error')) {
+        setState(() {
+          _statusText = "Low quality scan. Please try again.";
+          _scanPhase = ScanPhase.error;
+          _laserController.stop();
+        });
+        return;
+      }
 
-    await Future.delayed(const Duration(milliseconds: 800));
-    if (!mounted) return;
-    widget.setStep('verify');
+      setState(() {
+        _scanResult = result;
+        _statusText = "Scan Complete!";
+        _laserController.stop();
+      });
+
+      await Future.delayed(const Duration(milliseconds: 500));
+      if (!mounted) return;
+      setState(() => _scanPhase = ScanPhase.complete);
+
+      await Future.delayed(const Duration(milliseconds: 800));
+      if (!mounted) return;
+      widget.setStep('verify', _scanResult);
+    } catch (e) {
+      debugPrint("OCR error: $e");
+      if (!mounted) return;
+      setState(() {
+        _statusText = "Connection error. Please try again.";
+        _scanPhase = ScanPhase.error;
+        _laserController.stop();
+      });
+    }
   }
 
   @override
@@ -156,8 +193,14 @@ class _ScannerScreenState extends State<ScannerScreen>
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // --- 1. REAL CAMERA FEED ---
-          if (_isCameraPermissionGranted && _cameraController != null)
+          // --- 1. REAL CAMERA FEED OR CAPTURED IMAGE ---
+          if (_capturedFile != null)
+            Image.file(
+              File(_capturedFile!.path),
+              fit: BoxFit.cover,
+              alignment: Alignment.topCenter,
+            )
+          else if (_isCameraPermissionGranted && _cameraController != null)
             FutureBuilder<void>(
               future: _initializeControllerFuture,
               builder: (context, snapshot) {
@@ -204,8 +247,8 @@ class _ScannerScreenState extends State<ScannerScreen>
                 // The Cutout Box
                 Center(
                   child: Container(
-                    width: MediaQuery.of(context).size.width * 0.85,
-                    height: MediaQuery.of(context).size.height * 0.65,
+                    width: MediaQuery.of(context).size.width * 0.92,
+                    height: MediaQuery.of(context).size.height * 0.75,
                     decoration: BoxDecoration(
                       color: Colors.black,
                       borderRadius: BorderRadius.circular(12),
@@ -232,7 +275,7 @@ class _ScannerScreenState extends State<ScannerScreen>
                   Align(
                     alignment: Alignment.centerLeft,
                     child: InkWell(
-                      onTap: () => widget.setStep('scan-intro'),
+                      onTap: () => widget.setStep('scan-intro', null),
                       borderRadius: BorderRadius.circular(50),
                       child: Container(
                         width: 40,
@@ -301,7 +344,9 @@ class _ScannerScreenState extends State<ScannerScreen>
                                 Text(
                                   _statusText,
                                   style: GoogleFonts.outfit(
-                                    color: Colors.white,
+                                    color: _scanPhase == ScanPhase.error
+                                        ? Colors.redAccent
+                                        : Colors.white,
                                     fontSize: 14,
                                     fontWeight: FontWeight.w500,
                                   ),
@@ -317,9 +362,22 @@ class _ScannerScreenState extends State<ScannerScreen>
                       // Capture Button
                       SizedBox(
                         height: 80,
-                        child: _scanPhase == ScanPhase.align
+                        child:
+                            (_scanPhase == ScanPhase.align ||
+                                _scanPhase == ScanPhase.error)
                             ? GestureDetector(
-                                onTap: _handleCapture,
+                                onTap: () {
+                                  if (_scanPhase == ScanPhase.error) {
+                                    setState(() {
+                                      _scanPhase = ScanPhase.align;
+                                      _capturedFile = null;
+                                      _statusText =
+                                          'Position document within frame';
+                                    });
+                                  } else {
+                                    _handleCapture();
+                                  }
+                                },
                                 child: Stack(
                                   alignment: Alignment.center,
                                   children: [
@@ -329,9 +387,11 @@ class _ScannerScreenState extends State<ScannerScreen>
                                       decoration: BoxDecoration(
                                         shape: BoxShape.circle,
                                         border: Border.all(
-                                          color: Colors.white.withValues(
-                                            alpha: 0.3,
-                                          ),
+                                          color:
+                                              (_scanPhase == ScanPhase.error
+                                                      ? Colors.redAccent
+                                                      : Colors.white)
+                                                  .withValues(alpha: 0.3),
                                           width: 5,
                                         ),
                                       ),
@@ -340,18 +400,28 @@ class _ScannerScreenState extends State<ScannerScreen>
                                       width: 64,
                                       height: 64,
                                       decoration: BoxDecoration(
-                                        color: Colors.white,
+                                        color: _scanPhase == ScanPhase.error
+                                            ? Colors.redAccent
+                                            : Colors.white,
                                         shape: BoxShape.circle,
                                         boxShadow: [
                                           BoxShadow(
-                                            color: Colors.white.withValues(
-                                              alpha: 0.3,
-                                            ),
+                                            color:
+                                                (_scanPhase == ScanPhase.error
+                                                        ? Colors.redAccent
+                                                        : Colors.white)
+                                                    .withValues(alpha: 0.3),
                                             blurRadius: 20,
                                             spreadRadius: 0,
                                           ),
                                         ],
                                       ),
+                                      child: _scanPhase == ScanPhase.error
+                                          ? const Icon(
+                                              LucideIcons.refreshCw,
+                                              color: Colors.white,
+                                            )
+                                          : null,
                                     ),
                                   ],
                                 ),
@@ -368,8 +438,8 @@ class _ScannerScreenState extends State<ScannerScreen>
           // --- 4. CORNERS & LASER (Visuals Only) ---
           Center(
             child: SizedBox(
-              width: MediaQuery.of(context).size.width * 0.85,
-              height: MediaQuery.of(context).size.height * 0.65,
+              width: MediaQuery.of(context).size.width * 0.92,
+              height: MediaQuery.of(context).size.height * 0.75,
               child: Stack(
                 children: [
                   // Top Left
@@ -405,7 +475,7 @@ class _ScannerScreenState extends State<ScannerScreen>
                         return Positioned(
                           top:
                               MediaQuery.of(context).size.height *
-                              0.65 *
+                              0.75 *
                               _laserAnimation.value,
                           left: -10,
                           right: -10,

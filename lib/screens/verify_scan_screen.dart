@@ -1,11 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:intl/intl.dart';
 
 class VerifyScanScreen extends StatefulWidget {
   final Function(String) setStep;
+  final Map<String, dynamic> scanData;
+  final VoidCallback onBack;
 
-  const VerifyScanScreen({super.key, required this.setStep});
+  const VerifyScanScreen({
+    super.key,
+    required this.setStep,
+    required this.scanData,
+    required this.onBack,
+  });
 
   @override
   State<VerifyScanScreen> createState() => _VerifyScanScreenState();
@@ -114,15 +122,20 @@ class _VerifyScanScreenState extends State<VerifyScanScreen>
                           children: [
                             _DetailRow(
                               label: "Lender",
-                              value: "TD Auto Finance",
+                              value:
+                                  widget.scanData['lender_name'] ?? "Unknown",
                               colorSlate100: colorSlate100,
                               colorSlate500: colorSlate500,
                               colorSlate800: colorSlate800,
                             ),
                             _DetailRow(
                               label: "APR Rate",
-                              value: "8.99%",
-                              isHigh: true, // Special badge case
+                              value: widget.scanData['interest_rate'] != null
+                                  ? "${widget.scanData['interest_rate']}%"
+                                  : "N/A",
+                              isHigh:
+                                  (widget.scanData['interest_rate'] ?? 0) >
+                                  10, // Special badge case
                               colorSlate100: colorSlate100,
                               colorSlate500: colorSlate500,
                               colorSlate800: colorSlate800,
@@ -131,14 +144,24 @@ class _VerifyScanScreenState extends State<VerifyScanScreen>
                             ),
                             _DetailRow(
                               label: "Payment",
-                              value: "\$420.00/mo",
+                              value:
+                                  widget.scanData['bi_weekly_payment'] != null
+                                  ? "${NumberFormat.currency(symbol: '\$', decimalDigits: 2).format(widget.scanData['bi_weekly_payment'])}/bw"
+                                  : widget.scanData['monthly_payment'] != null
+                                  ? "${NumberFormat.currency(symbol: '\$', decimalDigits: 2).format(widget.scanData['monthly_payment'])}/mo"
+                                  : "N/A",
                               colorSlate100: colorSlate100,
                               colorSlate500: colorSlate500,
                               colorSlate800: colorSlate800,
                             ),
                             _DetailRow(
                               label: "Est. Balance",
-                              value: "\$18,402.00",
+                              value: widget.scanData['current_balance'] != null
+                                  ? NumberFormat.currency(
+                                      symbol: '\$',
+                                      decimalDigits: 0,
+                                    ).format(widget.scanData['current_balance'])
+                                  : "N/A",
                               colorSlate100: colorSlate100,
                               colorSlate500: colorSlate500,
                               colorSlate800: colorSlate800,
@@ -195,6 +218,19 @@ class _VerifyScanScreenState extends State<VerifyScanScreen>
                           ),
                         ),
                       ],
+                    ),
+                  ),
+
+                  // --- Back Button ---
+                  Positioned(
+                    top: 0,
+                    left: 0,
+                    child: IconButton(
+                      icon: const Icon(
+                        LucideIcons.arrowLeft,
+                        color: colorSlate500,
+                      ),
+                      onPressed: widget.onBack,
                     ),
                   ),
 

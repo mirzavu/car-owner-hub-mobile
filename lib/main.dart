@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
@@ -21,8 +22,18 @@ import 'package:mobile_app/services/auth_service.dart'; // Import AuthService
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  HttpOverrides.global = MyHttpOverrides(); // Bypass SSL errors for dev
   AuthService().init();
   runApp(const FintechApp());
+}
+
+class MyHttpOverrides extends HttpOverrides {
+  @override
+  HttpClient createHttpClient(SecurityContext? context) {
+    return super.createHttpClient(context)
+      ..badCertificateCallback =
+          (X509Certificate cert, String host, int port) => true;
+  }
 }
 
 class FintechApp extends StatelessWidget {
@@ -89,6 +100,8 @@ class _FintechAutoFlowState extends State<FintechAutoFlow> {
     'equity': 0.0,
   };
 
+  Map<String, dynamic>? lastScanData;
+
   @override
   void initState() {
     super.initState();
@@ -112,7 +125,25 @@ class _FintechAutoFlowState extends State<FintechAutoFlow> {
   }
 
   // --- NAVIGATION HELPERS ---
-  void setStep(String newStep) => setState(() => step = newStep);
+  void setStep(String newStep, [Map<String, dynamic>? data]) {
+    setState(() {
+      step = newStep;
+      if (data != null) {
+        lastScanData = data;
+        // Optionally update financials directly
+        if (data['interest_rate'] != null)
+          financials['actualRate'] = data['interest_rate'];
+        if (data['lender_name'] != null)
+          financials['lender'] = data['lender_name'];
+        if (data['monthly_payment'] != null)
+          financials['monthlyPayment'] = data['monthly_payment'];
+        if (data['current_balance'] != null)
+          financials['userEstimatedLoan'] = data['current_balance'];
+        _calculateEquity();
+      }
+    });
+  }
+
   void setActiveTab(String tab) => setState(() => activeTab = tab);
   void setOverlay(String? overlay) => setState(() => overlayScreen = overlay);
 
@@ -214,9 +245,15 @@ class _FintechAutoFlowState extends State<FintechAutoFlow> {
           onBack: () => setStep('auth-phone'),
         );
       case 'scanner':
-        return ScannerScreen(setStep: (nextStep) => setStep(nextStep));
+        return ScannerScreen(
+          setStep: (nextStep, data) => setStep(nextStep, data),
+        );
       case 'verify':
-        return VerifyScanScreen(setStep: (nextStep) => setStep(nextStep));
+        return VerifyScanScreen(
+          setStep: (nextStep) => setStep(nextStep),
+          scanData: lastScanData ?? {},
+          onBack: () => setStep('scanner'),
+        );
       case 'main-app':
         return Stack(
           children: [

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart'; // For debugPrint
 import 'package:pocketbase/pocketbase.dart';
 import 'package:flutter_web_auth_2/flutter_web_auth_2.dart';
 import 'config.dart';
@@ -19,6 +20,7 @@ class AuthService {
   bool get isAuthenticated => pb.authStore.isValid;
   String get userId => pb.authStore.record?.id ?? '';
   String get userEmail => pb.authStore.record?.getStringValue('email') ?? '';
+  String get userPhone => pb.authStore.record?.getStringValue('phone') ?? '';
 
   // 1. Login with Email/Password (Fallback)
   Future<void> login(String email, String password) async {
@@ -45,12 +47,19 @@ class AuthService {
       const webRedirectUri =
           'https://pb.carowner.demotesting.co.uk/oauth2-mobile-redirect.html';
 
-      // The authURL from PocketBase includes the base params, append our redirect
-      final authUrl = '${googleProvider.authURL}$webRedirectUri';
+      // The authURL from PocketBase includes the base params.
+      // We must REPLACE the default redirect_uri with our custom one.
+      final originalUri = Uri.parse(googleProvider.authURL);
+      final newParams = Map<String, String>.from(originalUri.queryParameters);
+      newParams['redirect_uri'] = webRedirectUri;
 
-      print('[OAuth] Opening auth URL: $authUrl');
-      print('[OAuth] Code verifier: ${googleProvider.codeVerifier}');
-      print('[OAuth] State: ${googleProvider.state}');
+      final authUrl = originalUri
+          .replace(queryParameters: newParams)
+          .toString();
+
+      debugPrint('[OAuth] Opening auth URL: $authUrl');
+      debugPrint('[OAuth] Code verifier: ${googleProvider.codeVerifier}');
+      debugPrint('[OAuth] State: ${googleProvider.state}');
 
       // Step 3: Open Chrome Auth Tab and wait for deep link callback
       // The web redirect page will redirect to carownerhub://oauth2callback?code=xxx&state=yyy
@@ -59,7 +68,7 @@ class AuthService {
         callbackUrlScheme: callbackScheme,
       );
 
-      print('[OAuth] Callback result: $result');
+      debugPrint('[OAuth] Callback result: $result');
 
       // Step 4: Parse the callback URL to extract code and state
       final callbackUri = Uri.parse(result);
@@ -72,13 +81,13 @@ class AuthService {
 
       // Verify state matches
       if (state != googleProvider.state) {
-        print(
+        debugPrint(
           '[OAuth] State mismatch - expected: ${googleProvider.state}, got: $state',
         );
         throw Exception('OAuth state mismatch - possible CSRF attack');
       }
 
-      print('[OAuth] Code received, exchanging for token...');
+      debugPrint('[OAuth] Code received, exchanging for token...');
 
       // Step 5: Exchange the authorization code for tokens via PocketBase
       // IMPORTANT: Use the same redirect URI that was used in the authorization request
@@ -91,11 +100,13 @@ class AuthService {
             webRedirectUri,
           );
 
-      print('[OAuth] Authentication successful!');
-      print('[OAuth] User ID: ${pb.authStore.record?.id}');
-      print('[OAuth] Email: ${pb.authStore.record?.getStringValue('email')}');
+      debugPrint('[OAuth] Authentication successful!');
+      debugPrint('[OAuth] User ID: ${pb.authStore.record?.id}');
+      debugPrint(
+        '[OAuth] Email: ${pb.authStore.record?.getStringValue('email')}',
+      );
     } catch (e) {
-      print('[OAuth] Error: $e');
+      debugPrint('[OAuth] Error: $e');
       throw Exception('Google Sign In Failed: $e');
     }
   }
