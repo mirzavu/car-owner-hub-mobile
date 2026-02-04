@@ -17,9 +17,111 @@ class ApiService {
     var response = await http.Response.fromStream(streamedResponse);
 
     if (response.statusCode == 200) {
+      print('--- RAW OCR RESULT FROM BACKEND ---');
+      print(response.body);
+      print('--- END RAW OCR RESULT ---');
       return jsonDecode(response.body);
     } else {
       throw Exception('OCR Failed: ${response.body}');
+    }
+  }
+
+  // 1b. Decode VIN using NHTSA vPIC
+  static Future<Map<String, String>> decodeVin(String vin) async {
+    final normalized = vin
+        .replaceAll(RegExp(r'[^A-Za-z0-9]'), '')
+        .toUpperCase();
+    if (normalized.length != 17) {
+      return {};
+    }
+
+    final url = Uri.parse(
+      'https://vpic.nhtsa.dot.gov/api/vehicles/DecodeVinValuesExtended/$normalized?format=json',
+    );
+
+    try {
+      final response = await http.get(url).timeout(const Duration(seconds: 6));
+
+      if (response.statusCode != 200) {
+        return {};
+      }
+
+      final data = jsonDecode(response.body);
+      final results = data['Results'];
+      if (results is! List || results.isEmpty) {
+        return {};
+      }
+
+      final first = results.first as Map<String, dynamic>;
+      final year = (first['ModelYear'] ?? '').toString().trim();
+      final make = (first['Make'] ?? '').toString().trim();
+      final model = (first['Model'] ?? '').toString().trim();
+
+      if (year.isEmpty && make.isEmpty && model.isEmpty) {
+        return {};
+      }
+
+      return {'year': year, 'make': make, 'model': model};
+    } catch (e) {
+      debugPrint("VIN decode error: $e");
+      return {};
+    }
+  }
+
+  // 1c. Mark loan verification status in PocketBase
+  static Future<void> setLoanVerification({required bool isVerified}) async {
+    final auth = AuthService();
+    if (!auth.isAuthenticated) return;
+
+    final userId = auth.userId;
+    if (userId.isEmpty) return;
+
+    try {
+      final vehicles = await auth.pb
+          .collection('vehicles')
+          .getList(page: 1, perPage: 1, filter: 'user_id = "$userId"');
+      if (vehicles.items.isEmpty) return;
+
+      final vehicleId = vehicles.items.first.id;
+      final loans = await auth.pb
+          .collection('loans')
+          .getList(page: 1, perPage: 1, filter: 'vehicle_id = "$vehicleId"');
+      if (loans.items.isEmpty) return;
+
+      final loanId = loans.items.first.id;
+      await auth.pb
+          .collection('loans')
+          .update(loanId, body: {'is_verified': isVerified});
+    } catch (e) {
+      debugPrint("Error updating loan verification: $e");
+    }
+  }
+
+  // 1d. Update vehicle details in PocketBase
+  static Future<void> updateVehicleDetails(Map<String, String> updates) async {
+    final auth = AuthService();
+    if (!auth.isAuthenticated) return;
+
+    final userId = auth.userId;
+    if (userId.isEmpty) return;
+
+    try {
+      final vehicles = await auth.pb
+          .collection('vehicles')
+          .getList(page: 1, perPage: 1, filter: 'user_id = "$userId"');
+      if (vehicles.items.isEmpty) return;
+
+      final vehicleId = vehicles.items.first.id;
+
+      // Map year to int if present
+      final Map<String, dynamic> body = Map<String, dynamic>.from(updates);
+      if (updates.containsKey('year')) {
+        body['year'] = int.tryParse(updates['year']!) ?? 0;
+      }
+
+      await auth.pb.collection('vehicles').update(vehicleId, body: body);
+    } catch (e) {
+      debugPrint("Error updating vehicle details: $e");
     }
   }
 

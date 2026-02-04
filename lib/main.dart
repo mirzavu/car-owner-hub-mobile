@@ -252,6 +252,12 @@ class _FintechAutoFlowState extends State<FintechAutoFlow> {
         return VerifyScanScreen(
           setStep: (nextStep) => setStep(nextStep),
           scanData: lastScanData ?? {},
+          carDetails: carDetails,
+          onUpdateCarDetails: (updates) {
+            setState(() {
+              carDetails.addAll(updates);
+            });
+          },
           onBack: () => setStep('scanner'),
         );
       case 'main-app':

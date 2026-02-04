@@ -2,16 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:intl/intl.dart';
+import '../services/api_service.dart';
 
 class VerifyScanScreen extends StatefulWidget {
   final Function(String) setStep;
   final Map<String, dynamic> scanData;
+  final Map<String, String> carDetails;
+  final Function(Map<String, String>) onUpdateCarDetails;
   final VoidCallback onBack;
 
   const VerifyScanScreen({
     super.key,
     required this.setStep,
     required this.scanData,
+    required this.carDetails,
+    required this.onUpdateCarDetails,
     required this.onBack,
   });
 
@@ -24,11 +29,13 @@ class _VerifyScanScreenState extends State<VerifyScanScreen>
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;
   late Animation<double> _fadeAnimation;
+  Map<String, String>? _vinDetails;
+  bool _isVinLookupInProgress = false;
+  String? _vinLookupError;
 
   @override
   void initState() {
     super.initState();
-    // Simulate 'animate-in zoom-in-95 duration-300'
     _controller = AnimationController(
       duration: const Duration(milliseconds: 300),
       vsync: this,
@@ -45,12 +52,122 @@ class _VerifyScanScreenState extends State<VerifyScanScreen>
     ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
 
     _controller.forward();
+
+    _loadVinDetails();
   }
 
   @override
   void dispose() {
     _controller.dispose();
     super.dispose();
+  }
+
+  String _normalizeToken(String value) {
+    return value.trim().toUpperCase();
+  }
+
+  String _normalizeVin(String? vin) {
+    if (vin == null) return '';
+    return vin.replaceAll(RegExp(r'[^A-Za-z0-9]'), '').toUpperCase();
+  }
+
+  String _formatVehicle(String? year, String? make, String? model) {
+    final parts = [
+      if ((year ?? '').trim().isNotEmpty) year!.trim(),
+      if ((make ?? '').trim().isNotEmpty) make!.trim(),
+      if ((model ?? '').trim().isNotEmpty) model!.trim(),
+    ];
+    return parts.isEmpty ? 'Unknown' : parts.join(' ');
+  }
+
+  Future<void> _loadVinDetails() async {
+    final normalizedVin = _normalizeVin(widget.scanData['vin']?.toString());
+    if (normalizedVin.length != 17) {
+      return;
+    }
+
+    setState(() {
+      _isVinLookupInProgress = true;
+      _vinLookupError = null;
+    });
+
+    final details = await ApiService.decodeVin(normalizedVin);
+    if (!mounted) return;
+
+    setState(() {
+      _vinDetails = details.isEmpty ? null : details;
+      _isVinLookupInProgress = false;
+      if (details.isEmpty) {
+        _vinLookupError = 'Unable to decode VIN';
+      }
+    });
+  }
+
+  bool _matchesIfPresent(String? a, String? b) {
+    if ((a ?? '').trim().isEmpty || (b ?? '').trim().isEmpty) return true;
+    return _normalizeToken(a!) == _normalizeToken(b!);
+  }
+
+  bool get _hasVinDetected {
+    final normalizedVin = _normalizeVin(widget.scanData['vin']?.toString());
+    return normalizedVin.length == 17;
+  }
+
+  bool get _hasConflict {
+    if (_vinDetails == null) return false;
+    final user = widget.carDetails;
+    final yearOk = _matchesIfPresent(user['year'], _vinDetails!['year']);
+    final makeOk = _matchesIfPresent(user['make'], _vinDetails!['make']);
+    final modelOk = _matchesIfPresent(user['model'], _vinDetails!['model']);
+    return !(yearOk && makeOk && modelOk);
+  }
+
+  Future<void> _handleUseDocumentDetails() async {
+    final normalizedVin = _normalizeVin(widget.scanData['vin']?.toString());
+    final updates = <String, String>{};
+    if (_vinDetails != null) {
+      if ((_vinDetails!['year'] ?? '').isNotEmpty) {
+        updates['year'] = _vinDetails!['year']!;
+      }
+      if ((_vinDetails!['make'] ?? '').isNotEmpty) {
+        updates['make'] = _vinDetails!['make']!;
+      }
+      if ((_vinDetails!['model'] ?? '').isNotEmpty) {
+        updates['model'] = _vinDetails!['model']!;
+      }
+    }
+    if (normalizedVin.isNotEmpty) {
+      updates['vin'] = normalizedVin;
+    }
+
+    if (updates.isNotEmpty) {
+      widget.onUpdateCarDetails(updates);
+      await ApiService.updateVehicleDetails(updates);
+    }
+
+    widget.setStep('main-app');
+  }
+
+  Future<void> _handleKeepEntry() async {
+    final normalizedVin = _normalizeVin(widget.scanData['vin']?.toString());
+    if (normalizedVin.isNotEmpty) {
+      widget.onUpdateCarDetails({'vin': normalizedVin});
+      await ApiService.updateVehicleDetails({'vin': normalizedVin});
+    }
+
+    ApiService.setLoanVerification(isVerified: false);
+    widget.setStep('main-app');
+  }
+
+  void _handleLooksCorrect() async {
+    final normalizedVin = _normalizeVin(widget.scanData['vin']?.toString());
+    if (normalizedVin.isNotEmpty) {
+      widget.onUpdateCarDetails({'vin': normalizedVin});
+      await ApiService.updateVehicleDetails({'vin': normalizedVin});
+    }
+
+    ApiService.setLoanVerification(isVerified: true);
+    widget.setStep('main-app');
   }
 
   @override
@@ -66,220 +183,613 @@ class _VerifyScanScreenState extends State<VerifyScanScreen>
     const colorVibrantGreen = Color(0xFF00CA50);
     const colorRed100 = Color(0xFFFEE2E2);
     const colorRed700 = Color(0xFFB91C1C);
+    const colorAmber50 = Color(0xFFFFFBEB);
+    const colorAmber100 = Color(0xFFFEF3C7);
+    const colorAmber200 = Color(0xFFFDE68A);
+    const colorAmber800 = Color(0xFF92400E);
+
+    final normalizedVin = _normalizeVin(widget.scanData['vin']?.toString());
+    final userVehicle = _formatVehicle(
+      widget.carDetails['year'],
+      widget.carDetails['make'],
+      widget.carDetails['model'],
+    );
+    final docVehicle = _vinDetails == null
+        ? "Unavailable"
+        : _formatVehicle(
+            _vinDetails!['year'],
+            _vinDetails!['make'],
+            _vinDetails!['model'],
+          );
+    final hasConflict = _hasConflict;
+    final statusIconBg = hasConflict ? colorAmber50 : colorGreen100;
+    final statusIconColor = hasConflict ? colorAmber800 : colorVibrantGreen;
+    final statusIcon = hasConflict
+        ? LucideIcons.alertTriangle
+        : LucideIcons.checkCircle2;
 
     return Scaffold(
       backgroundColor: colorSlate50,
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0), // p-6
-          child: FadeTransition(
-            opacity: _fadeAnimation,
-            child: ScaleTransition(
-              scale: _scaleAnimation,
-              child: Stack(
-                clipBehavior: Clip.none, // Allows the icon to overflow the top
-                alignment: Alignment.topCenter,
-                children: [
-                  // --- The Card ---
-                  Container(
-                    width: double.infinity,
-                    constraints: const BoxConstraints(
-                      maxWidth: 420,
-                    ), // increased from 384
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16), // rounded-2xl
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.1),
-                          blurRadius: 20,
-                          offset: const Offset(0, 10),
-                        ), // shadow-xl
-                      ],
-                    ),
-                    padding: const EdgeInsets.fromLTRB(
-                      24,
-                      48,
-                      24,
-                      24,
-                    ), // Top padding accounts for icon space
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // Title
-                        Text(
-                          "Confirm Details",
-                          textAlign: TextAlign.center,
-                          style: GoogleFonts.outfit(
-                            fontSize: 24, // increased from 20
-                            fontWeight: FontWeight.bold,
-                            color: colorSlate900,
-                          ),
-                        ),
-                        const SizedBox(height: 28), // increased from 24
-                        // Details List (space-y-4)
-                        Column(
+      // 1. SAFE AREA ADDED
+      body: SafeArea(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                child: Center(
+                  // 2. INCREASED TOP PADDING (60 -> 90) to prevent camera overlap
+                  // Since the icon is -36, we need about 80-90 padding to clear it comfortably
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 50, 24, 24),
+                    child: FadeTransition(
+                      opacity: _fadeAnimation,
+                      child: ScaleTransition(
+                        scale: _scaleAnimation,
+                        child: Stack(
+                          clipBehavior: Clip.none,
+                          alignment: Alignment.topCenter,
                           children: [
-                            _DetailRow(
-                              label: "Lender",
-                              value:
-                                  widget.scanData['lender_name'] ?? "Unknown",
-                              colorSlate100: colorSlate100,
-                              colorSlate500: colorSlate500,
-                              colorSlate800: colorSlate800,
+                            // --- Back Button (Placed outside the white card) ---
+                            Positioned(
+                              top: -45,
+                              left: -10,
+                              child: IconButton(
+                                icon: const Icon(
+                                  LucideIcons.arrowLeft,
+                                  color: colorSlate500,
+                                ),
+                                onPressed: widget.onBack,
+                              ),
                             ),
-                            _DetailRow(
-                              label: "APR Rate",
-                              value: widget.scanData['interest_rate'] != null
-                                  ? "${widget.scanData['interest_rate']}%"
-                                  : "N/A",
-                              isHigh:
-                                  (widget.scanData['interest_rate'] ?? 0) >
-                                  10, // Special badge case
-                              colorSlate100: colorSlate100,
-                              colorSlate500: colorSlate500,
-                              colorSlate800: colorSlate800,
-                              colorRed100: colorRed100,
-                              colorRed700: colorRed700,
+                            // --- The Card ---
+                            Container(
+                              width: double.infinity,
+                              constraints: const BoxConstraints(maxWidth: 420),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(20),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.08),
+                                    blurRadius: 24,
+                                    offset: const Offset(0, 12),
+                                  ),
+                                ],
+                              ),
+                              padding: const EdgeInsets.fromLTRB(
+                                24,
+                                48,
+                                24,
+                                24,
+                              ),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  // Title
+                                  Text(
+                                    hasConflict
+                                        ? "Review Discrepancy"
+                                        : "Confirm Details",
+                                    textAlign: TextAlign.center,
+                                    style: GoogleFonts.outfit(
+                                      fontSize: 24,
+                                      fontWeight: FontWeight.bold,
+                                      color: colorSlate900,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  if (_hasVinDetected && !hasConflict)
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                        vertical: 6,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: colorGreen100,
+                                        borderRadius: BorderRadius.circular(
+                                          999,
+                                        ),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Icon(
+                                            LucideIcons.badgeCheck,
+                                            size: 16,
+                                            color: colorVibrantGreen,
+                                          ),
+                                          const SizedBox(width: 6),
+                                          Text(
+                                            "VIN Verified",
+                                            style: GoogleFonts.outfit(
+                                              color: colorVibrantGreen,
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  if (_isVinLookupInProgress) ...[
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      "Checking VIN details...",
+                                      style: GoogleFonts.outfit(
+                                        fontSize: 12,
+                                        color: colorSlate400,
+                                      ),
+                                    ),
+                                  ],
+                                  if (_vinLookupError != null &&
+                                      !_isVinLookupInProgress) ...[
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      _vinLookupError!,
+                                      style: GoogleFonts.outfit(
+                                        fontSize: 12,
+                                        color: colorSlate400,
+                                      ),
+                                    ),
+                                  ],
+                                  const SizedBox(height: 24),
+
+                                  // 3. IMPROVED COMPARISON UI
+                                  if (hasConflict) ...[
+                                    Container(
+                                      width: double.infinity,
+                                      decoration: BoxDecoration(
+                                        color: colorAmber50,
+                                        borderRadius: BorderRadius.circular(16),
+                                        border: Border.all(
+                                          color: colorAmber200,
+                                        ),
+                                      ),
+                                      child: Column(
+                                        children: [
+                                          // Header
+                                          Padding(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 12,
+                                              vertical: 8,
+                                            ),
+                                            child: Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.center,
+                                              children: [
+                                                const Icon(
+                                                  LucideIcons.arrowLeftRight,
+                                                  size: 14,
+                                                  color: colorAmber800,
+                                                ),
+                                                const SizedBox(width: 8),
+                                                Text(
+                                                  "Data Mismatch Detected",
+                                                  style: GoogleFonts.outfit(
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.w700,
+                                                    color: colorAmber800,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          const Divider(
+                                            height: 1,
+                                            color: colorAmber200,
+                                          ),
+                                          // Comparison Body
+                                          IntrinsicHeight(
+                                            child: Row(
+                                              children: [
+                                                // User Side
+                                                Expanded(
+                                                  child: Padding(
+                                                    padding:
+                                                        const EdgeInsets.all(
+                                                          12,
+                                                        ),
+                                                    child: Column(
+                                                      crossAxisAlignment:
+                                                          CrossAxisAlignment
+                                                              .start,
+                                                      children: [
+                                                        Row(
+                                                          children: [
+                                                            const Icon(
+                                                              LucideIcons.user,
+                                                              size: 14,
+                                                              color:
+                                                                  colorSlate400,
+                                                            ),
+                                                            const SizedBox(
+                                                              width: 6,
+                                                            ),
+                                                            Flexible(
+                                                              child: Text(
+                                                                "You Entered"
+                                                                    .toUpperCase(),
+                                                                style: GoogleFonts.outfit(
+                                                                  fontSize: 11,
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .w600,
+                                                                  color:
+                                                                      colorSlate500,
+                                                                  letterSpacing:
+                                                                      0.5,
+                                                                ),
+                                                                overflow:
+                                                                    TextOverflow
+                                                                        .ellipsis,
+                                                              ),
+                                                            ),
+                                                          ],
+                                                        ),
+                                                        const SizedBox(
+                                                          height: 8,
+                                                        ),
+                                                        Text(
+                                                          userVehicle,
+                                                          style:
+                                                              GoogleFonts.outfit(
+                                                                fontSize: 14,
+                                                                color:
+                                                                    colorSlate500,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w500,
+                                                                height: 1.2,
+                                                              ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                ),
+                                                // Vertical Divider
+                                                Container(
+                                                  width: 1,
+                                                  color: colorAmber200,
+                                                ),
+                                                // Scanned Side
+                                                Expanded(
+                                                  child: Container(
+                                                    decoration: BoxDecoration(
+                                                      color: colorAmber100
+                                                          .withValues(
+                                                            alpha: 0.3,
+                                                          ),
+                                                      borderRadius:
+                                                          const BorderRadius.only(
+                                                            bottomRight:
+                                                                Radius.circular(
+                                                                  15,
+                                                                ),
+                                                          ),
+                                                    ),
+                                                    padding:
+                                                        const EdgeInsets.all(
+                                                          12,
+                                                        ),
+                                                    child: Column(
+                                                      crossAxisAlignment:
+                                                          CrossAxisAlignment
+                                                              .start,
+                                                      children: [
+                                                        Row(
+                                                          children: [
+                                                            const Icon(
+                                                              LucideIcons
+                                                                  .scanLine,
+                                                              size: 14,
+                                                              color:
+                                                                  colorAmber800,
+                                                            ),
+                                                            const SizedBox(
+                                                              width: 6,
+                                                            ),
+                                                            Flexible(
+                                                              child: Text(
+                                                                "Scanned"
+                                                                    .toUpperCase(),
+                                                                style: GoogleFonts.outfit(
+                                                                  fontSize: 11,
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .bold,
+                                                                  color:
+                                                                      colorAmber800,
+                                                                  letterSpacing:
+                                                                      0.5,
+                                                                ),
+                                                                overflow:
+                                                                    TextOverflow
+                                                                        .ellipsis,
+                                                              ),
+                                                            ),
+                                                          ],
+                                                        ),
+                                                        const SizedBox(
+                                                          height: 8,
+                                                        ),
+                                                        Text(
+                                                          docVehicle,
+                                                          style:
+                                                              GoogleFonts.outfit(
+                                                                fontSize: 14,
+                                                                color:
+                                                                    colorSlate900,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w700,
+                                                                height: 1.2,
+                                                              ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(height: 24),
+                                  ],
+
+                                  // Details List
+                                  Column(
+                                    children: [
+                                      if (!hasConflict) // Only show Vehicle row if no conflict (since conflict shows it above)
+                                        _DetailRow(
+                                          label: "Vehicle",
+                                          value: userVehicle,
+                                          colorSlate100: colorSlate100,
+                                          colorSlate500: colorSlate500,
+                                          colorSlate800: colorSlate800,
+                                        ),
+                                      _DetailRow(
+                                        label: "VIN",
+                                        value: normalizedVin.isNotEmpty
+                                            ? normalizedVin
+                                            : "Not detected",
+                                        isMono: true,
+                                        colorSlate100: colorSlate100,
+                                        colorSlate500: colorSlate500,
+                                        colorSlate800: colorSlate800,
+                                      ),
+                                      _DetailRow(
+                                        label: "Term",
+                                        value:
+                                            widget.scanData['term_months'] !=
+                                                null
+                                            ? "${widget.scanData['term_months']} months"
+                                            : "N/A",
+                                        colorSlate100: colorSlate100,
+                                        colorSlate500: colorSlate500,
+                                        colorSlate800: colorSlate800,
+                                      ),
+                                      _DetailRow(
+                                        label: "Lender",
+                                        value:
+                                            widget.scanData['lender_name'] ??
+                                            "Unknown",
+                                        colorSlate100: colorSlate100,
+                                        colorSlate500: colorSlate500,
+                                        colorSlate800: colorSlate800,
+                                      ),
+                                      _DetailRow(
+                                        label: "APR Rate",
+                                        value:
+                                            widget.scanData['interest_rate'] !=
+                                                null
+                                            ? "${widget.scanData['interest_rate']}%"
+                                            : "N/A",
+                                        isHigh:
+                                            (widget.scanData['interest_rate'] ??
+                                                0) >
+                                            10,
+                                        colorSlate100: colorSlate100,
+                                        colorSlate500: colorSlate500,
+                                        colorSlate800: colorSlate800,
+                                        colorRed100: colorRed100,
+                                        colorRed700: colorRed700,
+                                      ),
+                                      _DetailRow(
+                                        label: "Payment",
+                                        value:
+                                            widget.scanData['bi_weekly_payment'] !=
+                                                null
+                                            ? "${NumberFormat.currency(symbol: '\$', decimalDigits: 2).format(widget.scanData['bi_weekly_payment'])}/bw"
+                                            : widget.scanData['monthly_payment'] !=
+                                                  null
+                                            ? "${NumberFormat.currency(symbol: '\$', decimalDigits: 2).format(widget.scanData['monthly_payment'])}/mo"
+                                            : "N/A",
+                                        colorSlate100: colorSlate100,
+                                        colorSlate500: colorSlate500,
+                                        colorSlate800: colorSlate800,
+                                      ),
+                                      _DetailRow(
+                                        label: "Est. Balance",
+                                        value:
+                                            widget.scanData['current_balance'] !=
+                                                null
+                                            ? NumberFormat.currency(
+                                                symbol: '\$',
+                                                decimalDigits: 0,
+                                              ).format(
+                                                widget
+                                                    .scanData['current_balance'],
+                                              )
+                                            : "N/A",
+                                        colorSlate100: colorSlate100,
+                                        colorSlate500: colorSlate500,
+                                        colorSlate800: colorSlate800,
+                                      ),
+                                    ],
+                                  ),
+
+                                  const SizedBox(height: 32),
+                                  if (hasConflict) ...[
+                                    SizedBox(
+                                      width: double.infinity,
+                                      child: ElevatedButton(
+                                        onPressed: _handleUseDocumentDetails,
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: colorVibrantGreen,
+                                          foregroundColor: Colors.white,
+                                          padding: const EdgeInsets.symmetric(
+                                            vertical: 18,
+                                          ),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              14,
+                                            ),
+                                          ),
+                                          elevation: 2,
+                                          shadowColor: colorVibrantGreen
+                                              .withValues(alpha: 0.3),
+                                        ),
+                                        child: Text(
+                                          "Update with Scanned Data",
+                                          style: GoogleFonts.outfit(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 12),
+                                    SizedBox(
+                                      width: double.infinity,
+                                      child: TextButton(
+                                        onPressed: _handleKeepEntry,
+                                        style: TextButton.styleFrom(
+                                          foregroundColor: colorSlate500,
+                                          padding: const EdgeInsets.symmetric(
+                                            vertical: 16,
+                                          ),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              14,
+                                            ),
+                                          ),
+                                        ),
+                                        child: Text(
+                                          "Keep My Entry",
+                                          style: GoogleFonts.outfit(
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ] else ...[
+                                    SizedBox(
+                                      width: double.infinity,
+                                      child: ElevatedButton(
+                                        onPressed: _handleLooksCorrect,
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: colorVibrantGreen,
+                                          foregroundColor: Colors.white,
+                                          padding: const EdgeInsets.symmetric(
+                                            vertical: 18,
+                                          ),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              14,
+                                            ),
+                                          ),
+                                          elevation: 4,
+                                          shadowColor: colorVibrantGreen
+                                              .withValues(alpha: 0.3),
+                                        ),
+                                        child: Text(
+                                          "Looks Correct",
+                                          style: GoogleFonts.outfit(
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 12),
+                                    TextButton(
+                                      onPressed: () {},
+                                      style: TextButton.styleFrom(
+                                        foregroundColor: colorSlate400,
+                                        minimumSize: const Size(
+                                          double.infinity,
+                                          40,
+                                        ),
+                                      ),
+                                      child: Text(
+                                        "Edit manually",
+                                        style: GoogleFonts.outfit(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
                             ),
-                            _DetailRow(
-                              label: "Payment",
-                              value:
-                                  widget.scanData['bi_weekly_payment'] != null
-                                  ? "${NumberFormat.currency(symbol: '\$', decimalDigits: 2).format(widget.scanData['bi_weekly_payment'])}/bw"
-                                  : widget.scanData['monthly_payment'] != null
-                                  ? "${NumberFormat.currency(symbol: '\$', decimalDigits: 2).format(widget.scanData['monthly_payment'])}/mo"
-                                  : "N/A",
-                              colorSlate100: colorSlate100,
-                              colorSlate500: colorSlate500,
-                              colorSlate800: colorSlate800,
-                            ),
-                            _DetailRow(
-                              label: "Est. Balance",
-                              value: widget.scanData['current_balance'] != null
-                                  ? NumberFormat.currency(
-                                      symbol: '\$',
-                                      decimalDigits: 0,
-                                    ).format(widget.scanData['current_balance'])
-                                  : "N/A",
-                              colorSlate100: colorSlate100,
-                              colorSlate500: colorSlate500,
-                              colorSlate800: colorSlate800,
+                            // --- The Floating Icon ---
+                            Positioned(
+                              top: -36,
+                              child: Container(
+                                width: 72,
+                                height: 72,
+                                decoration: BoxDecoration(
+                                  color: statusIconBg,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: Colors.white,
+                                    width: 4,
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(
+                                        alpha: 0.1,
+                                      ),
+                                      blurRadius: 10,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: Center(
+                                  child: Icon(
+                                    statusIcon,
+                                    size: 36,
+                                    color: statusIconColor,
+                                  ),
+                                ),
+                              ),
                             ),
                           ],
                         ),
-
-                        const SizedBox(height: 32), // mb-8
-                        // Buttons
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton(
-                            onPressed: () => widget.setStep('main-app'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: colorVibrantGreen,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(
-                                vertical: 18,
-                              ), // increased from 16
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(
-                                  14,
-                                ), // increased from 12
-                              ),
-                              elevation: 4, // shadow-lg
-                              shadowColor: colorVibrantGreen.withOpacity(0.3),
-                            ),
-                            child: Text(
-                              "Looks Correct",
-                              style: GoogleFonts.outfit(
-                                fontSize: 18, // increased from 16
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ),
-
-                        const SizedBox(height: 12), // mt-3
-
-                        TextButton(
-                          onPressed: () {
-                            // Edit logic
-                          },
-                          style: TextButton.styleFrom(
-                            foregroundColor: colorSlate400,
-                            minimumSize: const Size(double.infinity, 40),
-                          ),
-                          child: Text(
-                            "Edit manually",
-                            style: GoogleFonts.outfit(
-                              fontSize: 16, // increased from 14
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  // --- Back Button ---
-                  Positioned(
-                    top: 0,
-                    left: 0,
-                    child: IconButton(
-                      icon: const Icon(
-                        LucideIcons.arrowLeft,
-                        color: colorSlate500,
-                      ),
-                      onPressed: widget.onBack,
-                    ),
-                  ),
-
-                  // --- The Floating Icon (Negative Margin Effect) ---
-                  // Positioned at top -32 (half of height 64)
-                  Positioned(
-                    top: -36, // adjusted for larger icon
-                    child: Container(
-                      width: 72, // increased from 64
-                      height: 72, // increased from 64
-                      decoration: BoxDecoration(
-                        color: colorGreen100,
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: Colors.white,
-                          width: 4,
-                        ), // border-4 border-white
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.05),
-                            blurRadius: 2,
-                            offset: const Offset(0, 1),
-                          ), // shadow-sm
-                        ],
-                      ),
-                      child: const Center(
-                        child: Icon(
-                          LucideIcons.checkCircle2,
-                          size: 36, // increased from 32
-                          color: colorVibrantGreen,
-                        ),
                       ),
                     ),
                   ),
-                ],
+                ),
               ),
-            ),
-          ),
+            );
+          },
         ),
       ),
     );
   }
 }
 
-// Helper Widget for Rows
+// Helper Widget for Rows (Unchanged from your code mostly, just cleaner logic)
 class _DetailRow extends StatelessWidget {
   final String label;
   final String value;
   final bool isHigh;
+  final bool isMono;
   final Color colorSlate100;
   final Color colorSlate500;
   final Color colorSlate800;
@@ -290,6 +800,7 @@ class _DetailRow extends StatelessWidget {
     required this.label,
     required this.value,
     this.isHigh = false,
+    this.isMono = false,
     required this.colorSlate100,
     required this.colorSlate500,
     required this.colorSlate800,
@@ -300,21 +811,16 @@ class _DetailRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 14), // increased from 12
+      padding: const EdgeInsets.symmetric(vertical: 14),
       decoration: BoxDecoration(
-        border: Border(
-          bottom: BorderSide(color: colorSlate100), // border-b
-        ),
+        border: Border(bottom: BorderSide(color: colorSlate100)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
             label,
-            style: GoogleFonts.outfit(
-              color: colorSlate500,
-              fontSize: 16, // increased from 14
-            ),
+            style: GoogleFonts.outfit(color: colorSlate500, fontSize: 16),
           ),
           Row(
             children: [
@@ -333,7 +839,7 @@ class _DetailRow extends StatelessWidget {
                     "HIGH",
                     style: GoogleFonts.outfit(
                       color: colorRed700,
-                      fontSize: 11, // increased from 10
+                      fontSize: 11,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -341,11 +847,13 @@ class _DetailRow extends StatelessWidget {
               ],
               Text(
                 value,
-                style: GoogleFonts.outfit(
-                  color: colorSlate800,
-                  fontSize: 16, // added explicit size
-                  fontWeight: FontWeight.w600, // font-semibold
-                ),
+                style:
+                    (isMono ? GoogleFonts.robotoMono() : GoogleFonts.outfit())
+                        .copyWith(
+                          color: colorSlate800,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
               ),
             ],
           ),
