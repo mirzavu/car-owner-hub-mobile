@@ -24,7 +24,7 @@ import 'package:mobile_app/services/auth_service.dart'; // Import AuthService
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   HttpOverrides.global = MyHttpOverrides(); // Bypass SSL errors for dev
-  AuthService().init();
+  await AuthService().init();
   runApp(const FintechApp());
 }
 
@@ -73,8 +73,7 @@ class _FintechAutoFlowState extends State<FintechAutoFlow> {
   // --- STATE MANAGEMENT (Matches React useState) ---
 
   // Flow State
-  String step =
-      'splash'; // splash, details, teaser, scan-intro, scanner, verify, main-app
+  String step = 'loading'; // Default to loading while we check auth
   String activeTab = 'home'; // home, shop, garage
   String? overlayScreen; // null, 'cash-unlock', 'refinance'
 
@@ -107,6 +106,41 @@ class _FintechAutoFlowState extends State<FintechAutoFlow> {
   void initState() {
     super.initState();
     _calculateEquity();
+    _initApp();
+  }
+
+  Future<void> _initApp() async {
+    final auth = AuthService();
+
+    debugPrint("--- APP INITIALIZATION ---");
+
+    // Give it a tiny delay for splash feel if needed, but let's be fast
+    await Future.delayed(const Duration(milliseconds: 500));
+
+    debugPrint("Is Authenticated: ${auth.isAuthenticated}");
+    if (!auth.isAuthenticated) {
+      debugPrint("Routing to: splash");
+      setState(() => step = 'splash');
+      return;
+    }
+
+    debugPrint("Onboarding Status: ${auth.onboardingStatus}");
+    debugPrint("Onboarding Completed: ${auth.isOnboardingCompleted}");
+    debugPrint("Has Phone: ${auth.hasPhone} (${auth.userPhone})");
+
+    // Determine where to land based on progress
+    if (auth.isOnboardingCompleted) {
+      debugPrint("Routing to: main-app");
+      setState(() => step = 'main-app');
+    } else if (!auth.hasPhone) {
+      debugPrint("Routing to: auth-phone");
+      setState(() => step = 'auth-phone');
+    } else {
+      // Land on scan prompt if phone is already provided
+      debugPrint("Routing to: scan-intro");
+      setState(() => step = 'scan-intro');
+    }
+    debugPrint("--------------------------");
   }
 
   void _calculateEquity() {
@@ -346,6 +380,7 @@ class _FintechAutoFlowState extends State<FintechAutoFlow> {
       setOverlayScreen: (screen) => setOverlay(screen),
       setActiveTab: (tab) => setActiveTab(tab),
       onLogout: () => setStep('auth-login'),
+      onReverify: () => setStep('scan-intro'),
     );
   }
 

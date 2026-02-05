@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:intl/intl.dart';
+import '../services/auth_service.dart';
 import 'profile_screen.dart';
 import 'notification_screen.dart';
 import 'activity_history_screen.dart';
@@ -20,6 +21,7 @@ class DashboardScreen extends StatefulWidget {
   final Function(String) setOverlayScreen;
   final Function(String) setActiveTab;
   final VoidCallback onLogout;
+  final VoidCallback onReverify;
 
   const DashboardScreen({
     super.key,
@@ -27,6 +29,7 @@ class DashboardScreen extends StatefulWidget {
     required this.setOverlayScreen,
     required this.setActiveTab,
     required this.onLogout,
+    required this.onReverify,
   });
 
   @override
@@ -604,6 +607,64 @@ class _DashboardScreenState extends State<DashboardScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Verification Required Banner for Skipped Users
+                  if (AuthService().onboardingStatus == 'skipped')
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 32),
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFEF9C3), // Yellow-100
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(color: const Color(0xFFFDE047)),
+                      ),
+                      child: Column(
+                        children: [
+                          Row(
+                            children: [
+                              const Icon(
+                                LucideIcons.alertTriangle,
+                                color: Color(0xFF854D0E),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  "Verification Required",
+                                  style: GoogleFonts.outfit(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: const Color(0xFF854D0E),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            "Scan your loan documents to unlock precise equity tracking and personalized refinance offers.",
+                            style: GoogleFonts.outfit(
+                              fontSize: 14,
+                              color: const Color(0xFF713F12),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton(
+                              onPressed: widget.onReverify,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF854D0E),
+                                foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              child: const Text("Verify Now"),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
                   // A. Quick Actions
                   Text(
                     "Quick Actions",

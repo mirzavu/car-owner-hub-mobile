@@ -7,6 +7,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../services/api_service.dart';
+import '../services/auth_service.dart';
 
 enum ScanPhase { align, scanning, complete, error }
 
@@ -271,32 +272,69 @@ class _ScannerScreenState extends State<ScannerScreen>
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  // Top Bar (Close Button)
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: InkWell(
-                      onTap: () => widget.setStep('scan-intro', null),
-                      borderRadius: BorderRadius.circular(50),
-                      child: Container(
-                        width: 40,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.4),
-                          shape: BoxShape.circle,
-                        ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(50),
-                          child: BackdropFilter(
-                            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                            child: const Icon(
-                              LucideIcons.x,
-                              color: Colors.white70,
-                              size: 20,
+                  // Top Bar (Close and Skip Buttons)
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      InkWell(
+                        onTap: () => widget.setStep('scan-intro', null),
+                        borderRadius: BorderRadius.circular(50),
+                        child: Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.4),
+                            shape: BoxShape.circle,
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(50),
+                            child: BackdropFilter(
+                              filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                              child: const Icon(
+                                LucideIcons.x,
+                                color: Colors.white70,
+                                size: 20,
+                              ),
                             ),
                           ),
                         ),
                       ),
-                    ),
+
+                      // Skip Button
+                      InkWell(
+                        onTap: () async {
+                          // Mark as skipped and go to dashboard
+                          final auth = AuthService();
+                          await auth.updateOnboardingStatus('skipped');
+                          widget.setStep('main-app', null);
+                        },
+                        borderRadius: BorderRadius.circular(50),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.4),
+                            borderRadius: BorderRadius.circular(50),
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(50),
+                            child: BackdropFilter(
+                              filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                              child: Text(
+                                "Skip",
+                                style: GoogleFonts.outfit(
+                                  color: Colors.white70,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
 
                   // Bottom Controls

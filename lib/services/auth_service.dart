@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart'; // For debugPrint
 import 'package:pocketbase/pocketbase.dart';
 import 'package:flutter_web_auth_2/flutter_web_auth_2.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'config.dart';
 
 class AuthService {
@@ -11,13 +12,40 @@ class AuthService {
 
   late PocketBase pb;
 
+  // Custom store that persists to shared_preferences
+  late AsyncAuthStore authStore;
+
   // Initialize
-  void init() {
-    pb = PocketBase(Config.pbUrl);
+  Future<void> init() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    authStore = AsyncAuthStore(
+      save: (String data) async => prefs.setString('pb_auth', data),
+      initial: prefs.getString('pb_auth'),
+      clear: () async => prefs.remove('pb_auth'),
+    );
+
+    pb = PocketBase(Config.pbUrl, authStore: authStore);
+
+    debugPrint("AuthService Initialized");
+    debugPrint("Is Authenticated: $isAuthenticated");
+    if (isAuthenticated) {
+      debugPrint("User ID: $userId");
+      debugPrint("Onboarding Status: $onboardingStatus");
+      debugPrint("User Phone: $userPhone");
+    }
   }
 
   // Check if user is already logged in
   bool get isAuthenticated => pb.authStore.isValid;
+
+  // Onboarding Helpers
+  String get onboardingStatus =>
+      pb.authStore.record?.getStringValue('onboarding_status') ?? '';
+  bool get isOnboardingCompleted =>
+      onboardingStatus == 'completed' || onboardingStatus == 'skipped';
+  bool get hasPhone => userPhone.isNotEmpty;
+
   String get userId => pb.authStore.record?.id ?? '';
   String get userEmail => pb.authStore.record?.getStringValue('email') ?? '';
   String get userPhone => pb.authStore.record?.getStringValue('phone') ?? '';
@@ -115,6 +143,32 @@ class AuthService {
   Future<void> updatePhone(String phone) async {
     if (!isAuthenticated) return;
     await pb.collection('users').update(userId, body: {'phone': phone});
+  }
+
+  // 4. Update Onboarding Status
+  Future<void> updateOnboardingStatus(String status) async {
+    if (!isAuthenticated) {
+      debugPrint("Cannot update onboarding status: Not authenticated");
+      return;
+    }
+
+    try {
+      debugPrint("Updating onboarding status to: $status for user: $userId");
+      final record = await pb
+          .collection('users')
+          .update(userId, body: {'onboarding_status': status});
+
+      debugPrint("Update Response Data: ${record.data}");
+
+      // Refresh auth store to get updated record
+      debugPrint("Refreshing auth store...");
+      await pb.collection('users').authRefresh();
+
+      debugPrint("AuthStore Record Data: ${pb.authStore.record?.data}");
+      debugPrint("New Onboarding Status via getter: $onboardingStatus");
+    } catch (e) {
+      debugPrint("Error updating onboarding status: $e");
+    }
   }
 
   // Logout

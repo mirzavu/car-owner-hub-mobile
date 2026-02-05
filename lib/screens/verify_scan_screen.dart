@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:intl/intl.dart';
 import '../services/api_service.dart';
+import '../services/auth_service.dart';
 
 class VerifyScanScreen extends StatefulWidget {
   final Function(String) setStep;
@@ -211,6 +212,7 @@ class _VerifyScanScreenState extends State<VerifyScanScreen>
       await ApiService.updateVehicleDetails(updates);
     }
 
+    await AuthService().updateOnboardingStatus('completed');
     widget.setStep('main-app');
   }
 
@@ -222,6 +224,7 @@ class _VerifyScanScreenState extends State<VerifyScanScreen>
     }
 
     ApiService.setLoanVerification(isVerified: false);
+    await AuthService().updateOnboardingStatus('completed');
     widget.setStep('main-app');
   }
 
@@ -273,6 +276,7 @@ class _VerifyScanScreenState extends State<VerifyScanScreen>
     }
 
     ApiService.setLoanVerification(isVerified: true);
+    await AuthService().updateOnboardingStatus('completed');
     widget.setStep('main-app');
   }
 
