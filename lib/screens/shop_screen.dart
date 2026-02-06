@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:intl/intl.dart';
+import '../services/api_service.dart';
 
 class ShopScreen extends StatefulWidget {
   final Map<String, dynamic> financials;
@@ -23,75 +24,63 @@ class _ShopScreenState extends State<ShopScreen> {
   // Initialize with a default, will update in initState or build if needed
   double _maxPayment = 0.0;
   bool _isInit = true;
+  bool _isLoading = true;
+  List<dynamic> _inventory = [];
+  bool _keepPaymentSame = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchInventory();
+  }
+
+  Future<void> _fetchInventory() async {
+    setState(() => _isLoading = true);
+    try {
+      final equity = widget.financials['equity']?.toDouble() ?? 0.0;
+      final data = await ApiService.getInventory(equity: equity);
+      setState(() {
+        _inventory = data;
+        _isLoading = false;
+      });
+    } catch (e) {
+      debugPrint("Error fetching inventory: $e");
+      setState(() => _isLoading = false);
+    }
+  }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (_isInit) {
       // Set initial max payment to user's current payment
-      final double userPayment = widget.financials['monthlyPayment'] ?? 420.0;
+      final double userPayment =
+          widget.financials['monthlyPayment']?.toDouble() ?? 420.0;
       _maxPayment = userPayment;
       _isInit = false;
     }
   }
 
-  // Mock Inventory Data
-  final List<Map<String, dynamic>> _inventory = [
-    {
-      'id': 1,
-      'year': 2021,
-      'make': 'Honda',
-      'model': 'CR-V',
-      'trim': 'LX',
-      'price': 28900.0,
-      'payment': 415.0,
-      'image': 'blue',
-      'badge': 'Great Value',
-    },
-    {
-      'id': 2,
-      'year': 2024,
-      'make': 'Honda',
-      'model': 'Civic',
-      'trim': 'Sport',
-      'price': 32500.0,
-      'payment': 460.0,
-      'image': 'white',
-      'badge': 'New Arrival',
-    },
-    {
-      'id': 3,
-      'year': 2020,
-      'make': 'Toyota',
-      'model': 'RAV4',
-      'trim': 'LE',
-      'price': 29500.0,
-      'payment': 418.0,
-      'image': 'grey',
-      'badge': 'Top Safety',
-    },
-  ];
-
   @override
   Widget build(BuildContext context) {
     // Colors
-    const colorBg = Color(0xFFF8FAFC); // Slate 50
+    const colorBg = Color(0xFFE6F0FA); // Light Blue to match other screens
     const colorSlate800 = Color(0xFF1E293B);
     const colorGreen = Color(0xFF00CA50);
     const colorNavy = Color(0xFF003366);
 
     // Derived Financials
-    // Derived Financials
-    final double userPayment = widget.financials['monthlyPayment'] ?? 420.0;
-    // Ensure _maxPayment is at least userPayment (fixes hot-reload 0.0 value)
-    if (_maxPayment < userPayment) {
-      _maxPayment = userPayment;
+    final double userPayment =
+        widget.financials['monthlyPayment']?.toDouble() ?? 420.0;
+
+    // Sort logic
+    List<dynamic> displayInventory = List.from(_inventory);
+    if (_keepPaymentSame) {
+      displayInventory.sort(
+        (a, b) =>
+            (a['payment_diff'] as num).compareTo(b['payment_diff'] as num),
+      );
     }
-
-    final double equity = widget.financials['equity'] ?? 0.0;
-
-    // Filter Logic (Placeholder for now)
-    final displayInventory = _inventory;
 
     return Scaffold(
       backgroundColor: colorBg, // Match Refinance Light Blue
@@ -145,10 +134,12 @@ class _ShopScreenState extends State<ShopScreen> {
                   vertical: 8,
                 ),
                 physics: const BouncingScrollPhysics(),
-                itemCount: displayInventory.length + 1,
+                itemCount: _isLoading ? 2 : displayInventory.length + 1,
                 itemBuilder: (context, index) {
                   // Index 0: Header Content (Equity & Filter)
                   if (index == 0) {
+                    final double equity =
+                        widget.financials['equity']?.toDouble() ?? 0.0;
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -306,9 +297,29 @@ class _ShopScreenState extends State<ShopScreen> {
                     );
                   }
 
+                  // Loading State
+                  if (_isLoading && index == 1) {
+                    return const Center(
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(vertical: 40),
+                        child: CircularProgressIndicator(
+                          color: Color(0xFF003366),
+                        ),
+                      ),
+                    );
+                  }
+
                   // Inventory Items
-                  final car = displayInventory[index - 1];
-                  return _buildCarCard(car, userPayment, colorNavy, colorGreen);
+                  if (index - 1 < displayInventory.length) {
+                    final car = displayInventory[index - 1];
+                    return _buildCarCard(
+                      car,
+                      userPayment,
+                      colorNavy,
+                      colorGreen,
+                    );
+                  }
+                  return const SizedBox.shrink();
                 },
               ),
             ),
@@ -384,35 +395,57 @@ class _ShopScreenState extends State<ShopScreen> {
                   ),
                 ),
                 child: Center(
-                  child: Icon(LucideIcons.car, size: 80, color: iconColor),
+                  child:
+                      car['image'] != null &&
+                          car['image'].toString().startsWith('http')
+                      ? ClipRRect(
+                          borderRadius: const BorderRadius.vertical(
+                            top: Radius.circular(24),
+                          ),
+                          child: Image.network(
+                            car['image'],
+                            width: double.infinity,
+                            height: 160,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) => Icon(
+                              LucideIcons.car,
+                              size: 80,
+                              color: iconColor,
+                            ),
+                          ),
+                        )
+                      : Icon(LucideIcons.car, size: 80, color: iconColor),
                 ),
               ),
               Positioned(
                 top: 12,
                 right: 12,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.9),
-                    borderRadius: BorderRadius.circular(8),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
-                        blurRadius: 10,
+                child: Row(
+                  children: [
+                    ...(car['badges'] as List).map(
+                      (badge) => Container(
+                        margin: const EdgeInsets.only(left: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.9),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          badge['text'].toString(),
+                          style: GoogleFonts.outfit(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: badge['color'] == 'blue'
+                                ? colorNavy
+                                : colorGreen,
+                          ),
+                        ),
                       ),
-                    ],
-                  ),
-                  child: Text(
-                    car['badge'],
-                    style: GoogleFonts.outfit(
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.blueGrey.shade800,
                     ),
-                  ),
+                  ],
                 ),
               ),
             ],

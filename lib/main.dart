@@ -124,6 +124,14 @@ class _FintechAutoFlowState extends State<FintechAutoFlow> {
       return;
     }
 
+    // Verify session with server to handle deleted users or expired tokens
+    final bool isSessionValid = await auth.verifySession();
+    if (!isSessionValid) {
+      debugPrint("Session invalid or user deleted. Routing to: splash");
+      setState(() => step = 'splash');
+      return;
+    }
+
     debugPrint("Onboarding Status: ${auth.onboardingStatus}");
     debugPrint("Onboarding Completed: ${auth.isOnboardingCompleted}");
     debugPrint("Has Phone: ${auth.hasPhone} (${auth.userPhone})");
@@ -161,6 +169,10 @@ class _FintechAutoFlowState extends State<FintechAutoFlow> {
 
   // --- NAVIGATION HELPERS ---
   void setStep(String newStep, [Map<String, dynamic>? data]) {
+    debugPrint("[STEP] Transition: $step -> $newStep");
+    if (data != null) {
+      debugPrint("[STEP] Incoming Data: $data");
+    }
     setState(() {
       step = newStep;
       if (data != null) {
@@ -180,8 +192,12 @@ class _FintechAutoFlowState extends State<FintechAutoFlow> {
   }
 
   Future<void> _runTimeTravel() async {
-    if (lastScanData == null) return;
+    if (lastScanData == null) {
+      debugPrint("[TIME-TRAVEL] No scan data found. Skipping.");
+      return;
+    }
 
+    debugPrint("[TIME-TRAVEL] Starting calculation for balance sync...");
     final originalBalance = (lastScanData!['current_balance'] ?? 0).toDouble();
     final interestRate = (lastScanData!['interest_rate'] ?? 0).toDouble();
     final termMonths = (lastScanData!['term_months'] ?? 0).toInt();
@@ -191,10 +207,15 @@ class _FintechAutoFlowState extends State<FintechAutoFlow> {
                 (lastScanData!['bi_weekly_payment'] ?? 0) * 2.16)
             .toDouble();
 
+    debugPrint(
+      "[TIME-TRAVEL] Input: Balance=$originalBalance, Rate=$interestRate, Term=$termMonths, Start=$startDate, Payment=$monthlyPayment",
+    );
+
     if (originalBalance == 0 ||
         interestRate == 0 ||
         termMonths == 0 ||
         startDate == null) {
+      debugPrint("[TIME-TRAVEL] Missing required parameters. Aborting.");
       return;
     }
 
@@ -207,15 +228,22 @@ class _FintechAutoFlowState extends State<FintechAutoFlow> {
         monthlyPayment: monthlyPayment,
       );
 
+      debugPrint("[TIME-TRAVEL] Result received: $result");
+
       setState(() {
         if (result['calculated_balance'] != null) {
-          financials['userEstimatedLoan'] = result['calculated_balance']
-              .toDouble();
+          final newBalance = result['calculated_balance'].toDouble();
+          financials['userEstimatedLoan'] = newBalance;
           _calculateEquity();
+          debugPrint(
+            "[TIME-TRAVEL] Equity recalculated: ${financials['equity']}",
+          );
+          // Sync new balance to DB
+          ApiService.updateLoanBalance(newBalance);
         }
       });
     } catch (e) {
-      debugPrint("Time Travel Error: $e");
+      debugPrint("[TIME-TRAVEL] Error during calculation: $e");
     }
   }
 
@@ -261,6 +289,9 @@ class _FintechAutoFlowState extends State<FintechAutoFlow> {
         return SoftEntryScreen(
           onNext: (nextStep) => setStep(nextStep),
           onEstimateComplete: (value, details) {
+            debugPrint(
+              "[ONBOARDING] Estimate received: \$$value, Details: $details",
+            );
             setState(() {
               financials['estimatedValue'] = value;
               // Map details to carDetails
@@ -333,6 +364,7 @@ class _FintechAutoFlowState extends State<FintechAutoFlow> {
           },
           scanData: lastScanData ?? {},
           carDetails: carDetails,
+          estimatedValue: (financials['estimatedValue'] as num).toDouble(),
           onUpdateCarDetails: (updates) {
             setState(() {
               carDetails.addAll(updates);

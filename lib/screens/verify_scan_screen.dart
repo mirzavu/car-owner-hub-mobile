@@ -9,6 +9,7 @@ class VerifyScanScreen extends StatefulWidget {
   final Function(String) setStep;
   final Map<String, dynamic> scanData;
   final Map<String, String> carDetails;
+  final double estimatedValue;
   final Function(Map<String, String>) onUpdateCarDetails;
   final VoidCallback onBack;
 
@@ -17,6 +18,7 @@ class VerifyScanScreen extends StatefulWidget {
     required this.setStep,
     required this.scanData,
     required this.carDetails,
+    required this.estimatedValue,
     required this.onUpdateCarDetails,
     required this.onBack,
   });
@@ -190,6 +192,7 @@ class _VerifyScanScreenState extends State<VerifyScanScreen>
   }
 
   Future<void> _handleUseDocumentDetails() async {
+    debugPrint("[VERIFY] User chose: Use Document Details");
     final normalizedVin = _normalizeVin(widget.scanData['vin']?.toString());
     final updates = <String, String>{};
     if (_vinDetails != null) {
@@ -208,28 +211,50 @@ class _VerifyScanScreenState extends State<VerifyScanScreen>
     }
 
     if (updates.isNotEmpty) {
+      debugPrint(
+        "[VERIFY] Applying car detail updates from document: $updates",
+      );
       widget.onUpdateCarDetails(updates);
-      await ApiService.updateVehicleDetails(updates);
     }
+
+    // Create/Update in DB
+    debugPrint("[VERIFY] Syncing data with isVerified=true");
+    await ApiService.syncOnboardingData(
+      carDetails: widget.carDetails,
+      scanData: widget.scanData,
+      estimatedValue: widget.estimatedValue,
+      isVerified: true,
+      documentId: widget.scanData['documentId']?.toString(),
+    );
 
     await AuthService().updateOnboardingStatus('completed');
     widget.setStep('main-app');
   }
 
   Future<void> _handleKeepEntry() async {
+    debugPrint("[VERIFY] User chose: Keep Original Entry");
     final normalizedVin = _normalizeVin(widget.scanData['vin']?.toString());
     if (normalizedVin.isNotEmpty) {
+      debugPrint("[VERIFY] Syncing VIN from document: $normalizedVin");
       widget.onUpdateCarDetails({'vin': normalizedVin});
-      await ApiService.updateVehicleDetails({'vin': normalizedVin});
     }
 
-    ApiService.setLoanVerification(isVerified: false);
+    await ApiService.syncOnboardingData(
+      carDetails: widget.carDetails,
+      scanData: widget.scanData,
+      estimatedValue: widget.estimatedValue,
+      isVerified: false,
+      documentId: widget.scanData['documentId']?.toString(),
+    );
+
     await AuthService().updateOnboardingStatus('completed');
     widget.setStep('main-app');
   }
 
   void _handleVerify() async {
+    debugPrint("[VERIFY] User chose: Save & Verify (Final)");
     if (_isEditing) {
+      debugPrint("[VERIFY] Editing was active. Capturing manual input.");
       // 1. Update Scan Data from controllers
       final balanceText = _balanceController.text.replaceAll(
         RegExp(r'[^0-9.]'),
@@ -264,18 +289,33 @@ class _VerifyScanScreenState extends State<VerifyScanScreen>
           'make': vehicleParts[1],
           'model': vehicleParts.sublist(2).join(' '),
         };
+        debugPrint("[VERIFY] Manual vehicle updates: $updates");
         widget.onUpdateCarDetails(updates);
-        await ApiService.updateVehicleDetails(updates);
       }
+      debugPrint(
+        "[VERIFY] Final Scan Data (Manually Edited): ${widget.scanData}",
+      );
+    } else {
+      debugPrint(
+        "[VERIFY] User confirmed data as correct without manual edits.",
+      );
+      debugPrint("[VERIFY] Final Scan Data: ${widget.scanData}");
     }
 
     final normalizedVin = _normalizeVin(widget.scanData['vin']?.toString());
     if (normalizedVin.isNotEmpty) {
       widget.onUpdateCarDetails({'vin': normalizedVin});
-      await ApiService.updateVehicleDetails({'vin': normalizedVin});
     }
 
-    ApiService.setLoanVerification(isVerified: true);
+    debugPrint("[VERIFY] Final sync start...");
+    await ApiService.syncOnboardingData(
+      carDetails: widget.carDetails,
+      scanData: widget.scanData,
+      estimatedValue: widget.estimatedValue,
+      isVerified: true,
+      documentId: widget.scanData['documentId']?.toString(),
+    );
+
     await AuthService().updateOnboardingStatus('completed');
     widget.setStep('main-app');
   }

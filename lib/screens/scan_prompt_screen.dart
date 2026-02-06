@@ -224,7 +224,12 @@ class _ScanPromptScreenState extends State<ScanPromptScreen>
                               child: Material(
                                 color: Colors.transparent,
                                 child: InkWell(
-                                  onTap: () => widget.setStep('scanner'),
+                                  onTap: () {
+                                    debugPrint(
+                                      "[SCAN-PROMPT] User clicked Scan Document",
+                                    );
+                                    widget.setStep('scanner');
+                                  },
                                   borderRadius: BorderRadius.circular(12),
                                   child: Row(
                                     mainAxisAlignment: MainAxisAlignment.center,
@@ -250,9 +255,13 @@ class _ScanPromptScreenState extends State<ScanPromptScreen>
                             ),
 
                             const SizedBox(height: 16),
-                            // Secondary Button
                             TextButton(
-                              onPressed: () => widget.setStep('main-app'),
+                              onPressed: () {
+                                debugPrint(
+                                  "[SCAN-PROMPT] User clicked Skip for now",
+                                );
+                                widget.setStep('main-app');
+                              },
                               style: TextButton.styleFrom(
                                 foregroundColor: colorSlate600,
                                 padding: const EdgeInsets.symmetric(

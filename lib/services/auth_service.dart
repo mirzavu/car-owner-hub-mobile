@@ -17,22 +17,28 @@ class AuthService {
 
   // Initialize
   Future<void> init() async {
+    debugPrint("[AUTH] Initializing AuthService...");
     final prefs = await SharedPreferences.getInstance();
 
     authStore = AsyncAuthStore(
-      save: (String data) async => prefs.setString('pb_auth', data),
+      save: (String data) async {
+        await prefs.setString('pb_auth', data);
+        debugPrint("[AUTH] Auth data saved to persistence.");
+      },
       initial: prefs.getString('pb_auth'),
-      clear: () async => prefs.remove('pb_auth'),
+      clear: () async {
+        await prefs.remove('pb_auth');
+        debugPrint("[AUTH] Auth data cleared from persistence.");
+      },
     );
 
     pb = PocketBase(Config.pbUrl, authStore: authStore);
-
-    debugPrint("AuthService Initialized");
-    debugPrint("Is Authenticated: $isAuthenticated");
+    debugPrint(
+      "[AUTH] PocketBase initialized. Authenticated: ${pb.authStore.isValid}",
+    );
     if (isAuthenticated) {
-      debugPrint("User ID: $userId");
-      debugPrint("Onboarding Status: $onboardingStatus");
-      debugPrint("User Phone: $userPhone");
+      debugPrint("[AUTH] User: $userEmail ($userId)");
+      debugPrint("[AUTH] Onboarding: $onboardingStatus");
     }
   }
 
@@ -52,31 +58,27 @@ class AuthService {
 
   // 1. Login with Email/Password (Fallback)
   Future<void> login(String email, String password) async {
+    debugPrint("[AUTH] Login attempt: $email");
     await pb.collection('users').authWithPassword(email, password);
+    debugPrint("[AUTH] Login successful: $userId");
   }
 
-  // 2. Login with Google (Manual OAuth2 Code Exchange - Android 15+ Compatible)
-  // Uses flutter_web_auth_2 with Chrome Auth Tab + custom web redirect page
+  // 2. Login with Google (OAuth2)
   Future<void> loginWithGoogle() async {
+    debugPrint("[AUTH] Starting Google OAuth...");
     try {
-      // Step 1: Get available OAuth2 providers from PocketBase
       final authMethods = await pb.collection('users').listAuthMethods();
       final providers = authMethods.oauth2.providers;
 
-      // Find Google provider
       final googleProvider = providers.firstWhere(
         (p) => p.name == 'google',
         orElse: () => throw Exception('Google OAuth provider not configured'),
       );
 
-      // Step 2: Build the authorization URL with our HTTPS redirect page
-      // This page will then redirect to the app via deep link
       const callbackScheme = 'carownerhub';
       const webRedirectUri =
           'https://pb.carowner.demotesting.co.uk/oauth2-mobile-redirect.html';
 
-      // The authURL from PocketBase includes the base params.
-      // We must REPLACE the default redirect_uri with our custom one.
       final originalUri = Uri.parse(googleProvider.authURL);
       final newParams = Map<String, String>.from(originalUri.queryParameters);
       newParams['redirect_uri'] = webRedirectUri;
@@ -85,40 +87,23 @@ class AuthService {
           .replace(queryParameters: newParams)
           .toString();
 
-      debugPrint('[OAuth] Opening auth URL: $authUrl');
-      debugPrint('[OAuth] Code verifier: ${googleProvider.codeVerifier}');
-      debugPrint('[OAuth] State: ${googleProvider.state}');
+      debugPrint('[AUTH] Opening auth URL: $authUrl');
 
-      // Step 3: Open Chrome Auth Tab and wait for deep link callback
-      // The web redirect page will redirect to carownerhub://oauth2callback?code=xxx&state=yyy
       final result = await FlutterWebAuth2.authenticate(
         url: authUrl,
         callbackUrlScheme: callbackScheme,
       );
 
-      debugPrint('[OAuth] Callback result: $result');
-
-      // Step 4: Parse the callback URL to extract code and state
+      debugPrint('[AUTH] Callback result received.');
       final callbackUri = Uri.parse(result);
       final code = callbackUri.queryParameters['code'];
       final state = callbackUri.queryParameters['state'];
 
-      if (code == null) {
-        throw Exception('Authorization code not found in callback');
-      }
+      if (code == null) throw Exception('No code in callback');
+      if (state != googleProvider.state)
+        throw Exception('OAuth state mismatch');
 
-      // Verify state matches
-      if (state != googleProvider.state) {
-        debugPrint(
-          '[OAuth] State mismatch - expected: ${googleProvider.state}, got: $state',
-        );
-        throw Exception('OAuth state mismatch - possible CSRF attack');
-      }
-
-      debugPrint('[OAuth] Code received, exchanging for token...');
-
-      // Step 5: Exchange the authorization code for tokens via PocketBase
-      // IMPORTANT: Use the same redirect URI that was used in the authorization request
+      debugPrint('[AUTH] Exchanging code for token...');
       await pb
           .collection('users')
           .authWithOAuth2Code(
@@ -128,13 +113,9 @@ class AuthService {
             webRedirectUri,
           );
 
-      debugPrint('[OAuth] Authentication successful!');
-      debugPrint('[OAuth] User ID: ${pb.authStore.record?.id}');
-      debugPrint(
-        '[OAuth] Email: ${pb.authStore.record?.getStringValue('email')}',
-      );
+      debugPrint('[AUTH] Google login successful: $userId');
     } catch (e) {
-      debugPrint('[OAuth] Error: $e');
+      debugPrint('[AUTH] Google Login Error: $e');
       throw Exception('Google Sign In Failed: $e');
     }
   }
@@ -142,37 +123,53 @@ class AuthService {
   // 3. Update Profile (Phone Number step)
   Future<void> updatePhone(String phone) async {
     if (!isAuthenticated) return;
+    debugPrint("[AUTH] Updating phone: $phone");
     await pb.collection('users').update(userId, body: {'phone': phone});
+    debugPrint("[AUTH] Phone updated.");
   }
 
   // 4. Update Onboarding Status
   Future<void> updateOnboardingStatus(String status) async {
-    if (!isAuthenticated) {
-      debugPrint("Cannot update onboarding status: Not authenticated");
-      return;
-    }
-
+    if (!isAuthenticated) return;
+    debugPrint("[AUTH] Updating onboarding status to: $status");
     try {
-      debugPrint("Updating onboarding status to: $status for user: $userId");
-      final record = await pb
+      await pb
           .collection('users')
           .update(userId, body: {'onboarding_status': status});
-
-      debugPrint("Update Response Data: ${record.data}");
-
-      // Refresh auth store to get updated record
-      debugPrint("Refreshing auth store...");
-      await pb.collection('users').authRefresh();
-
-      debugPrint("AuthStore Record Data: ${pb.authStore.record?.data}");
-      debugPrint("New Onboarding Status via getter: $onboardingStatus");
+      debugPrint("[AUTH] Onboarding status updated.");
     } catch (e) {
-      debugPrint("Error updating onboarding status: $e");
+      debugPrint("[AUTH] Failed to update onboarding status: $e");
     }
   }
 
   // Logout
   void logout() {
+    debugPrint("[AUTH] Logging out user: $userId");
     pb.authStore.clear();
+  }
+
+  // Verify Session with Server
+  Future<bool> verifySession() async {
+    if (!isAuthenticated) {
+      debugPrint("[AUTH] verifySession: Not authenticated.");
+      return false;
+    }
+    debugPrint("[AUTH] Verifying session for: $userId");
+    try {
+      await pb.collection('users').authRefresh();
+      debugPrint("[AUTH] Session verified and refreshed.");
+      return true;
+    } catch (e) {
+      debugPrint("[AUTH] Session verification error: $e");
+      if (e is ClientException) {
+        if (e.statusCode == 401 || e.statusCode == 404) {
+          debugPrint("[AUTH] Session invalid (401/404). Cleaning up.");
+          logout();
+          return false;
+        }
+      }
+      // For network errors (500, etc), we keep the session active
+      return true;
+    }
   }
 }

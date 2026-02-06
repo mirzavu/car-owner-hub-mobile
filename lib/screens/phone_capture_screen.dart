@@ -111,6 +111,7 @@ class _PhoneCaptureScreenState extends State<PhoneCaptureScreen> {
     });
 
     try {
+      debugPrint("[PHONE] Submitting phone number: ${_controller.text}");
       // Save phone to PocketBase
       await AuthService().updatePhone(_controller.text);
 

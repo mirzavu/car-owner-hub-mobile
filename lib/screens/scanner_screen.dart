@@ -113,6 +113,7 @@ class _ScannerScreenState extends State<ScannerScreen>
     }
 
     try {
+      debugPrint("[SCAN] Taking picture...");
       final image = await _cameraController!.takePicture();
       setState(() {
         _capturedFile = image;
@@ -138,8 +139,12 @@ class _ScannerScreenState extends State<ScannerScreen>
       if (!mounted) return;
       setState(() => _statusText = "Extracting details...");
 
+      debugPrint("[SCAN] Starting OCR scan for file: $filePath");
       // Call real OCR API
-      final result = await ApiService.scanDocument(filePath);
+      final result = await ApiService.scanDocument(
+        filePath,
+        userId: AuthService().userId,
+      );
 
       if (!mounted) return;
 
@@ -152,6 +157,7 @@ class _ScannerScreenState extends State<ScannerScreen>
         return;
       }
 
+      debugPrint("[SCAN] OCR Success. Result: $result");
       setState(() {
         _scanResult = result;
         _statusText = "Scan Complete!";

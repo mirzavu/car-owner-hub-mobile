@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:intl/intl.dart';
+import '../services/api_service.dart';
 import '../services/auth_service.dart';
 import 'profile_screen.dart';
 import 'notification_screen.dart';
@@ -40,21 +41,39 @@ class _DashboardScreenState extends State<DashboardScreen> {
   final ScrollController _scrollController = ScrollController();
 
   // State to track scroll for animations
-  // Scroll State
-  // Scroll State
   double _expandedHeaderOpacity = 1.0;
   bool _showStickyHeader = false;
   bool _useDarkBackground = false;
 
-  // Derived Numbers
-  final double vehicleValue = 22500;
-  final double loanBalance = 18000;
+  // Real Data State
+  double vehicleValue = 22500;
+  double loanBalance = 18000;
+  double monthlyPayment = 420;
+  bool _isLoading = true;
+
   double get equity => vehicleValue - loanBalance;
 
   @override
   void initState() {
     super.initState();
     _scrollController.addListener(_scrollListener);
+    _fetchDashboardData();
+  }
+
+  Future<void> _fetchDashboardData() async {
+    try {
+      final data = await ApiService.getDashboardData();
+      final financials = data['financials'] ?? {};
+      setState(() {
+        vehicleValue = (financials['vehicleValue'] ?? 22500).toDouble();
+        loanBalance = (financials['loanBalance'] ?? 18000).toDouble();
+        monthlyPayment = (financials['monthlyPayment'] ?? 420).toDouble();
+        _isLoading = false;
+      });
+    } catch (e) {
+      debugPrint("Error fetching dashboard data: $e");
+      setState(() => _isLoading = false);
+    }
   }
 
   void _scrollListener() {
@@ -219,17 +238,44 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         Text(
                           fmt(loanBalance),
                           style: GoogleFonts.outfit(
-                            fontSize: 14,
+                            fontSize: 13, // Slightly smaller to fit 3 items
                             fontWeight: FontWeight.bold,
                             color: Colors.white,
                           ),
                         ),
                         Text(
-                          "EST. BAL",
+                          "BAL",
                           style: GoogleFonts.outfit(
-                            fontSize: 9,
+                            fontSize: 8,
                             fontWeight: FontWeight.bold,
-                            color: const Color(0xFFE6F0FA), // Ice Blue
+                            color: const Color(0xFFE6F0FA),
+                          ),
+                        ),
+                      ],
+                    ),
+                    Container(
+                      height: 20,
+                      width: 1,
+                      color: Colors.white24,
+                      margin: const EdgeInsets.symmetric(horizontal: 12),
+                    ),
+                    Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          fmt(monthlyPayment),
+                          style: GoogleFonts.outfit(
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                        Text(
+                          "PAYMENT",
+                          style: GoogleFonts.outfit(
+                            fontSize: 8,
+                            fontWeight: FontWeight.bold,
+                            color: const Color(0xFFE6F0FA),
                           ),
                         ),
                       ],
@@ -525,15 +571,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                       ),
                                       Expanded(
                                         child: Padding(
-                                          padding: const EdgeInsets.only(
-                                            left: 16,
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 16,
                                           ),
                                           child: Column(
                                             crossAxisAlignment:
                                                 CrossAxisAlignment.start,
                                             children: [
                                               Text(
-                                                "EST. BALANCE",
+                                                "BALANCE",
                                                 style: GoogleFonts.outfit(
                                                   color: const Color(
                                                     0xFFE6F0FA,
@@ -545,6 +591,45 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                               ),
                                               Text(
                                                 fmt(loanBalance),
+                                                style: GoogleFonts.outfit(
+                                                  color: Colors.white,
+                                                  fontSize: 16,
+                                                  fontWeight: FontWeight.w500,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                      Container(
+                                        width: 1,
+                                        height: 30,
+                                        color: Colors.white.withValues(
+                                          alpha: 0.1,
+                                        ),
+                                      ),
+                                      Expanded(
+                                        child: Padding(
+                                          padding: const EdgeInsets.only(
+                                            left: 16,
+                                          ),
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                "PAYMENT",
+                                                style: GoogleFonts.outfit(
+                                                  color: const Color(
+                                                    0xFFE6F0FA,
+                                                  ),
+                                                  fontSize: 10,
+                                                  fontWeight: FontWeight.bold,
+                                                  letterSpacing: 1.0,
+                                                ),
+                                              ),
+                                              Text(
+                                                fmt(monthlyPayment),
                                                 style: GoogleFonts.outfit(
                                                   color: Colors.white,
                                                   fontSize: 16,

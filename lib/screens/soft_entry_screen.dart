@@ -126,6 +126,10 @@ class _SoftEntryScreenState extends State<SoftEntryScreen> {
       return;
     }
 
+    debugPrint(
+      "[SOFT-ENTRY] Getting estimate for: $selectedYear $selectedMake $selectedModel (Trim: $selectedTrim)",
+    );
+
     setState(() {
       loading = true;
       loadingText = 'Connecting to Canadian Black Book...';
