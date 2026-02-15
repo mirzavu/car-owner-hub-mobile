@@ -114,10 +114,10 @@ class _TeaserScreenState extends State<TeaserScreen> {
                         ),
                         margin: const EdgeInsets.only(bottom: 16),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.1),
+                          color: Colors.white.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(50),
                           border: Border.all(
-                            color: Colors.white.withOpacity(0.1),
+                            color: Colors.white.withValues(alpha: 0.1),
                           ),
                         ),
                         child: Row(
@@ -158,7 +158,7 @@ class _TeaserScreenState extends State<TeaserScreen> {
                       Text(
                         "${widget.carDetails.year} ${widget.carDetails.make} ${widget.carDetails.model}",
                         style: GoogleFonts.outfit(
-                          color: colorIceBlue.withOpacity(0.9),
+                          color: colorIceBlue.withValues(alpha: 0.9),
                           fontSize: 18,
                           fontWeight: FontWeight.w500,
                         ),
@@ -178,8 +178,8 @@ class _TeaserScreenState extends State<TeaserScreen> {
                       shape: BoxShape.circle,
                       gradient: RadialGradient(
                         colors: [
-                          Colors.white.withOpacity(0.1),
-                          Colors.white.withOpacity(0.0),
+                          Colors.white.withValues(alpha: 0.1),
+                          Colors.white.withValues(alpha: 0.0),
                         ],
                       ),
                     ),
@@ -195,8 +195,8 @@ class _TeaserScreenState extends State<TeaserScreen> {
                       shape: BoxShape.circle,
                       gradient: RadialGradient(
                         colors: [
-                          Colors.white.withOpacity(0.15),
-                          Colors.white.withOpacity(0.0),
+                          Colors.white.withValues(alpha: 0.15),
+                          Colors.white.withValues(alpha: 0.0),
                         ],
                       ),
                     ),
@@ -232,7 +232,7 @@ class _TeaserScreenState extends State<TeaserScreen> {
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
+                        color: Colors.black.withValues(alpha: 0.1),
                         blurRadius: 40,
                         offset: const Offset(0, -10),
                       ),
@@ -305,7 +305,7 @@ class _TeaserScreenState extends State<TeaserScreen> {
                             border: Border.all(color: const Color(0xFFF1F5F9)),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withOpacity(0.05),
+                                color: Colors.black.withValues(alpha: 0.05),
                                 blurRadius: 2,
                                 offset: const Offset(0, 1),
                               ),
@@ -434,7 +434,7 @@ class _TeaserScreenState extends State<TeaserScreen> {
                             borderRadius: BorderRadius.circular(16),
                             boxShadow: [
                               BoxShadow(
-                                color: colorVibrantGreen.withOpacity(0.3),
+                                color: colorVibrantGreen.withValues(alpha: 0.3),
                                 blurRadius: 20,
                                 offset: const Offset(0, 10),
                               ),
@@ -532,7 +532,7 @@ class _CustomThumbShape extends SliderComponentShape {
 
     // 1. Draw Shadow
     final shadowPaint = Paint()
-      ..color = Colors.black.withOpacity(0.15)
+      ..color = Colors.black.withValues(alpha: 0.15)
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6);
 
     canvas.drawCircle(center + const Offset(0, 4), thumbRadius, shadowPaint);

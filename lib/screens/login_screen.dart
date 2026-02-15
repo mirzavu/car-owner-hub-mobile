@@ -45,7 +45,7 @@ class LoginScreen extends StatelessWidget {
                         border: Border.all(color: colorSlate100), // ring-1
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.05),
+                            color: Colors.black.withValues(alpha: 0.05),
                             blurRadius: 2,
                             offset: const Offset(0, 1),
                           ), // shadow-sm
@@ -117,7 +117,7 @@ class LoginScreen extends StatelessWidget {
                             },
                             backgroundColor: Colors.white,
                             borderColor: colorSlate300,
-                            shadowColor: Colors.black.withOpacity(0.05),
+                            shadowColor: Colors.black.withValues(alpha: 0.05),
                             overlayColor: colorSlate50, // hover effect
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.center,
@@ -159,7 +159,9 @@ class LoginScreen extends StatelessWidget {
                           _LoginButton(
                             onTap: () => setStep('auth-phone'),
                             backgroundColor: colorVibrantGreen,
-                            shadowColor: colorVibrantGreen.withOpacity(0.3),
+                            shadowColor: colorVibrantGreen.withValues(
+                              alpha: 0.3,
+                            ),
                             elevation: 8, // shadow-lg approx
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.center,

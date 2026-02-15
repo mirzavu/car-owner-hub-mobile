@@ -66,7 +66,7 @@ class _CashUnlockScreenState extends State<CashUnlockScreen> {
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.05),
+                            color: Colors.black.withValues(alpha: 0.05),
                             blurRadius: 10,
                           ),
                         ],
@@ -159,10 +159,10 @@ class _CashUnlockScreenState extends State<CashUnlockScreen> {
                               vertical: 6,
                             ),
                             decoration: BoxDecoration(
-                              color: colorGreen.withOpacity(0.1),
+                              color: colorGreen.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(20),
                               border: Border.all(
-                                color: colorGreen.withOpacity(0.2),
+                                color: colorGreen.withValues(alpha: 0.2),
                               ),
                             ),
                             child: Row(
@@ -206,7 +206,7 @@ class _CashUnlockScreenState extends State<CashUnlockScreen> {
                                 enabledThumbRadius: 14,
                                 elevation: 4,
                               ),
-                              overlayColor: colorGreen.withOpacity(0.1),
+                              overlayColor: colorGreen.withValues(alpha: 0.1),
                               overlayShape: const RoundSliderOverlayShape(
                                 overlayRadius: 24,
                               ),
@@ -275,7 +275,7 @@ class _CashUnlockScreenState extends State<CashUnlockScreen> {
                               borderRadius: BorderRadius.circular(24),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withOpacity(0.05),
+                                  color: Colors.black.withValues(alpha: 0.05),
                                   blurRadius: 20,
                                   offset: const Offset(0, 8),
                                 ),
@@ -324,7 +324,7 @@ class _CashUnlockScreenState extends State<CashUnlockScreen> {
                                                   fontSize: 16,
                                                   fontWeight: FontWeight.bold,
                                                   color: colorTextDark
-                                                      .withOpacity(0.5),
+                                                      .withValues(alpha: 0.5),
                                                   decoration: TextDecoration
                                                       .lineThrough,
                                                 ),
@@ -375,7 +375,7 @@ class _CashUnlockScreenState extends State<CashUnlockScreen> {
                                     gradient: LinearGradient(
                                       colors: [
                                         Colors.transparent,
-                                        Colors.red.withOpacity(0.1),
+                                        Colors.red.withValues(alpha: 0.1),
                                         Colors.transparent,
                                       ],
                                     ),
@@ -385,7 +385,7 @@ class _CashUnlockScreenState extends State<CashUnlockScreen> {
                                   width: double.infinity,
                                   padding: const EdgeInsets.all(16),
                                   decoration: BoxDecoration(
-                                    color: colorBg.withOpacity(0.5),
+                                    color: colorBg.withValues(alpha: 0.5),
                                     borderRadius: const BorderRadius.vertical(
                                       bottom: Radius.circular(24),
                                     ),
@@ -417,7 +417,8 @@ class _CashUnlockScreenState extends State<CashUnlockScreen> {
                                                     "You are accessing equity. Your rate remains ",
                                               ),
                                               TextSpan(
-                                                text: "8.99%",
+                                                text:
+                                                    "${(widget.financials['actualRate'] ?? 8.99).toStringAsFixed(2)}%",
                                                 style: GoogleFonts.outfit(
                                                   fontWeight: FontWeight.bold,
                                                   color: colorTextDark,
@@ -463,7 +464,7 @@ class _CashUnlockScreenState extends State<CashUnlockScreen> {
                 border: Border(top: BorderSide(color: Colors.blueGrey.shade50)),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.02),
+                    color: Colors.black.withValues(alpha: 0.02),
                     blurRadius: 10,
                     offset: const Offset(0, -4),
                   ),
@@ -522,7 +523,7 @@ class _CashUnlockScreenState extends State<CashUnlockScreen> {
           border: Border.all(color: Colors.blueGrey.shade100),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.02),
+              color: Colors.black.withValues(alpha: 0.02),
               blurRadius: 4,
               offset: const Offset(0, 2),
             ),

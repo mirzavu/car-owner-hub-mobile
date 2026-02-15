@@ -49,7 +49,7 @@ class _GarageScreenState extends State<GarageScreen> {
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.05),
+                            color: Colors.black.withValues(alpha: 0.05),
                             blurRadius: 10,
                           ),
                         ],
@@ -93,7 +93,7 @@ class _GarageScreenState extends State<GarageScreen> {
                       border: Border.all(color: Colors.blueGrey.shade50),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.02),
+                          color: Colors.black.withValues(alpha: 0.02),
                           blurRadius: 8,
                           offset: const Offset(0, 2),
                         ),
@@ -251,7 +251,7 @@ class _GarageScreenState extends State<GarageScreen> {
                       borderRadius: BorderRadius.circular(16),
                       boxShadow: [
                         BoxShadow(
-                          color: colorNavy.withOpacity(0.3),
+                          color: colorNavy.withValues(alpha: 0.3),
                           blurRadius: 10,
                           offset: const Offset(0, 4),
                         ),
@@ -382,8 +382,8 @@ class _GarageScreenState extends State<GarageScreen> {
               Switch.adaptive(
                 value: value,
                 onChanged: onChanged,
-                activeColor: activeColor,
-                activeTrackColor: activeColor.withOpacity(0.2),
+                activeThumbColor: activeColor,
+                activeTrackColor: activeColor.withValues(alpha: 0.2),
               ),
             ],
           ),

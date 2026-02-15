@@ -196,7 +196,14 @@ class ApiService {
         try {
           await auth.pb
               .collection('documents')
-              .update(documentId, body: {'loan_id': loanId});
+              .update(
+                documentId,
+                body: {
+                  'loan_id': loanId,
+                  'status': 'verified',
+                  'user_id': userId, // Ensure user_id is set/consistent
+                },
+              );
           debugPrint("[SYNC] Linked document $documentId to loan $loanId");
         } catch (docErr) {
           debugPrint("[SYNC] Error linking document: $docErr");

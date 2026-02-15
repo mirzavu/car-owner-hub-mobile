@@ -208,13 +208,17 @@ class _ScanPromptScreenState extends State<ScanPromptScreen>
                                 borderRadius: BorderRadius.circular(12),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: colorVibrantGreen.withOpacity(0.3),
+                                    color: colorVibrantGreen.withValues(
+                                      alpha: 0.3,
+                                    ),
                                     blurRadius: 25,
                                     spreadRadius: -5,
                                     offset: const Offset(0, 20),
                                   ),
                                   BoxShadow(
-                                    color: colorVibrantGreen.withOpacity(0.2),
+                                    color: colorVibrantGreen.withValues(
+                                      alpha: 0.2,
+                                    ),
                                     blurRadius: 10,
                                     spreadRadius: -6,
                                     offset: const Offset(0, 8),

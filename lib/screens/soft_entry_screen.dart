@@ -89,11 +89,12 @@ class _SoftEntryScreenState extends State<SoftEntryScreen> {
     });
 
     final data = await ApiService.getVehicleOptions(type: 'makes', year: year);
-    if (mounted)
+    if (mounted) {
       setState(() {
         makes = data;
         isLoadingMakes = false;
       });
+    }
   }
 
   Future<void> _loadModels(String make) async {
@@ -109,11 +110,12 @@ class _SoftEntryScreenState extends State<SoftEntryScreen> {
       make: make,
       year: selectedYear,
     );
-    if (mounted)
+    if (mounted) {
       setState(() {
         models = data;
         isLoadingModels = false;
       });
+    }
   }
 
   // --- HANDLERS ---
@@ -221,7 +223,7 @@ class _SoftEntryScreenState extends State<SoftEntryScreen> {
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.03),
+                        color: Colors.black.withValues(alpha: 0.03),
                         blurRadius: 4,
                         offset: const Offset(0, -2),
                       ),
@@ -294,7 +296,7 @@ class _SoftEntryScreenState extends State<SoftEntryScreen> {
                         Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: Colors.black.withOpacity(0.05),
+                            color: Colors.black.withValues(alpha: 0.05),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: SelectableText(
@@ -335,7 +337,7 @@ class _SoftEntryScreenState extends State<SoftEntryScreen> {
               border: Border.all(color: const Color(0xFFF1F5F9)),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.02),
+                  color: Colors.black.withValues(alpha: 0.02),
                   blurRadius: 2,
                   offset: const Offset(0, 1),
                 ),
@@ -449,7 +451,7 @@ class _SoftEntryScreenState extends State<SoftEntryScreen> {
                   margin: const EdgeInsets.only(bottom: 24),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(32),
-                    color: Colors.white.withOpacity(0.05),
+                    color: Colors.white.withValues(alpha: 0.05),
                   ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(32),
@@ -472,7 +474,7 @@ class _SoftEntryScreenState extends State<SoftEntryScreen> {
                 Text(
                   "instantly.",
                   style: GoogleFonts.outfit(
-                    color: const Color(0xFFE6F0FA).withOpacity(0.9),
+                    color: const Color(0xFFE6F0FA).withValues(alpha: 0.9),
                     fontSize: 32,
                     fontWeight: FontWeight.w800,
                   ),
@@ -484,7 +486,7 @@ class _SoftEntryScreenState extends State<SoftEntryScreen> {
                     vertical: 6,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.1),
+                    color: Colors.white.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(999),
                   ),
                   child: Text(
@@ -532,7 +534,7 @@ class _SoftEntryScreenState extends State<SoftEntryScreen> {
               width: 48,
               height: 48,
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.1),
+                color: Colors.white.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
               child: const Icon(
@@ -567,7 +569,7 @@ class _SoftEntryScreenState extends State<SoftEntryScreen> {
               border: Border.all(color: const Color(0xFFF1F5F9)),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.02),
+                  color: Colors.black.withValues(alpha: 0.02),
                   blurRadius: 2,
                   offset: const Offset(0, 1),
                 ),
@@ -660,7 +662,7 @@ class OverlayBlobPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = Colors.white.withOpacity(0.1)
+      ..color = Colors.white.withValues(alpha: 0.1)
       ..blendMode = BlendMode.overlay
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 80);
     final centerX = size.width / 2;

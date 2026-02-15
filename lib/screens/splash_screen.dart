@@ -54,7 +54,9 @@ class SplashScreen extends StatelessWidget {
                           vertical: 6,
                         ),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2), // bg-white/20
+                          color: Colors.white.withValues(
+                            alpha: 0.2,
+                          ), // bg-white/20
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
@@ -114,7 +116,9 @@ class SplashScreen extends StatelessWidget {
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         elevation: 4,
-                        shadowColor: const Color(0xFF00CA50).withOpacity(0.3),
+                        shadowColor: const Color(
+                          0xFF00CA50,
+                        ).withValues(alpha: 0.3),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),

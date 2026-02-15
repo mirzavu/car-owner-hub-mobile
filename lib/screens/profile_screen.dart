@@ -151,7 +151,7 @@ class ProfileScreen extends StatelessWidget {
                         trailing: Switch(
                           value: true,
                           onChanged: (val) {},
-                          activeColor: colorNavy,
+                          activeThumbColor: colorNavy,
                         ),
                       ),
                       _buildListTile(
@@ -160,7 +160,7 @@ class ProfileScreen extends StatelessWidget {
                         trailing: Switch(
                           value: false,
                           onChanged: (val) {},
-                          activeColor: colorNavy,
+                          activeThumbColor: colorNavy,
                         ),
                       ),
                     ]),

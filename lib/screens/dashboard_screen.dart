@@ -31,7 +31,10 @@ class DashboardScreen extends StatefulWidget {
     required this.setActiveTab,
     required this.onLogout,
     required this.onReverify,
+    this.onFinancialsUpdate,
   });
+
+  final Function(Map<String, dynamic>)? onFinancialsUpdate;
 
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
@@ -49,7 +52,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   double vehicleValue = 22500;
   double loanBalance = 18000;
   double monthlyPayment = 420;
-  bool _isLoading = true;
+  double interestRate = 8.99;
 
   double get equity => vehicleValue - loanBalance;
 
@@ -67,12 +70,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
       setState(() {
         vehicleValue = (financials['vehicleValue'] ?? 22500).toDouble();
         loanBalance = (financials['loanBalance'] ?? 18000).toDouble();
-        monthlyPayment = (financials['monthlyPayment'] ?? 420).toDouble();
-        _isLoading = false;
+        // If loan is paid off, payment must be 0
+        if (loanBalance == 0) {
+          monthlyPayment = 0.0;
+        } else {
+          monthlyPayment = (financials['monthlyPayment'] ?? 420).toDouble();
+        }
+        interestRate = (financials['interestRate'] ?? 8.99).toDouble();
       });
+      if (widget.onFinancialsUpdate != null) {
+        widget.onFinancialsUpdate!({
+          'actualRate': interestRate,
+          'monthlyPayment': monthlyPayment,
+          'loanBalance': loanBalance,
+          'vehicleValue': vehicleValue,
+        });
+      }
     } catch (e) {
       debugPrint("Error fetching dashboard data: $e");
-      setState(() => _isLoading = false);
     }
   }
 
@@ -149,7 +164,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 : colorSlate50, // Matches scaffold to show rounded corners
             systemOverlayStyle: SystemUiOverlayStyle.light,
             elevation: _showStickyHeader ? 10 : 0,
-            shadowColor: const Color(0xFF002244).withOpacity(0.3),
+            shadowColor: const Color(0xFF002244).withValues(alpha: 0.3),
 
             // --- The Compact Sticky Title (Visible when scrolled) ---
             title: AnimatedOpacity(
@@ -485,7 +500,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                     style: GoogleFonts.outfit(
                                       color: const Color(
                                         0xFFE6F0FA,
-                                      ).withOpacity(0.8),
+                                      ).withValues(alpha: 0.8),
                                       fontSize: 12,
                                       fontWeight: FontWeight.w500,
                                     ),
@@ -829,46 +844,84 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     physics: const BouncingScrollPhysics(),
                     child: Row(
                       children: [
-                        _OpportunityCard(
-                          icon: LucideIcons.arrowRightLeft,
-                          iconColor: Colors.red.shade600,
-                          iconBg: Colors.red.shade50,
-                          title: "Rate Alert",
-                          body: RichText(
-                            text: TextSpan(
+                        // --- REFINE LOGIC ---
+                        if (AuthService().onboardingStatus == 'skipped' ||
+                            interestRate == 0)
+                          _OpportunityCard(
+                            icon: LucideIcons.scan,
+                            iconColor: Colors.blue.shade600,
+                            iconBg: Colors.blue.shade50,
+                            title: "Check Your Rate",
+                            body: Text(
+                              "You might be overpaying. Scan your documents to see if you can lower your payment.",
                               style: GoogleFonts.outfit(
                                 fontSize: 12,
                                 color: Colors.blueGrey.shade400,
                                 height: 1.5,
                               ),
-                              children: [
-                                const TextSpan(text: "You pay "),
-                                TextSpan(
-                                  text: "8.99%",
-                                  style: TextStyle(
-                                    color: Colors.red.shade600,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                const TextSpan(text: ". Market is "),
-                                TextSpan(
-                                  text: "6.99%",
-                                  style: TextStyle(
-                                    color: Colors.green.shade600,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                const TextSpan(text: ". Save \$52/mo."),
-                              ],
                             ),
+                            buttonText: "Scan Now",
+                            buttonColor: colorSlate800,
+                            buttonTextColor: Colors.white,
+                            onTap: widget.onReverify,
+                          )
+                        else if (interestRate >= 9.99)
+                          _OpportunityCard(
+                            icon: LucideIcons.arrowRightLeft,
+                            iconColor: interestRate >= 14.99
+                                ? Colors.orange.shade700
+                                : Colors.red.shade600,
+                            iconBg: interestRate >= 14.99
+                                ? Colors.orange.shade50
+                                : Colors.red.shade50,
+                            title: interestRate >= 14.99
+                                ? "⚠️ Overpaying!"
+                                : "Rate Alert",
+                            body: RichText(
+                              text: TextSpan(
+                                style: GoogleFonts.outfit(
+                                  fontSize: 12,
+                                  color: Colors.blueGrey.shade400,
+                                  height: 1.5,
+                                ),
+                                children: [
+                                  const TextSpan(text: "You pay "),
+                                  TextSpan(
+                                    text: "${interestRate.toStringAsFixed(2)}%",
+                                    style: TextStyle(
+                                      color: Colors.red.shade600,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  const TextSpan(text: ". Market is "),
+                                  TextSpan(
+                                    text: "7.99%",
+                                    style: TextStyle(
+                                      color: Colors.green.shade600,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  TextSpan(
+                                    text: interestRate >= 14.99
+                                        ? ". Save \$100+/mo immediately."
+                                        : ". You could save ~\$25/mo.",
+                                  ),
+                                ],
+                              ),
+                            ),
+                            buttonText: "Lower Payment",
+                            buttonColor: colorSlate800,
+                            buttonTextColor: Colors.white,
+                            hasNotification: true,
+                            onTap: () => widget.setOverlayScreen('refinance'),
                           ),
-                          buttonText: "Lower Payment",
-                          buttonColor: colorSlate800,
-                          buttonTextColor: Colors.white,
-                          hasNotification: true,
-                          onTap: () => widget.setOverlayScreen('refinance'),
-                        ),
-                        const SizedBox(width: 16),
+                        if (AuthService().onboardingStatus != 'skipped' &&
+                            interestRate != 0 &&
+                            interestRate >= 9.99)
+                          const SizedBox(width: 16),
+                        if (AuthService().onboardingStatus == 'skipped' ||
+                            interestRate == 0)
+                          const SizedBox(width: 16),
                         _OpportunityCard(
                           icon: LucideIcons.dollarSign,
                           iconColor: Colors.teal.shade600,

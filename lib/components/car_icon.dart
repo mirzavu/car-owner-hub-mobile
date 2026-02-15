@@ -85,7 +85,7 @@ class _CarIconPainter extends CustomPainter {
     // CSS drop-shadow-md is roughly: 0 4px 3px -1px rgba(0, 0, 0, 0.1)
     final Paint shadowPaint = Paint()
       ..color = Colors.black
-          .withOpacity(0.05) // Further decreased from 0.1
+          .withValues(alpha: 0.05) // Further decreased from 0.1
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.5
       ..strokeCap = StrokeCap.round

@@ -100,8 +100,9 @@ class AuthService {
       final state = callbackUri.queryParameters['state'];
 
       if (code == null) throw Exception('No code in callback');
-      if (state != googleProvider.state)
+      if (state != googleProvider.state) {
         throw Exception('OAuth state mismatch');
+      }
 
       debugPrint('[AUTH] Exchanging code for token...');
       await pb

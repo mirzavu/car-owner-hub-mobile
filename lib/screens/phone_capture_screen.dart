@@ -156,7 +156,7 @@ class _PhoneCaptureScreenState extends State<PhoneCaptureScreen> {
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFF002244).withOpacity(0.2),
+                    color: const Color(0xFF002244).withValues(alpha: 0.2),
                     blurRadius: 25,
                     offset: const Offset(0, 10),
                   ),
@@ -170,9 +170,11 @@ class _PhoneCaptureScreenState extends State<PhoneCaptureScreen> {
                     height: 52,
                     margin: const EdgeInsets.only(bottom: 20),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.1),
+                      color: Colors.white.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.white.withOpacity(0.2)),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.2),
+                      ),
                     ),
                     child: const Center(
                       child: Icon(
@@ -199,7 +201,7 @@ class _PhoneCaptureScreenState extends State<PhoneCaptureScreen> {
                       "We'll send you a 6-digit code to verify your account.",
                       textAlign: TextAlign.center,
                       style: GoogleFonts.outfit(
-                        color: Colors.white.withOpacity(0.8),
+                        color: Colors.white.withValues(alpha: 0.8),
                         fontSize: 14,
                         height: 1.5,
                       ),
@@ -246,7 +248,7 @@ class _PhoneCaptureScreenState extends State<PhoneCaptureScreen> {
                                 ),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: Colors.black.withOpacity(0.04),
+                                    color: Colors.black.withValues(alpha: 0.04),
                                     blurRadius: 30,
                                     offset: const Offset(0, 8),
                                   ),
@@ -391,7 +393,7 @@ class _PhoneCaptureScreenState extends State<PhoneCaptureScreen> {
                 Container(
                   padding: const EdgeInsets.all(24),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.5),
+                    color: Colors.white.withValues(alpha: 0.5),
                   ),
                   child: SafeArea(
                     top: false,
@@ -411,7 +413,7 @@ class _PhoneCaptureScreenState extends State<PhoneCaptureScreen> {
                                     BoxShadow(
                                       color: const Color(
                                         0xFF00CA50,
-                                      ).withOpacity(0.3),
+                                      ).withValues(alpha: 0.3),
                                       blurRadius: 25,
                                       spreadRadius: -5,
                                       offset: const Offset(0, 20),
@@ -419,13 +421,17 @@ class _PhoneCaptureScreenState extends State<PhoneCaptureScreen> {
                                   ]
                                 : [
                                     BoxShadow(
-                                      color: Colors.black.withOpacity(0.1),
+                                      color: Colors.black.withValues(
+                                        alpha: 0.1,
+                                      ),
                                       blurRadius: 25,
                                       spreadRadius: -5,
                                       offset: const Offset(0, 20),
                                     ),
                                     BoxShadow(
-                                      color: Colors.black.withOpacity(0.1),
+                                      color: Colors.black.withValues(
+                                        alpha: 0.1,
+                                      ),
                                       blurRadius: 10,
                                       spreadRadius: -6,
                                       offset: const Offset(0, 8),

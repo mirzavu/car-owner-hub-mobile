@@ -231,26 +231,6 @@ class _VerifyScanScreenState extends State<VerifyScanScreen>
     widget.setStep('main-app');
   }
 
-  Future<void> _handleKeepEntry() async {
-    debugPrint("[VERIFY] User chose: Keep Original Entry");
-    final normalizedVin = _normalizeVin(widget.scanData['vin']?.toString());
-    if (normalizedVin.isNotEmpty) {
-      debugPrint("[VERIFY] Syncing VIN from document: $normalizedVin");
-      widget.onUpdateCarDetails({'vin': normalizedVin});
-    }
-
-    await ApiService.syncOnboardingData(
-      carDetails: widget.carDetails,
-      scanData: widget.scanData,
-      estimatedValue: widget.estimatedValue,
-      isVerified: false,
-      documentId: widget.scanData['documentId']?.toString(),
-    );
-
-    await AuthService().updateOnboardingStatus('completed');
-    widget.setStep('main-app');
-  }
-
   void _handleVerify() async {
     debugPrint("[VERIFY] User chose: Save & Verify (Final)");
     if (_isEditing) {
@@ -806,103 +786,67 @@ class _VerifyScanScreenState extends State<VerifyScanScreen>
                                   ),
 
                                   const SizedBox(height: 32),
-                                  if (hasConflict) ...[
-                                    SizedBox(
-                                      width: double.infinity,
-                                      child: ElevatedButton(
-                                        onPressed: _handleUseDocumentDetails,
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: colorVibrantGreen,
-                                          foregroundColor: Colors.white,
-                                          padding: const EdgeInsets.symmetric(
-                                            vertical: 18,
-                                          ),
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(
-                                              14,
-                                            ),
-                                          ),
-                                          elevation: 2,
-                                          shadowColor: colorVibrantGreen
-                                              .withValues(alpha: 0.3),
+                                  // Unified Action Buttons
+                                  SizedBox(
+                                    width: double.infinity,
+                                    child: ElevatedButton(
+                                      onPressed: () {
+                                        if (_isEditing) {
+                                          _handleVerify();
+                                        } else if (hasConflict) {
+                                          _handleUseDocumentDetails();
+                                        } else {
+                                          _handleVerify();
+                                        }
+                                      },
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: colorVibrantGreen,
+                                        foregroundColor: Colors.white,
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 18,
                                         ),
-                                        child: Text(
-                                          "Update with Scanned Data",
-                                          style: GoogleFonts.outfit(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.bold,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            14,
                                           ),
+                                        ),
+                                        elevation: _isEditing ? 4 : 2,
+                                        shadowColor: colorVibrantGreen
+                                            .withValues(alpha: 0.3),
+                                      ),
+                                      child: Text(
+                                        _isEditing
+                                            ? "Save & Verify"
+                                            : (hasConflict
+                                                  ? "Update with Scanned Data"
+                                                  : "Looks Correct"),
+                                        style: GoogleFonts.outfit(
+                                          fontSize: _isEditing ? 18 : 16,
+                                          fontWeight: FontWeight.bold,
                                         ),
                                       ),
                                     ),
-                                    const SizedBox(height: 12),
-                                    SizedBox(
-                                      width: double.infinity,
-                                      child: TextButton(
-                                        onPressed: _handleKeepEntry,
-                                        style: TextButton.styleFrom(
-                                          foregroundColor: colorSlate500,
-                                          padding: const EdgeInsets.symmetric(
-                                            vertical: 16,
-                                          ),
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(
-                                              14,
-                                            ),
-                                          ),
-                                        ),
-                                        child: Text(
-                                          "Keep My Entry",
-                                          style: GoogleFonts.outfit(
-                                            fontSize: 15,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ] else ...[
-                                    SizedBox(
-                                      width: double.infinity,
-                                      child: ElevatedButton(
-                                        onPressed: _handleVerify,
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: colorVibrantGreen,
-                                          foregroundColor: Colors.white,
-                                          padding: const EdgeInsets.symmetric(
-                                            vertical: 18,
-                                          ),
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(
-                                              14,
-                                            ),
-                                          ),
-                                          elevation: 4,
-                                          shadowColor: colorVibrantGreen
-                                              .withValues(alpha: 0.3),
-                                        ),
-                                        child: Text(
-                                          _isEditing
-                                              ? "Save & Verify"
-                                              : "Looks Correct",
-                                          style: GoogleFonts.outfit(
-                                            fontSize: 18,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(height: 12),
-                                    TextButton(
+                                  ),
+                                  const SizedBox(height: 12),
+                                  SizedBox(
+                                    width: double.infinity,
+                                    child: TextButton(
                                       onPressed: () {
                                         setState(() {
                                           _isEditing = !_isEditing;
                                         });
                                       },
                                       style: TextButton.styleFrom(
-                                        foregroundColor: colorSlate400,
-                                        minimumSize: const Size(
-                                          double.infinity,
-                                          40,
+                                        foregroundColor: _isEditing
+                                            ? colorSlate400
+                                            : colorSlate500,
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 16,
+                                        ),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            14,
+                                          ),
                                         ),
                                       ),
                                       child: Text(
@@ -910,12 +854,12 @@ class _VerifyScanScreenState extends State<VerifyScanScreen>
                                             ? "Cancel editing"
                                             : "Edit manually",
                                         style: GoogleFonts.outfit(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w500,
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w600,
                                         ),
                                       ),
                                     ),
-                                  ],
+                                  ),
                                 ],
                               ),
                             ),

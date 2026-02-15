@@ -26,7 +26,7 @@ class _ShopScreenState extends State<ShopScreen> {
   bool _isInit = true;
   bool _isLoading = true;
   List<dynamic> _inventory = [];
-  bool _keepPaymentSame = true;
+  final bool _keepPaymentSame = true;
 
   @override
   void initState() {
@@ -101,7 +101,7 @@ class _ShopScreenState extends State<ShopScreen> {
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.05),
+                            color: Colors.black.withValues(alpha: 0.05),
                             blurRadius: 10,
                           ),
                         ],
@@ -152,7 +152,7 @@ class _ShopScreenState extends State<ShopScreen> {
                             border: Border.all(color: Colors.white),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withOpacity(0.02),
+                                color: Colors.black.withValues(alpha: 0.02),
                                 blurRadius: 8,
                                 offset: const Offset(0, 2),
                               ),
@@ -199,7 +199,7 @@ class _ShopScreenState extends State<ShopScreen> {
                             borderRadius: BorderRadius.circular(20),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withOpacity(0.02),
+                                color: Colors.black.withValues(alpha: 0.02),
                                 blurRadius: 8,
                                 offset: const Offset(0, 2),
                               ),
@@ -248,8 +248,8 @@ class _ShopScreenState extends State<ShopScreen> {
                                               overlayRadius: 20,
                                             ),
                                         thumbColor: Colors.white,
-                                        overlayColor: colorGreen.withOpacity(
-                                          0.1,
+                                        overlayColor: colorGreen.withValues(
+                                          alpha: 0.1,
                                         ),
                                       ),
                                       child: Slider(
@@ -345,24 +345,24 @@ class _ShopScreenState extends State<ShopScreen> {
         end: Alignment.bottomRight,
         colors: [
           const Color(0xFFE6F0FA),
-          const Color(0xFF003366).withOpacity(0.2),
+          const Color(0xFF003366).withValues(alpha: 0.2),
         ],
       );
-      iconColor = const Color(0xFF003366).withOpacity(0.5);
+      iconColor = const Color(0xFF003366).withValues(alpha: 0.5);
     } else if (car['image'] == 'white') {
       bgGradient = LinearGradient(
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
         colors: [Colors.blueGrey.shade50, Colors.blueGrey.shade200],
       );
-      iconColor = Colors.blueGrey.withOpacity(0.5);
+      iconColor = Colors.blueGrey.withValues(alpha: 0.5);
     } else {
       bgGradient = LinearGradient(
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
         colors: [Colors.grey.shade300, Colors.grey.shade400],
       );
-      iconColor = Colors.grey.shade700.withOpacity(0.5);
+      iconColor = Colors.grey.shade700.withValues(alpha: 0.5);
     }
 
     final bool isGoodDeal = (car['payment'] as double) <= userPayment;
@@ -375,7 +375,7 @@ class _ShopScreenState extends State<ShopScreen> {
         border: Border.all(color: Colors.blueGrey.shade50),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.03),
+            color: Colors.black.withValues(alpha: 0.03),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -430,7 +430,7 @@ class _ShopScreenState extends State<ShopScreen> {
                           vertical: 4,
                         ),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.9),
+                          color: Colors.white.withValues(alpha: 0.9),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(

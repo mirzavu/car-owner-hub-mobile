@@ -5,11 +5,15 @@ import 'package:lucide_icons/lucide_icons.dart';
 class RefinanceScreen extends StatefulWidget {
   final VoidCallback onClose;
   final VoidCallback onStartRefinance;
+  final double currentRate;
+  final double monthlyPayment;
 
   const RefinanceScreen({
     super.key,
     required this.onClose,
     required this.onStartRefinance,
+    this.currentRate = 8.99,
+    this.monthlyPayment = 420.0,
   });
 
   @override
@@ -46,7 +50,7 @@ class _RefinanceScreenState extends State<RefinanceScreen> {
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.05),
+                            color: Colors.black.withValues(alpha: 0.05),
                             blurRadius: 10,
                           ),
                         ],
@@ -82,7 +86,7 @@ class _RefinanceScreenState extends State<RefinanceScreen> {
                         // Removed border, relying on shadow and clean bg
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.08),
+                            color: Colors.black.withValues(alpha: 0.08),
                             blurRadius: 24,
                             offset: const Offset(0, 12),
                           ),
@@ -97,7 +101,7 @@ class _RefinanceScreenState extends State<RefinanceScreen> {
                               vertical: 12,
                             ),
                             decoration: BoxDecoration(
-                              color: colorBg.withOpacity(0.5),
+                              color: colorBg.withValues(alpha: 0.5),
                               borderRadius: const BorderRadius.vertical(
                                 top: Radius.circular(24),
                               ),
@@ -147,11 +151,12 @@ class _RefinanceScreenState extends State<RefinanceScreen> {
                           // Rate Row
                           _buildComparisonRow(
                             label: "Rate",
-                            current: "8.99%",
+                            current:
+                                "${widget.currentRate.toStringAsFixed(2)}%",
                             currentStyle: GoogleFonts.outfit(
-                              color: colorNavy.withOpacity(0.6),
+                              color: colorNavy.withValues(alpha: 0.6),
                               decoration: TextDecoration.lineThrough,
-                              decorationColor: colorNavy.withOpacity(0.3),
+                              decorationColor: colorNavy.withValues(alpha: 0.3),
                               fontWeight: FontWeight.w500,
                             ),
                             novel: "6.99%",
@@ -161,7 +166,7 @@ class _RefinanceScreenState extends State<RefinanceScreen> {
                                 vertical: 6,
                               ),
                               decoration: BoxDecoration(
-                                color: colorGreen.withOpacity(0.1),
+                                color: colorGreen.withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Text(
@@ -192,18 +197,20 @@ class _RefinanceScreenState extends State<RefinanceScreen> {
                           // Payment Row
                           _buildComparisonRow(
                             label: "Payment",
-                            current: "\$420",
+                            current:
+                                "\$${widget.monthlyPayment.toStringAsFixed(0)}",
                             currentStyle: GoogleFonts.outfit(
                               color: Colors.blueGrey,
                               decoration: TextDecoration.lineThrough,
                             ),
-                            novel: "\$380",
+                            novel:
+                                "\$${(widget.monthlyPayment - 40).clamp(0, double.infinity).toStringAsFixed(0)}",
                             novelStyle: GoogleFonts.outfit(
                               color: colorGreen,
                               fontWeight: FontWeight.bold,
                               fontSize: 20,
                             ),
-                            bgColor: colorBg.withOpacity(0.4),
+                            bgColor: colorBg.withValues(alpha: 0.4),
                             // Add bottom radius for the last item
                             borderRadius: const BorderRadius.vertical(
                               bottom: Radius.circular(24),
@@ -224,7 +231,7 @@ class _RefinanceScreenState extends State<RefinanceScreen> {
                         borderRadius: BorderRadius.circular(24),
                         boxShadow: [
                           BoxShadow(
-                            color: colorGreen.withOpacity(0.3),
+                            color: colorGreen.withValues(alpha: 0.3),
                             blurRadius: 20,
                             offset: const Offset(0, 10),
                           ),
@@ -244,8 +251,8 @@ class _RefinanceScreenState extends State<RefinanceScreen> {
                                 shape: BoxShape.circle,
                                 gradient: RadialGradient(
                                   colors: [
-                                    Colors.white.withOpacity(0.2),
-                                    Colors.white.withOpacity(0.0),
+                                    Colors.white.withValues(alpha: 0.2),
+                                    Colors.white.withValues(alpha: 0.0),
                                   ],
                                 ),
                               ),
@@ -256,7 +263,7 @@ class _RefinanceScreenState extends State<RefinanceScreen> {
                               Text(
                                 "Total Savings over loan life",
                                 style: GoogleFonts.outfit(
-                                  color: Colors.white.withOpacity(0.9),
+                                  color: Colors.white.withValues(alpha: 0.9),
                                   fontSize: 14,
                                   fontWeight: FontWeight.w500,
                                 ),
@@ -336,7 +343,7 @@ class _RefinanceScreenState extends State<RefinanceScreen> {
                       borderRadius: BorderRadius.circular(16),
                     ),
                     elevation: 5,
-                    shadowColor: colorGreen.withOpacity(0.4),
+                    shadowColor: colorGreen.withValues(alpha: 0.4),
                   ),
                   child: Text(
                     "Start My Refinance",
@@ -425,8 +432,8 @@ class _RefinanceScreenState extends State<RefinanceScreen> {
             boxShadow: [
               BoxShadow(
                 color: isSelected
-                    ? colorGreen.withOpacity(0.3)
-                    : Colors.black.withOpacity(0.02),
+                    ? colorGreen.withValues(alpha: 0.3)
+                    : Colors.black.withValues(alpha: 0.02),
                 blurRadius: isSelected ? 12 : 5,
                 offset: const Offset(0, 4),
               ),

@@ -178,14 +178,18 @@ class _FintechAutoFlowState extends State<FintechAutoFlow> {
       if (data != null) {
         lastScanData = data;
         // Optionally update financials directly
-        if (data['interest_rate'] != null)
+        if (data['interest_rate'] != null) {
           financials['actualRate'] = data['interest_rate'];
-        if (data['lender_name'] != null)
+        }
+        if (data['lender_name'] != null) {
           financials['lender'] = data['lender_name'];
-        if (data['monthly_payment'] != null)
+        }
+        if (data['monthly_payment'] != null) {
           financials['monthlyPayment'] = data['monthly_payment'];
-        if (data['current_balance'] != null)
+        }
+        if (data['current_balance'] != null) {
           financials['userEstimatedLoan'] = data['current_balance'];
+        }
         _calculateEquity();
       }
     });
@@ -234,6 +238,15 @@ class _FintechAutoFlowState extends State<FintechAutoFlow> {
         if (result['calculated_balance'] != null) {
           final newBalance = result['calculated_balance'].toDouble();
           financials['userEstimatedLoan'] = newBalance;
+
+          // If balance is 0, payment should also be 0
+          if (newBalance == 0) {
+            financials['monthlyPayment'] = 0.0;
+            debugPrint(
+              "[TIME-TRAVEL] Balance is 0. Setting monthly payment to 0.",
+            );
+          }
+
           _calculateEquity();
           debugPrint(
             "[TIME-TRAVEL] Equity recalculated: ${financials['equity']}",
@@ -408,11 +421,20 @@ class _FintechAutoFlowState extends State<FintechAutoFlow> {
     }
     // Default to Dashboard
     return DashboardScreen(
-      carDetails: CarDetails(year: '2022', make: 'Honda', model: 'Civic'),
+      carDetails: CarDetails(
+        year: carDetails['year'] ?? '',
+        make: carDetails['make'] ?? '',
+        model: carDetails['model'] ?? '',
+      ),
       setOverlayScreen: (screen) => setOverlay(screen),
       setActiveTab: (tab) => setActiveTab(tab),
       onLogout: () => setStep('auth-login'),
       onReverify: () => setStep('scan-intro'),
+      onFinancialsUpdate: (data) {
+        setState(() {
+          financials.addAll(data);
+        });
+      },
     );
   }
 
@@ -424,7 +446,7 @@ class _FintechAutoFlowState extends State<FintechAutoFlow> {
         borderRadius: BorderRadius.circular(50),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF003366).withOpacity(0.25), // Lighter shadow
+            color: const Color(0xFF003366).withValues(alpha: 0.25), // Lighter shadow
             blurRadius: 12, // Reduced blur
             offset: const Offset(0, 4),
           ),
@@ -444,8 +466,8 @@ class _FintechAutoFlowState extends State<FintechAutoFlow> {
   Widget _buildNavItem(String tabKey, IconData icon, String label) {
     final bool isActive = activeTab == tabKey;
     const colorActive = Colors.white; // White for active
-    final colorInactive = Colors.white.withOpacity(
-      0.5,
+    final colorInactive = Colors.white.withValues(
+      alpha: 0.5,
     ); // Faded white for inactive
 
     return GestureDetector(
@@ -459,7 +481,7 @@ class _FintechAutoFlowState extends State<FintechAutoFlow> {
         ),
         decoration: BoxDecoration(
           color: isActive
-              ? Colors.white.withOpacity(0.15)
+              ? Colors.white.withValues(alpha: 0.15)
               : Colors.transparent, // Glassy active pill
           borderRadius: BorderRadius.circular(30),
         ),
@@ -491,6 +513,8 @@ class _FintechAutoFlowState extends State<FintechAutoFlow> {
         onStartRefinance: () {
           setOverlay('success');
         },
+        currentRate: (financials['actualRate'] ?? 8.99).toDouble(),
+        monthlyPayment: (financials['monthlyPayment'] ?? 420.0).toDouble(),
       );
     }
     if (overlayScreen == 'cash-unlock') {
