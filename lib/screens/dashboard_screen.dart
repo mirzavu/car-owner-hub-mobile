@@ -5,6 +5,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:intl/intl.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
+import '../services/finance_service.dart';
 import 'profile_screen.dart';
 import 'notification_screen.dart';
 import 'activity_history_screen.dart';
@@ -133,6 +134,36 @@ class _DashboardScreenState extends State<DashboardScreen> {
     ).format(n);
   }
 
+  String _fmtNoSymbol(num n) {
+    return NumberFormat.currency(
+      locale: 'en_CA',
+      symbol: '',
+      decimalDigits: 0,
+    ).format(n).trim();
+  }
+
+  void _showCashLockedDialog(CashbackOffer offer) {
+    final String message = offer.eligibility == CashbackEligibility.underwater
+        ? "Equity too low. You need at least ${fmt(FinanceService.minimumEquityForCashback)} in positive equity to unlock cash."
+        : "Almost there. Pay down ${fmt(offer.shortfallToUnlock)} more to unlock Cash Mode.";
+
+    showDialog<void>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text("Cash Locked"),
+          content: Text(message),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text("OK"),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   String _getInitials(String name) {
     if (name.isEmpty) return "??";
     final parts = name.trim().split(' ');
@@ -153,6 +184,35 @@ class _DashboardScreenState extends State<DashboardScreen> {
       Color(0xFF002852),
       Color(0xFF002244),
     ];
+    final CashbackOffer cashOffer = FinanceService.getCashbackOffer(
+      vehicleValue: vehicleValue,
+      loanBalance: loanBalance,
+    );
+    final bool isUnderwater =
+        cashOffer.eligibility == CashbackEligibility.underwater;
+    final bool isPaidOff = cashOffer.isPaidOff;
+    final bool showCashProgress =
+        cashOffer.eligibility == CashbackEligibility.equityPoor;
+    final String statusBadgeText = isPaidOff
+        ? "FREEDOM ACHIEVED"
+        : isUnderwater
+        ? "BUILDING EQUITY"
+        : "IN THE GREEN";
+    final IconData statusBadgeIcon = isPaidOff
+        ? LucideIcons.trophy
+        : isUnderwater
+        ? LucideIcons.trendingDown
+        : LucideIcons.checkCircle2;
+    final Color statusBadgeColor = isPaidOff
+        ? Colors.amberAccent.shade200
+        : isUnderwater
+        ? Colors.amberAccent.shade100
+        : Colors.greenAccent.shade100;
+    final Color equityAmountColor = isUnderwater
+        ? Colors.redAccent.shade100
+        : Colors.white;
+    final String balanceDisplayText = isPaidOff ? "PAID OFF" : fmt(loanBalance);
+    const String stickyBalanceCaption = "BAL";
 
     return Scaffold(
       backgroundColor: colorSlate50,
@@ -162,8 +222,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
         slivers: [
           // --- 1. MORPHING HEADER (SliverAppBar) ---
           SliverAppBar(
-            expandedHeight: 420.0, // Height of the open header
-            collapsedHeight: 60.0, // Height of the sticky bar
+            expandedHeight:
+                460.0, // Increased from 420 to fix 5px overflow and add breathing room
+            collapsedHeight: 60.0,
             toolbarHeight: 60.0,
             pinned: true,
             stretch: true,
@@ -259,15 +320,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                          fmt(loanBalance),
+                          balanceDisplayText,
                           style: GoogleFonts.outfit(
-                            fontSize: 13, // Slightly smaller to fit 3 items
+                            fontSize: isPaidOff ? 12 : 13,
                             fontWeight: FontWeight.bold,
                             color: Colors.white,
                           ),
                         ),
                         Text(
-                          "BAL",
+                          stickyBalanceCaption,
                           style: GoogleFonts.outfit(
                             fontSize: 8,
                             fontWeight: FontWeight.bold,
@@ -463,7 +524,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                       horizontal: 12,
                                       vertical: 4,
                                     ),
-                                    margin: const EdgeInsets.only(bottom: 8),
+                                    margin: const EdgeInsets.only(
+                                      bottom: 12,
+                                    ), // Increased from 8
                                     decoration: BoxDecoration(
                                       color: Colors.black.withValues(
                                         alpha: 0.2,
@@ -479,15 +542,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
                                         Icon(
-                                          LucideIcons.checkCircle2,
+                                          statusBadgeIcon,
                                           size: 12,
-                                          color: Colors.greenAccent.shade400,
+                                          color: statusBadgeColor,
                                         ),
                                         const SizedBox(width: 6),
                                         Text(
-                                          "IN THE GREEN",
+                                          statusBadgeText,
                                           style: GoogleFonts.outfit(
-                                            color: Colors.greenAccent.shade100,
+                                            color: statusBadgeColor,
                                             fontSize: 10,
                                             fontWeight: FontWeight.w600,
                                             letterSpacing: 0.5,
@@ -501,12 +564,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                     style: GoogleFonts.outfit(
                                       fontSize: 56,
                                       fontWeight: FontWeight.bold,
-                                      color: Colors.white,
+                                      color: equityAmountColor,
                                       height: 1.0,
                                       letterSpacing: -2.0,
                                     ),
                                   ),
-                                  const SizedBox(height: 4),
+                                  const SizedBox(height: 8),
                                   Text(
                                     "Net Equity Available",
                                     style: GoogleFonts.outfit(
@@ -514,7 +577,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                         0xFFE6F0FA,
                                       ).withValues(alpha: 0.8),
                                       fontSize: 12,
-                                      fontWeight: FontWeight.w500,
+                                      fontWeight:
+                                          FontWeight.w600, // Slightly bolder
+                                      letterSpacing: 0.5,
                                     ),
                                   ),
                                 ],
@@ -545,7 +610,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                       letterSpacing: 1.0,
                                     ),
                                   ),
-                                  const SizedBox(height: 2),
+                                  const SizedBox(height: 8), // Increased from 2
                                   Text(
                                     "${widget.carDetails.year} ${widget.carDetails.make} ${widget.carDetails.model}",
                                     style: GoogleFonts.outfit(
@@ -563,6 +628,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   const SizedBox(height: 16),
 
                                   Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Expanded(
                                         child: Column(
@@ -599,7 +666,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                       Expanded(
                                         child: Padding(
                                           padding: const EdgeInsets.symmetric(
-                                            horizontal: 16,
+                                            horizontal:
+                                                12, // Reduced from 16 to give more text room
                                           ),
                                           child: Column(
                                             crossAxisAlignment:
@@ -616,12 +684,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                                   letterSpacing: 1.0,
                                                 ),
                                               ),
-                                              Text(
-                                                fmt(loanBalance),
-                                                style: GoogleFonts.outfit(
-                                                  color: Colors.white,
-                                                  fontSize: 16,
-                                                  fontWeight: FontWeight.w500,
+                                              FittedBox(
+                                                fit: BoxFit.scaleDown,
+                                                alignment: Alignment.centerLeft,
+                                                child: Text(
+                                                  balanceDisplayText,
+                                                  style: GoogleFonts.outfit(
+                                                    color: Colors.white,
+                                                    fontSize: isPaidOff
+                                                        ? 14
+                                                        : 16,
+                                                    fontWeight: isPaidOff
+                                                        ? FontWeight.bold
+                                                        : FontWeight.w600,
+                                                    letterSpacing: isPaidOff
+                                                        ? 0.5
+                                                        : 0,
+                                                  ),
                                                 ),
                                               ),
                                             ],
@@ -715,7 +794,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
           // --- 2. SCROLLABLE BODY CONTENT ---
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 24,
+                vertical: 40,
+              ), // Increased from 32
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -798,7 +880,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       _ActionButton(
                         icon: LucideIcons.dollarSign,
                         label: "Get Cash",
-                        onTap: () => widget.setOverlayScreen('cash-unlock'),
+                        isLocked: cashOffer.isLocked,
+                        onTap: () {
+                          if (cashOffer.isLocked) {
+                            _showCashLockedDialog(cashOffer);
+                            return;
+                          }
+                          widget.setOverlayScreen('cash-unlock');
+                        },
                       ),
                       _ActionButton(
                         icon: LucideIcons.car,
@@ -812,6 +901,56 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ),
                     ],
                   ),
+                  if (showCashProgress) ...[
+                    const SizedBox(height: 12),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.blueGrey.shade50),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(
+                                LucideIcons.lock,
+                                size: 14,
+                                color: Colors.blueGrey.shade500,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  "Pay down ${fmt(cashOffer.shortfallToUnlock)} more to unlock Cash Mode.",
+                                  style: GoogleFonts.outfit(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: const Color(0xFF1E293B),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 10),
+                          LinearProgressIndicator(
+                            value:
+                                (cashOffer.equity /
+                                        FinanceService.minimumEquityForCashback)
+                                    .clamp(0.0, 1.0),
+                            minHeight: 8,
+                            borderRadius: BorderRadius.circular(100),
+                            backgroundColor: Colors.blueGrey.shade100,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Colors.green.shade600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
 
                   const SizedBox(height: 32),
 
@@ -938,35 +1077,80 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           icon: LucideIcons.dollarSign,
                           iconColor: Colors.teal.shade600,
                           iconBg: Colors.teal.shade50,
-                          title: "Unlock Cash",
-                          body: RichText(
-                            text: TextSpan(
-                              style: GoogleFonts.outfit(
-                                fontSize: 12,
-                                color: Colors.blueGrey.shade400,
-                                height: 1.5,
-                              ),
-                              children: [
-                                const TextSpan(text: "Access up to "),
-                                TextSpan(
-                                  text: "\$3,000",
-                                  style: TextStyle(
-                                    color: colorSlate800,
-                                    fontWeight: FontWeight.bold,
+                          title: cashOffer.isLocked
+                              ? (isUnderwater
+                                    ? "Building Equity"
+                                    : "Almost Cash-Ready")
+                              : "Unlock Your Equity",
+                          body: cashOffer.isLocked
+                              ? RichText(
+                                  text: TextSpan(
+                                    style: GoogleFonts.outfit(
+                                      fontSize: 12,
+                                      color: Colors.blueGrey.shade400,
+                                      height: 1.5,
+                                    ),
+                                    children: [
+                                      TextSpan(
+                                        text: isUnderwater
+                                            ? "You need at least ${fmt(FinanceService.minimumEquityForCashback)} in positive equity to unlock cash access."
+                                            : "Pay down ",
+                                      ),
+                                      if (!isUnderwater)
+                                        TextSpan(
+                                          text: fmt(
+                                            cashOffer.shortfallToUnlock,
+                                          ),
+                                          style: TextStyle(
+                                            color: colorSlate800,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      if (!isUnderwater)
+                                        const TextSpan(
+                                          text:
+                                              " more to unlock your cash options.",
+                                        ),
+                                    ],
+                                  ),
+                                )
+                              : RichText(
+                                  text: TextSpan(
+                                    style: GoogleFonts.outfit(
+                                      fontSize: 12,
+                                      color: Colors.blueGrey.shade400,
+                                      height: 1.5,
+                                    ),
+                                    children: [
+                                      const TextSpan(text: "Access up to "),
+                                      TextSpan(
+                                        text:
+                                            "\$${_fmtNoSymbol(cashOffer.maxCash)}",
+                                        style: TextStyle(
+                                          color: colorSlate800,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      const TextSpan(
+                                        text:
+                                            " from your equity today without selling.",
+                                      ),
+                                    ],
                                   ),
                                 ),
-                                const TextSpan(
-                                  text:
-                                      " from your equity today without selling.",
-                                ),
-                              ],
-                            ),
-                          ),
-                          buttonText: "Check Options",
+                          buttonText: cashOffer.isLocked
+                              ? "Keep Building"
+                              : "Check Options",
                           buttonColor: Colors.white,
                           buttonBorderColor: Colors.blueGrey.shade200,
                           buttonTextColor: colorSlate800,
-                          onTap: () => widget.setOverlayScreen('cash-unlock'),
+                          onTap: () {
+                            if (cashOffer.isLocked) {
+                              _showCashLockedDialog(cashOffer);
+                              return;
+                            }
+                            widget.setOverlayScreen('cash-unlock');
+                          },
                         ),
                         const SizedBox(width: 16),
                         _OpportunityCard(
@@ -1166,37 +1350,69 @@ class _ActionButton extends StatelessWidget {
   final IconData icon;
   final String label;
   final VoidCallback onTap;
+  final bool isLocked;
 
   const _ActionButton({
     required this.icon,
     required this.label,
     required this.onTap,
+    this.isLocked = false,
   });
 
   @override
   Widget build(BuildContext context) {
+    final Color iconColor = isLocked
+        ? Colors.blueGrey.shade300
+        : Colors.blueGrey.shade600;
+    final Color labelColor = isLocked
+        ? Colors.blueGrey.shade300
+        : Colors.blueGrey.shade500;
+    final Color bgColor = isLocked ? Colors.blueGrey.shade50 : Colors.white;
+
     return GestureDetector(
       onTap: onTap,
       child: Column(
         children: [
-          Container(
-            width: 60,
-            height: 60, // w-14 h-14 approx
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.blueGrey.shade50),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.03),
-                  blurRadius: 12,
-                  offset: const Offset(0, 4),
+          Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Container(
+                width: 60,
+                height: 60, // w-14 h-14 approx
+                decoration: BoxDecoration(
+                  color: bgColor,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.blueGrey.shade50),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.03),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-            child: Center(
-              child: Icon(icon, color: Colors.blueGrey.shade600, size: 24),
-            ),
+                child: Center(child: Icon(icon, color: iconColor, size: 24)),
+              ),
+              if (isLocked)
+                Positioned(
+                  right: -4,
+                  top: -4,
+                  child: Container(
+                    width: 22,
+                    height: 22,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1E293B),
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(color: Colors.white, width: 2),
+                    ),
+                    child: const Icon(
+                      LucideIcons.lock,
+                      size: 10,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+            ],
           ),
           const SizedBox(height: 8),
           Text(
@@ -1204,7 +1420,7 @@ class _ActionButton extends StatelessWidget {
             style: GoogleFonts.outfit(
               fontSize: 10,
               fontWeight: FontWeight.w500,
-              color: Colors.blueGrey.shade500,
+              color: labelColor,
             ),
           ),
         ],
