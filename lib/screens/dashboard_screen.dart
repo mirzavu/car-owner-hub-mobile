@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
 import '../services/finance_service.dart';
+import '../services/refinance_service.dart';
 import 'profile_screen.dart';
 import 'notification_screen.dart';
 import 'activity_history_screen.dart';
@@ -53,7 +54,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
   double vehicleValue = 22500;
   double loanBalance = 18000;
   double monthlyPayment = 420;
-  double interestRate = 8.99;
+  double interestRate = 7.99;
+  double? marketRate;
 
   double get equity => vehicleValue - loanBalance;
 
@@ -62,6 +64,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     super.initState();
     _scrollController.addListener(_scrollListener);
     _fetchDashboardData();
+    _fetchMarketRate();
   }
 
   Future<void> _fetchDashboardData() async {
@@ -77,7 +80,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         } else {
           monthlyPayment = (financials['monthlyPayment'] ?? 420).toDouble();
         }
-        interestRate = (financials['interestRate'] ?? 8.99).toDouble();
+        interestRate = (financials['interestRate'] ?? 7.99).toDouble();
       });
       if (widget.onFinancialsUpdate != null) {
         widget.onFinancialsUpdate!({
@@ -89,6 +92,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
       }
     } catch (e) {
       debugPrint("Error fetching dashboard data: $e");
+    }
+  }
+
+  Future<void> _fetchMarketRate() async {
+    try {
+      final rate = await ApiService.getMarketRateFromSettings();
+      if (!mounted) return;
+      setState(() {
+        marketRate = rate;
+      });
+      if (widget.onFinancialsUpdate != null) {
+        widget.onFinancialsUpdate!({'marketRate': rate});
+      }
+    } catch (e) {
+      debugPrint("Error fetching market rate: $e");
     }
   }
 
@@ -164,6 +182,49 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
+  void _showRateShieldDialog({
+    required double currentRate,
+    required double marketRate,
+  }) {
+    showDialog<void>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text("Rate Shield Active"),
+          content: Text(
+            "Your ${currentRate.toStringAsFixed(2)}% APR is already within ${RefinanceService.qualificationAprDelta.toStringAsFixed(2)}% of market (${marketRate.toStringAsFixed(2)}%). Refinance is currently not recommended.",
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text("OK"),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showRefinanceUnavailableDialog() {
+    showDialog<void>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text("Refinance Unavailable"),
+          content: const Text(
+            "Your loan is already paid off. Refinance is only available for active auto loans.",
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text("OK"),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   String _getInitials(String name) {
     if (name.isEmpty) return "??";
     final parts = name.trim().split(' ');
@@ -213,6 +274,29 @@ class _DashboardScreenState extends State<DashboardScreen> {
         : Colors.white;
     final String balanceDisplayText = isPaidOff ? "PAID OFF" : fmt(loanBalance);
     const String stickyBalanceCaption = "BAL";
+    final RefinanceQuote? refinancePreview = marketRate == null
+        ? null
+        : RefinanceService.buildQuote(
+            currentApr: interestRate,
+            marketApr: marketRate!,
+            currentPayment: monthlyPayment,
+            currentBalance: loanBalance,
+            targetTermMonths: 72,
+          );
+    final bool refinanceUnavailableForPaidOff =
+        loanBalance <= FinanceService.paidOffLoanThreshold;
+    final bool hasRefinanceData =
+        interestRate > 0 &&
+        marketRate != null &&
+        !refinanceUnavailableForPaidOff;
+    final bool refinanceQualifies = refinancePreview?.qualifies ?? true;
+    final bool showScanRateOpportunity =
+        !refinanceUnavailableForPaidOff &&
+        (AuthService().onboardingStatus == 'skipped' || interestRate == 0);
+    final bool showRateAlertOpportunity =
+        !refinanceUnavailableForPaidOff &&
+        hasRefinanceData &&
+        refinanceQualifies;
 
     return Scaffold(
       backgroundColor: colorSlate50,
@@ -873,11 +957,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       _ActionButton(
-                        icon: LucideIcons.arrowRightLeft,
-                        label: "Refinance",
-                        onTap: () => widget.setOverlayScreen('refinance'),
-                      ),
-                      _ActionButton(
                         icon: LucideIcons.dollarSign,
                         label: "Get Cash",
                         isLocked: cashOffer.isLocked,
@@ -899,6 +978,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         label: "Garage",
                         onTap: () => widget.setActiveTab('garage'),
                       ),
+                      refinanceUnavailableForPaidOff
+                          ? _ActionButton(
+                              icon: LucideIcons.arrowRightLeft,
+                              label: "Refinance",
+                              isLocked: true,
+                              onTap: _showRefinanceUnavailableDialog,
+                            )
+                          : hasRefinanceData && !refinanceQualifies
+                          ? _ActionButton(
+                              icon: LucideIcons.shieldCheck,
+                              label: "Rate Shield",
+                              onTap: () => _showRateShieldDialog(
+                                currentRate: interestRate,
+                                marketRate: marketRate!,
+                              ),
+                            )
+                          : _ActionButton(
+                              icon: LucideIcons.arrowRightLeft,
+                              label: "Refinance",
+                              onTap: () => widget.setOverlayScreen('refinance'),
+                            ),
                     ],
                   ),
                   if (showCashProgress) ...[
@@ -996,8 +1096,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     child: Row(
                       children: [
                         // --- REFINE LOGIC ---
-                        if (AuthService().onboardingStatus == 'skipped' ||
-                            interestRate == 0)
+                        if (showScanRateOpportunity)
                           _OpportunityCard(
                             icon: LucideIcons.scan,
                             iconColor: Colors.blue.shade600,
@@ -1016,18 +1115,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             buttonTextColor: Colors.white,
                             onTap: widget.onReverify,
                           )
-                        else if (interestRate >= 9.99)
+                        else if (showRateAlertOpportunity)
                           _OpportunityCard(
                             icon: LucideIcons.arrowRightLeft,
-                            iconColor: interestRate >= 14.99
-                                ? Colors.orange.shade700
-                                : Colors.red.shade600,
-                            iconBg: interestRate >= 14.99
-                                ? Colors.orange.shade50
-                                : Colors.red.shade50,
-                            title: interestRate >= 14.99
-                                ? "⚠️ Overpaying!"
-                                : "Rate Alert",
+                            iconColor: Colors.red.shade600,
+                            iconBg: Colors.red.shade50,
+                            title: "Rate Alert",
                             body: RichText(
                               text: TextSpan(
                                 style: GoogleFonts.outfit(
@@ -1046,16 +1139,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   ),
                                   const TextSpan(text: ". Market is "),
                                   TextSpan(
-                                    text: "7.99%",
+                                    text: "${marketRate!.toStringAsFixed(2)}%",
                                     style: TextStyle(
                                       color: Colors.green.shade600,
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
                                   TextSpan(
-                                    text: interestRate >= 14.99
-                                        ? ". Save \$100+/mo immediately."
-                                        : ". You could save ~\$25/mo.",
+                                    text:
+                                        ". You could save ${fmt(refinancePreview!.monthlySavings)}/mo.",
                                   ),
                                 ],
                               ),
@@ -1066,12 +1158,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             hasNotification: true,
                             onTap: () => widget.setOverlayScreen('refinance'),
                           ),
-                        if (AuthService().onboardingStatus != 'skipped' &&
-                            interestRate != 0 &&
-                            interestRate >= 9.99)
-                          const SizedBox(width: 16),
-                        if (AuthService().onboardingStatus == 'skipped' ||
-                            interestRate == 0)
+                        if (showScanRateOpportunity || showRateAlertOpportunity)
                           const SizedBox(width: 16),
                         _OpportunityCard(
                           icon: LucideIcons.dollarSign,

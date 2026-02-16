@@ -94,7 +94,8 @@ class _FintechAutoFlowState extends State<FintechAutoFlow> {
   Map<String, dynamic> financials = {
     'estimatedValue': 22500.0,
     'userEstimatedLoan': 18000.0,
-    'actualRate': 8.99,
+    'actualRate': 7.99,
+    'marketRate': null,
     'monthlyPayment': 420.0,
     'lender': 'TD Auto Finance',
     'equity': 0.0,
@@ -534,8 +535,7 @@ class _FintechAutoFlowState extends State<FintechAutoFlow> {
         onStartRefinance: () {
           setOverlay('success');
         },
-        currentRate: (financials['actualRate'] ?? 8.99).toDouble(),
-        monthlyPayment: (financials['monthlyPayment'] ?? 420.0).toDouble(),
+        financials: financials,
       );
     }
     if (overlayScreen == 'cash-unlock') {

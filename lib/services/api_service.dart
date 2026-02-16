@@ -4,7 +4,36 @@ import 'package:http/http.dart' as http;
 import 'config.dart';
 import 'auth_service.dart';
 
+class LoanSnapshot {
+  final String loanId;
+  final double currentBalance;
+  final double monthlyPayment;
+  final double interestRate;
+  final int termMonths;
+
+  const LoanSnapshot({
+    required this.loanId,
+    required this.currentBalance,
+    required this.monthlyPayment,
+    required this.interestRate,
+    required this.termMonths,
+  });
+}
+
 class ApiService {
+  static double _toDouble(dynamic value, [double fallback = 0.0]) {
+    if (value is num) return value.toDouble();
+    if (value is String) return double.tryParse(value) ?? fallback;
+    return fallback;
+  }
+
+  static int _toInt(dynamic value, [int fallback = 0]) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    if (value is String) return int.tryParse(value) ?? fallback;
+    return fallback;
+  }
+
   // 1. Upload Document for OCR
   static Future<Map<String, dynamic>> scanDocument(
     String filePath, {
@@ -251,6 +280,79 @@ class ApiService {
     } else {
       throw Exception('Failed to load dashboard');
     }
+  }
+
+  static Future<double> getMarketRateFromSettings() async {
+    final auth = AuthService();
+    if (!auth.isAuthenticated) {
+      throw Exception('User not logged in');
+    }
+
+    final settings = await auth.pb
+        .collection('settings')
+        .getList(page: 1, perPage: 50);
+    if (settings.items.isEmpty) {
+      throw Exception('No settings found');
+    }
+
+    for (final item in settings.items) {
+      final data = item.data;
+      final double direct = _toDouble(
+        data['market_rate'] ??
+            data['market_apr'] ??
+            data['refinance_market_rate'] ??
+            data['apr'],
+        -1,
+      );
+      if (direct >= 0) {
+        return direct;
+      }
+
+      final String key = (data['key'] ?? data['name'] ?? '')
+          .toString()
+          .trim()
+          .toLowerCase();
+      if (key == 'market_rate' ||
+          key == 'market_apr' ||
+          key == 'refinance_market_rate') {
+        final double value = _toDouble(data['value'], -1);
+        if (value >= 0) {
+          return value;
+        }
+      }
+    }
+
+    throw Exception('Market rate setting not found');
+  }
+
+  static Future<LoanSnapshot?> getCurrentLoanSnapshot() async {
+    final auth = AuthService();
+    if (!auth.isAuthenticated) return null;
+
+    final userId = auth.userId;
+    if (userId.isEmpty) return null;
+
+    final vehicles = await auth.pb
+        .collection('vehicles')
+        .getList(page: 1, perPage: 1, filter: 'user_id = "$userId"');
+    if (vehicles.items.isEmpty) return null;
+
+    final vehicleId = vehicles.items.first.id;
+    final loans = await auth.pb
+        .collection('loans')
+        .getList(page: 1, perPage: 1, filter: 'vehicle_id = "$vehicleId"');
+    if (loans.items.isEmpty) return null;
+
+    final loan = loans.items.first;
+    final data = loan.data;
+
+    return LoanSnapshot(
+      loanId: loan.id,
+      currentBalance: _toDouble(data['current_balance']),
+      monthlyPayment: _toDouble(data['monthly_payment']),
+      interestRate: _toDouble(data['interest_rate']),
+      termMonths: _toInt(data['term_months']),
+    );
   }
 
   // 3. Submit Lead (Cash Back / Refinance)
