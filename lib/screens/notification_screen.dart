@@ -17,7 +17,8 @@ class NotificationScreen extends StatelessWidget {
         'color': Colors.red.shade600,
         'bg': Colors.red.shade50,
         'title': 'Rate Drop Alert',
-        'desc': 'Market rates dropped to 6.99%. You could save \$52/mo.',
+        'desc':
+            'Market rates have dropped. Check your updated refinance offer to see how much you can save.',
         'time': '2h ago',
         'isNew': true,
       },
