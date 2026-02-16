@@ -8,13 +8,20 @@ class ProfileScreen extends StatelessWidget {
 
   const ProfileScreen({super.key, required this.onLogout});
 
+  String _getInitials(String name) {
+    if (name.isEmpty) return "??";
+    final parts = name.trim().split(' ');
+    if (parts.length == 1) return parts[0].substring(0, 1).toUpperCase();
+    return (parts[0].substring(0, 1) + parts[parts.length - 1].substring(0, 1))
+        .toUpperCase();
+  }
+
   @override
   Widget build(BuildContext context) {
     final auth = AuthService();
     final email = auth.userEmail;
     final phone = auth.userPhone;
-    final name =
-        "Mikel Wills"; // Placeholder or from auth.pb.authStore.record?.getStringValue('name')
+    final name = auth.userName.isNotEmpty ? auth.userName : "Car Owner";
 
     // Colors
     const colorSlate50 = Color(0xFFF8FAFC);
@@ -35,6 +42,7 @@ class ProfileScreen extends StatelessWidget {
                 children: [
                   GestureDetector(
                     onTap: () => Navigator.pop(context),
+                    behavior: HitTestBehavior.opaque,
                     child: Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
@@ -93,7 +101,7 @@ class ProfileScreen extends StatelessWidget {
                             ),
                             child: Center(
                               child: Text(
-                                "MW",
+                                _getInitials(name),
                                 style: GoogleFonts.outfit(
                                   fontSize: 32,
                                   fontWeight: FontWeight.bold,

@@ -54,6 +54,7 @@ class AuthService {
 
   String get userId => pb.authStore.record?.id ?? '';
   String get userEmail => pb.authStore.record?.getStringValue('email') ?? '';
+  String get userName => pb.authStore.record?.getStringValue('name') ?? '';
   String get userPhone => pb.authStore.record?.getStringValue('phone') ?? '';
 
   // 1. Login with Email/Password (Fallback)
@@ -121,12 +122,14 @@ class AuthService {
     }
   }
 
-  // 3. Update Profile (Phone Number step)
-  Future<void> updatePhone(String phone) async {
+  // 3. Update Profile (Name & Phone step)
+  Future<void> updateProfile(String name, String phone) async {
     if (!isAuthenticated) return;
-    debugPrint("[AUTH] Updating phone: $phone");
-    await pb.collection('users').update(userId, body: {'phone': phone});
-    debugPrint("[AUTH] Phone updated.");
+    debugPrint("[AUTH] Updating profile: $name, $phone");
+    await pb
+        .collection('users')
+        .update(userId, body: {'name': name, 'phone': phone});
+    debugPrint("[AUTH] Profile updated.");
   }
 
   // 4. Update Onboarding Status

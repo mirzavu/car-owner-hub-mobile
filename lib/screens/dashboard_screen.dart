@@ -133,6 +133,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
     ).format(n);
   }
 
+  String _getInitials(String name) {
+    if (name.isEmpty) return "??";
+    final parts = name.trim().split(' ');
+    if (parts.length == 1) return parts[0].substring(0, 1).toUpperCase();
+    return (parts[0].substring(0, 1) + parts[parts.length - 1].substring(0, 1))
+        .toUpperCase();
+  }
+
   @override
   Widget build(BuildContext context) {
     // Colors
@@ -180,40 +188,40 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 child: Row(
                   children: [
                     // Avatar
-                    Container(
-                      width: 36,
-                      height: 36,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.2),
-                          width: 2,
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                ProfileScreen(onLogout: widget.onLogout),
+                          ),
+                        );
+                      },
+                      behavior: HitTestBehavior.opaque,
+                      child: Container(
+                        width: 44, // Increased from 36
+                        height: 44,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.2),
+                            width: 2,
+                          ),
+                          gradient: LinearGradient(
+                            colors: [
+                              Colors.blueGrey.shade200,
+                              Colors.blueGrey.shade400,
+                            ],
+                          ),
                         ),
-                        gradient: LinearGradient(
-                          colors: [
-                            Colors.blueGrey.shade200,
-                            Colors.blueGrey.shade400,
-                          ],
-                        ),
-                      ),
-                      child: GestureDetector(
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) =>
-                                  ProfileScreen(onLogout: widget.onLogout),
-                            ),
-                          );
-                        },
-                        child: Center(
-                          child: Text(
-                            "MW",
-                            style: GoogleFonts.outfit(
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                              color: colorSlate800,
-                            ),
+                        child: Text(
+                          _getInitials(AuthService().userName),
+                          style: GoogleFonts.outfit(
+                            fontSize: 12, // Slightly larger
+                            fontWeight: FontWeight.bold,
+                            color: colorSlate800,
                           ),
                         ),
                       ),
@@ -388,7 +396,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                             ),
                                             child: Center(
                                               child: Text(
-                                                "MW",
+                                                _getInitials(
+                                                  AuthService().userName,
+                                                ),
                                                 style: GoogleFonts.outfit(
                                                   fontSize: 12,
                                                   fontWeight: FontWeight.bold,
@@ -414,7 +424,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                             ),
                                           ),
                                           Text(
-                                            "Mikel Wills",
+                                            AuthService().userName.isNotEmpty
+                                                ? AuthService().userName
+                                                : "Car Owner",
                                             style: GoogleFonts.outfit(
                                               color: Colors.white,
                                               fontSize: 14,
@@ -1111,9 +1123,11 @@ class _BellButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
+      behavior: HitTestBehavior.opaque,
       child: Container(
-        width: 40,
-        height: 40,
+        width: 44, // Increased from 40
+        height: 44,
+        alignment: Alignment.center,
         decoration: BoxDecoration(
           color: Colors.white.withValues(alpha: 0.1),
           shape: BoxShape.circle,

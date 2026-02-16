@@ -7,7 +7,7 @@ import 'screens/splash_screen.dart';
 import 'screens/soft_entry_screen.dart';
 import 'screens/teaser_screen.dart' as teaser;
 import 'screens/login_screen.dart';
-import 'screens/phone_capture_screen.dart';
+import 'screens/registration_screen.dart';
 import 'screens/scan_prompt_screen.dart';
 import 'screens/scanner_screen.dart';
 import 'screens/verify_scan_screen.dart';
@@ -101,6 +101,7 @@ class _FintechAutoFlowState extends State<FintechAutoFlow> {
   };
 
   Map<String, dynamic>? lastScanData;
+  String tempPhone = ''; // Persist phone number across screens
 
   @override
   void initState() {
@@ -355,12 +356,19 @@ class _FintechAutoFlowState extends State<FintechAutoFlow> {
           ),
         );
       case 'auth-login':
-        return LoginScreen(setStep: (nextStep) => setStep(nextStep));
+        return LoginScreen(
+          setStep: (nextStep) => setStep(nextStep),
+          onBack: () => setStep('teaser'),
+        );
       case 'auth-phone':
-        return PhoneCaptureScreen(setStep: (nextStep) => setStep(nextStep));
+        return RegistrationScreen(
+          setStep: (nextStep) => setStep(nextStep),
+          initialValue: tempPhone,
+          onChanged: (val) => setState(() => tempPhone = val),
+        );
       case 'scan-intro':
         return ScanPromptScreen(
-          setStep: (nextStep) => setStep(nextStep),
+          setStep: (nextStep, [data]) => setStep(nextStep, data),
           onBack: () => setStep('auth-phone'),
         );
       case 'scanner':
@@ -383,7 +391,18 @@ class _FintechAutoFlowState extends State<FintechAutoFlow> {
               carDetails.addAll(updates);
             });
           },
-          onBack: () => setStep('scanner'),
+          onBack: () {
+            // If it was a manual entry (empty data), go back to scan intro
+            if (lastScanData == null || lastScanData!.isEmpty) {
+              setStep('scan-intro');
+            } else {
+              // Otherwise (OCR success from camera or file), go back to scan intro
+              // as that's where the upload/manual choice lives.
+              // If we want to be fancy, we could remember if it was 'scanner' or 'scan-intro'.
+              // For now, scan-intro is the safest bet for manual/upload.
+              setStep('scan-intro');
+            }
+          },
         );
       case 'main-app':
         return Stack(
@@ -446,7 +465,9 @@ class _FintechAutoFlowState extends State<FintechAutoFlow> {
         borderRadius: BorderRadius.circular(50),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF003366).withValues(alpha: 0.25), // Lighter shadow
+            color: const Color(
+              0xFF003366,
+            ).withValues(alpha: 0.25), // Lighter shadow
             blurRadius: 12, // Reduced blur
             offset: const Offset(0, 4),
           ),

@@ -46,9 +46,17 @@ class _VerifyScanScreenState extends State<VerifyScanScreen>
   late TextEditingController _paymentController;
   late TextEditingController _balanceController;
 
+  bool get _isManualEntry => widget.scanData.isEmpty;
+
   @override
   void initState() {
     super.initState();
+
+    // Auto-enable editing if no scan data was provided
+    if (_isManualEntry) {
+      _isEditing = true;
+    }
+
     _controller = AnimationController(
       duration: const Duration(milliseconds: 300),
       vsync: this,
@@ -67,7 +75,11 @@ class _VerifyScanScreenState extends State<VerifyScanScreen>
     _controller.forward();
 
     _initControllers();
-    _loadVinDetails();
+
+    // Only lookup VIN if we actually scanned one
+    if (!_isManualEntry) {
+      _loadVinDetails();
+    }
   }
 
   void _initControllers() {
@@ -352,218 +364,240 @@ class _VerifyScanScreenState extends State<VerifyScanScreen>
                   // 2. INCREASED TOP PADDING (60 -> 90) to prevent camera overlap
                   // Since the icon is -36, we need about 80-90 padding to clear it comfortably
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(24, 50, 24, 24),
+                    padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
                     child: FadeTransition(
                       opacity: _fadeAnimation,
                       child: ScaleTransition(
                         scale: _scaleAnimation,
-                        child: Stack(
-                          clipBehavior: Clip.none,
-                          alignment: Alignment.topCenter,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            // --- Back Button (Placed outside the white card) ---
-                            Positioned(
-                              top: -45,
-                              left: -10,
-                              child: IconButton(
-                                icon: const Icon(
-                                  LucideIcons.arrowLeft,
-                                  color: colorSlate500,
-                                ),
-                                onPressed: widget.onBack,
+                            // --- Back Button (Now properly in the layout flow) ---
+                            IconButton(
+                              icon: const Icon(
+                                LucideIcons.arrowLeft,
+                                color: colorSlate500,
                               ),
+                              onPressed: widget.onBack,
+                              // Shift it slightly left so it aligns with the card edge
+                              padding: EdgeInsets.zero,
+                              alignment: Alignment.centerLeft,
                             ),
-                            // --- The Card ---
-                            Container(
-                              width: double.infinity,
-                              constraints: const BoxConstraints(maxWidth: 420),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(20),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.08),
-                                    blurRadius: 24,
-                                    offset: const Offset(0, 12),
-                                  ),
-                                ],
-                              ),
-                              padding: const EdgeInsets.fromLTRB(
-                                24,
-                                48,
-                                24,
-                                24,
-                              ),
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  // Title
-                                  Text(
-                                    hasConflict
-                                        ? "Review Discrepancy"
-                                        : "Confirm Details",
-                                    textAlign: TextAlign.center,
-                                    style: GoogleFonts.outfit(
-                                      fontSize: 24,
-                                      fontWeight: FontWeight.bold,
-                                      color: colorSlate900,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 12),
-                                  if (_hasVinDetected && !hasConflict)
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 12,
-                                        vertical: 6,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: colorGreen100,
-                                        borderRadius: BorderRadius.circular(
-                                          999,
-                                        ),
-                                      ),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          const Icon(
-                                            LucideIcons.badgeCheck,
-                                            size: 16,
-                                            color: colorVibrantGreen,
-                                          ),
-                                          const SizedBox(width: 6),
-                                          Text(
-                                            "VIN Verified",
-                                            style: GoogleFonts.outfit(
-                                              color: colorVibrantGreen,
-                                              fontSize: 13,
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  if (_isVinLookupInProgress) ...[
-                                    const SizedBox(height: 8),
-                                    Text(
-                                      "Checking VIN details...",
-                                      style: GoogleFonts.outfit(
-                                        fontSize: 12,
-                                        color: colorSlate400,
-                                      ),
-                                    ),
-                                  ],
-                                  if (_vinLookupError != null &&
-                                      !_isVinLookupInProgress) ...[
-                                    const SizedBox(height: 8),
-                                    Text(
-                                      _vinLookupError!,
-                                      style: GoogleFonts.outfit(
-                                        fontSize: 12,
-                                        color: colorSlate400,
-                                      ),
-                                    ),
-                                  ],
-                                  const SizedBox(height: 24),
 
-                                  // 3. IMPROVED COMPARISON UI
-                                  if (hasConflict) ...[
-                                    Container(
-                                      width: double.infinity,
-                                      decoration: BoxDecoration(
-                                        color: colorAmber50,
-                                        borderRadius: BorderRadius.circular(16),
-                                        border: Border.all(
-                                          color: colorAmber200,
+                            // Added spacing between the back button and the floating icon
+                            const SizedBox(height: 32),
+
+                            // --- The Card & Floating Icon ---
+                            Stack(
+                              clipBehavior: Clip.none,
+                              alignment: Alignment.topCenter,
+                              children: [
+                                // --- The Card ---
+                                Container(
+                                  width: double.infinity,
+                                  constraints: const BoxConstraints(
+                                    maxWidth: 420,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(20),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withValues(
+                                          alpha: 0.08,
+                                        ),
+                                        blurRadius: 24,
+                                        offset: const Offset(0, 12),
+                                      ),
+                                    ],
+                                  ),
+                                  padding: const EdgeInsets.fromLTRB(
+                                    24,
+                                    48,
+                                    24,
+                                    24,
+                                  ),
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      // Title
+                                      Text(
+                                        _isManualEntry
+                                            ? "Enter Loan Details"
+                                            : (hasConflict
+                                                  ? "Review Discrepancy"
+                                                  : "Confirm Details"),
+                                        textAlign: TextAlign.center,
+                                        style: GoogleFonts.outfit(
+                                          fontSize: 24,
+                                          fontWeight: FontWeight.bold,
+                                          color: colorSlate900,
                                         ),
                                       ),
-                                      child: Column(
-                                        children: [
-                                          // Header
-                                          Padding(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 12,
-                                              vertical: 8,
-                                            ),
-                                            child: Row(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment.center,
-                                              children: [
-                                                const Icon(
-                                                  LucideIcons.arrowLeftRight,
-                                                  size: 14,
-                                                  color: colorAmber800,
-                                                ),
-                                                const SizedBox(width: 8),
-                                                Text(
-                                                  "Data Mismatch Detected",
-                                                  style: GoogleFonts.outfit(
-                                                    fontSize: 12,
-                                                    fontWeight: FontWeight.w700,
-                                                    color: colorAmber800,
-                                                  ),
-                                                ),
-                                              ],
+                                      const SizedBox(height: 12),
+                                      if (_hasVinDetected &&
+                                          !hasConflict &&
+                                          !_isManualEntry)
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 12,
+                                            vertical: 6,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: colorGreen100,
+                                            borderRadius: BorderRadius.circular(
+                                              999,
                                             ),
                                           ),
-                                          const Divider(
-                                            height: 1,
-                                            color: colorAmber200,
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              const Icon(
+                                                LucideIcons.badgeCheck,
+                                                size: 16,
+                                                color: colorVibrantGreen,
+                                              ),
+                                              const SizedBox(width: 6),
+                                              Text(
+                                                "VIN Verified",
+                                                style: GoogleFonts.outfit(
+                                                  color: colorVibrantGreen,
+                                                  fontSize: 13,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              ),
+                                            ],
                                           ),
-                                          // Comparison Body
-                                          IntrinsicHeight(
-                                            child: Row(
-                                              children: [
-                                                // User Side
-                                                Expanded(
-                                                  child: Padding(
-                                                    padding:
-                                                        const EdgeInsets.all(
-                                                          12,
-                                                        ),
-                                                    child: Column(
-                                                      crossAxisAlignment:
-                                                          CrossAxisAlignment
-                                                              .start,
-                                                      children: [
-                                                        Row(
+                                        ),
+                                      if (_isVinLookupInProgress) ...[
+                                        const SizedBox(height: 8),
+                                        Text(
+                                          "Checking VIN details...",
+                                          style: GoogleFonts.outfit(
+                                            fontSize: 12,
+                                            color: colorSlate400,
+                                          ),
+                                        ),
+                                      ],
+                                      if (_vinLookupError != null &&
+                                          !_isVinLookupInProgress) ...[
+                                        const SizedBox(height: 8),
+                                        Text(
+                                          _vinLookupError!,
+                                          style: GoogleFonts.outfit(
+                                            fontSize: 12,
+                                            color: colorSlate400,
+                                          ),
+                                        ),
+                                      ],
+                                      const SizedBox(height: 24),
+
+                                      // 3. IMPROVED COMPARISON UI
+                                      if (hasConflict && !_isManualEntry) ...[
+                                        Container(
+                                          width: double.infinity,
+                                          decoration: BoxDecoration(
+                                            color: colorAmber50,
+                                            borderRadius: BorderRadius.circular(
+                                              16,
+                                            ),
+                                            border: Border.all(
+                                              color: colorAmber200,
+                                            ),
+                                          ),
+                                          child: Column(
+                                            children: [
+                                              // Header
+                                              Padding(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 12,
+                                                      vertical: 8,
+                                                    ),
+                                                child: Row(
+                                                  mainAxisAlignment:
+                                                      MainAxisAlignment.center,
+                                                  children: [
+                                                    const Icon(
+                                                      LucideIcons
+                                                          .arrowLeftRight,
+                                                      size: 14,
+                                                      color: colorAmber800,
+                                                    ),
+                                                    const SizedBox(width: 8),
+                                                    Text(
+                                                      "Data Mismatch Detected",
+                                                      style: GoogleFonts.outfit(
+                                                        fontSize: 12,
+                                                        fontWeight:
+                                                            FontWeight.w700,
+                                                        color: colorAmber800,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                              const Divider(
+                                                height: 1,
+                                                color: colorAmber200,
+                                              ),
+                                              // Comparison Body
+                                              IntrinsicHeight(
+                                                child: Row(
+                                                  children: [
+                                                    // User Side
+                                                    Expanded(
+                                                      child: Padding(
+                                                        padding:
+                                                            const EdgeInsets.all(
+                                                              12,
+                                                            ),
+                                                        child: Column(
+                                                          crossAxisAlignment:
+                                                              CrossAxisAlignment
+                                                                  .start,
                                                           children: [
-                                                            const Icon(
-                                                              LucideIcons.user,
-                                                              size: 14,
-                                                              color:
-                                                                  colorSlate400,
+                                                            Row(
+                                                              children: [
+                                                                const Icon(
+                                                                  LucideIcons
+                                                                      .user,
+                                                                  size: 14,
+                                                                  color:
+                                                                      colorSlate400,
+                                                                ),
+                                                                const SizedBox(
+                                                                  width: 6,
+                                                                ),
+                                                                Flexible(
+                                                                  child: Text(
+                                                                    "You Entered"
+                                                                        .toUpperCase(),
+                                                                    style: GoogleFonts.outfit(
+                                                                      fontSize:
+                                                                          11,
+                                                                      fontWeight:
+                                                                          FontWeight
+                                                                              .w600,
+                                                                      color:
+                                                                          colorSlate500,
+                                                                      letterSpacing:
+                                                                          0.5,
+                                                                    ),
+                                                                    overflow:
+                                                                        TextOverflow
+                                                                            .ellipsis,
+                                                                  ),
+                                                                ),
+                                                              ],
                                                             ),
                                                             const SizedBox(
-                                                              width: 6,
+                                                              height: 8,
                                                             ),
-                                                            Flexible(
-                                                              child: Text(
-                                                                "You Entered"
-                                                                    .toUpperCase(),
-                                                                style: GoogleFonts.outfit(
-                                                                  fontSize: 11,
-                                                                  fontWeight:
-                                                                      FontWeight
-                                                                          .w600,
-                                                                  color:
-                                                                      colorSlate500,
-                                                                  letterSpacing:
-                                                                      0.5,
-                                                                ),
-                                                                overflow:
-                                                                    TextOverflow
-                                                                        .ellipsis,
-                                                              ),
-                                                            ),
-                                                          ],
-                                                        ),
-                                                        const SizedBox(
-                                                          height: 8,
-                                                        ),
-                                                        Text(
-                                                          userVehicle,
-                                                          style:
-                                                              GoogleFonts.outfit(
+                                                            Text(
+                                                              userVehicle,
+                                                              style: GoogleFonts.outfit(
                                                                 fontSize: 14,
                                                                 color:
                                                                     colorSlate500,
@@ -572,81 +606,81 @@ class _VerifyScanScreenState extends State<VerifyScanScreen>
                                                                         .w500,
                                                                 height: 1.2,
                                                               ),
-                                                        ),
-                                                      ],
-                                                    ),
-                                                  ),
-                                                ),
-                                                // Vertical Divider
-                                                Container(
-                                                  width: 1,
-                                                  color: colorAmber200,
-                                                ),
-                                                // Scanned Side
-                                                Expanded(
-                                                  child: Container(
-                                                    decoration: BoxDecoration(
-                                                      color: colorAmber100
-                                                          .withValues(
-                                                            alpha: 0.3,
-                                                          ),
-                                                      borderRadius:
-                                                          const BorderRadius.only(
-                                                            bottomRight:
-                                                                Radius.circular(
-                                                                  15,
-                                                                ),
-                                                          ),
-                                                    ),
-                                                    padding:
-                                                        const EdgeInsets.all(
-                                                          12,
-                                                        ),
-                                                    child: Column(
-                                                      crossAxisAlignment:
-                                                          CrossAxisAlignment
-                                                              .start,
-                                                      children: [
-                                                        Row(
-                                                          children: [
-                                                            const Icon(
-                                                              LucideIcons
-                                                                  .scanLine,
-                                                              size: 14,
-                                                              color:
-                                                                  colorAmber800,
-                                                            ),
-                                                            const SizedBox(
-                                                              width: 6,
-                                                            ),
-                                                            Flexible(
-                                                              child: Text(
-                                                                "Scanned"
-                                                                    .toUpperCase(),
-                                                                style: GoogleFonts.outfit(
-                                                                  fontSize: 11,
-                                                                  fontWeight:
-                                                                      FontWeight
-                                                                          .bold,
-                                                                  color:
-                                                                      colorAmber800,
-                                                                  letterSpacing:
-                                                                      0.5,
-                                                                ),
-                                                                overflow:
-                                                                    TextOverflow
-                                                                        .ellipsis,
-                                                              ),
                                                             ),
                                                           ],
                                                         ),
-                                                        const SizedBox(
-                                                          height: 8,
+                                                      ),
+                                                    ),
+                                                    // Vertical Divider
+                                                    Container(
+                                                      width: 1,
+                                                      color: colorAmber200,
+                                                    ),
+                                                    // Scanned Side
+                                                    Expanded(
+                                                      child: Container(
+                                                        decoration: BoxDecoration(
+                                                          color: colorAmber100
+                                                              .withValues(
+                                                                alpha: 0.3,
+                                                              ),
+                                                          borderRadius:
+                                                              const BorderRadius.only(
+                                                                bottomRight:
+                                                                    Radius.circular(
+                                                                      15,
+                                                                    ),
+                                                              ),
                                                         ),
-                                                        Text(
-                                                          docVehicle,
-                                                          style:
-                                                              GoogleFonts.outfit(
+                                                        padding:
+                                                            const EdgeInsets.all(
+                                                              12,
+                                                            ),
+                                                        child: Column(
+                                                          crossAxisAlignment:
+                                                              CrossAxisAlignment
+                                                                  .start,
+                                                          children: [
+                                                            Row(
+                                                              children: [
+                                                                const Icon(
+                                                                  LucideIcons
+                                                                      .scanLine,
+                                                                  size: 14,
+                                                                  color:
+                                                                      colorAmber800,
+                                                                ),
+                                                                const SizedBox(
+                                                                  width: 6,
+                                                                ),
+                                                                Flexible(
+                                                                  child: Text(
+                                                                    "Scanned"
+                                                                        .toUpperCase(),
+                                                                    style: GoogleFonts.outfit(
+                                                                      fontSize:
+                                                                          11,
+                                                                      fontWeight:
+                                                                          FontWeight
+                                                                              .bold,
+                                                                      color:
+                                                                          colorAmber800,
+                                                                      letterSpacing:
+                                                                          0.5,
+                                                                    ),
+                                                                    overflow:
+                                                                        TextOverflow
+                                                                            .ellipsis,
+                                                                  ),
+                                                                ),
+                                                              ],
+                                                            ),
+                                                            const SizedBox(
+                                                              height: 8,
+                                                            ),
+                                                            Text(
+                                                              docVehicle,
+                                                              style: GoogleFonts.outfit(
                                                                 fontSize: 14,
                                                                 color:
                                                                     colorSlate900,
@@ -655,245 +689,249 @@ class _VerifyScanScreenState extends State<VerifyScanScreen>
                                                                         .w700,
                                                                 height: 1.2,
                                                               ),
+                                                            ),
+                                                          ],
                                                         ),
-                                                      ],
+                                                      ),
                                                     ),
-                                                  ),
+                                                  ],
                                                 ),
-                                              ],
-                                            ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        const SizedBox(height: 24),
+                                      ],
+
+                                      // Details List
+                                      Column(
+                                        children: [
+                                          _DetailRow(
+                                            label: "Vehicle",
+                                            value: userVehicle,
+                                            isEditing: _isEditing,
+                                            controller: _vehicleController,
+                                            colorSlate100: colorSlate100,
+                                            colorSlate500: colorSlate500,
+                                            colorSlate800: colorSlate800,
+                                          ),
+                                          _DetailRow(
+                                            label: "VIN",
+                                            value: normalizedVin.isNotEmpty
+                                                ? normalizedVin
+                                                : "Not detected",
+                                            isMono: true,
+                                            isEditing: _isEditing,
+                                            controller: _vinController,
+                                            colorSlate100: colorSlate100,
+                                            colorSlate500: colorSlate500,
+                                            colorSlate800: colorSlate800,
+                                          ),
+                                          _DetailRow(
+                                            label: "Term",
+                                            value:
+                                                widget.scanData['term_months'] !=
+                                                    null
+                                                ? "${widget.scanData['term_months']} months"
+                                                : "N/A",
+                                            isEditing: _isEditing,
+                                            controller: _termController,
+                                            colorSlate100: colorSlate100,
+                                            colorSlate500: colorSlate500,
+                                            colorSlate800: colorSlate800,
+                                          ),
+                                          _DetailRow(
+                                            label: "Lender",
+                                            value:
+                                                widget
+                                                    .scanData['lender_name'] ??
+                                                "Unknown",
+                                            isEditing: _isEditing,
+                                            controller: _lenderController,
+                                            colorSlate100: colorSlate100,
+                                            colorSlate500: colorSlate500,
+                                            colorSlate800: colorSlate800,
+                                          ),
+                                          _DetailRow(
+                                            label: "Contract Date",
+                                            value:
+                                                widget
+                                                    .scanData['contract_date'] ??
+                                                "Unknown",
+                                            isEditing: _isEditing,
+                                            controller: _dateController,
+                                            colorSlate100: colorSlate100,
+                                            colorSlate500: colorSlate500,
+                                            colorSlate800: colorSlate800,
+                                          ),
+                                          _DetailRow(
+                                            label: "APR Rate",
+                                            value:
+                                                widget.scanData['interest_rate'] !=
+                                                    null
+                                                ? "${widget.scanData['interest_rate']}%"
+                                                : "N/A",
+                                            isHigh:
+                                                (widget.scanData['interest_rate'] ??
+                                                    0) >
+                                                10,
+                                            isEditing: _isEditing,
+                                            controller: _aprController,
+                                            colorSlate100: colorSlate100,
+                                            colorSlate500: colorSlate500,
+                                            colorSlate800: colorSlate800,
+                                            colorRed100: colorRed100,
+                                            colorRed700: colorRed700,
+                                          ),
+                                          _DetailRow(
+                                            label: "Payment",
+                                            value:
+                                                widget.scanData['bi_weekly_payment'] !=
+                                                    null
+                                                ? "${NumberFormat.currency(symbol: '\$', decimalDigits: 2).format(widget.scanData['bi_weekly_payment'])}/bw"
+                                                : widget.scanData['monthly_payment'] !=
+                                                      null
+                                                ? "${NumberFormat.currency(symbol: '\$', decimalDigits: 2).format(widget.scanData['monthly_payment'])}/mo"
+                                                : "N/A",
+                                            isEditing: _isEditing,
+                                            controller: _paymentController,
+                                            colorSlate100: colorSlate100,
+                                            colorSlate500: colorSlate500,
+                                            colorSlate800: colorSlate800,
+                                          ),
+                                          _DetailRow(
+                                            label: "Financed Amount",
+                                            value:
+                                                widget.scanData['current_balance'] !=
+                                                    null
+                                                ? NumberFormat.currency(
+                                                    symbol: '\$',
+                                                    decimalDigits: 0,
+                                                  ).format(
+                                                    widget
+                                                        .scanData['current_balance'],
+                                                  )
+                                                : "N/A",
+                                            isEditing: _isEditing,
+                                            controller: _balanceController,
+                                            colorSlate100: colorSlate100,
+                                            colorSlate500: colorSlate500,
+                                            colorSlate800: colorSlate800,
                                           ),
                                         ],
                                       ),
-                                    ),
-                                    const SizedBox(height: 24),
-                                  ],
 
-                                  // Details List
-                                  Column(
-                                    children: [
-                                      _DetailRow(
-                                        label: "Vehicle",
-                                        value: userVehicle,
-                                        isEditing: _isEditing,
-                                        controller: _vehicleController,
-                                        colorSlate100: colorSlate100,
-                                        colorSlate500: colorSlate500,
-                                        colorSlate800: colorSlate800,
+                                      const SizedBox(height: 32),
+                                      // Unified Action Buttons
+                                      SizedBox(
+                                        width: double.infinity,
+                                        child: ElevatedButton(
+                                          onPressed: () {
+                                            if (_isEditing) {
+                                              _handleVerify();
+                                            } else if (hasConflict) {
+                                              _handleUseDocumentDetails();
+                                            } else {
+                                              _handleVerify();
+                                            }
+                                          },
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: colorVibrantGreen,
+                                            foregroundColor: Colors.white,
+                                            padding: const EdgeInsets.symmetric(
+                                              vertical: 18,
+                                            ),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(14),
+                                            ),
+                                            elevation: _isEditing ? 4 : 2,
+                                            shadowColor: colorVibrantGreen
+                                                .withValues(alpha: 0.3),
+                                          ),
+                                          child: Text(
+                                            _isEditing
+                                                ? "Save & Verify"
+                                                : (hasConflict
+                                                      ? "Update with Scanned Data"
+                                                      : "Looks Correct"),
+                                            style: GoogleFonts.outfit(
+                                              fontSize: _isEditing ? 18 : 16,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ),
                                       ),
-                                      _DetailRow(
-                                        label: "VIN",
-                                        value: normalizedVin.isNotEmpty
-                                            ? normalizedVin
-                                            : "Not detected",
-                                        isMono: true,
-                                        isEditing: _isEditing,
-                                        controller: _vinController,
-                                        colorSlate100: colorSlate100,
-                                        colorSlate500: colorSlate500,
-                                        colorSlate800: colorSlate800,
-                                      ),
-                                      _DetailRow(
-                                        label: "Term",
-                                        value:
-                                            widget.scanData['term_months'] !=
-                                                null
-                                            ? "${widget.scanData['term_months']} months"
-                                            : "N/A",
-                                        isEditing: _isEditing,
-                                        controller: _termController,
-                                        colorSlate100: colorSlate100,
-                                        colorSlate500: colorSlate500,
-                                        colorSlate800: colorSlate800,
-                                      ),
-                                      _DetailRow(
-                                        label: "Lender",
-                                        value:
-                                            widget.scanData['lender_name'] ??
-                                            "Unknown",
-                                        isEditing: _isEditing,
-                                        controller: _lenderController,
-                                        colorSlate100: colorSlate100,
-                                        colorSlate500: colorSlate500,
-                                        colorSlate800: colorSlate800,
-                                      ),
-                                      _DetailRow(
-                                        label: "Contract Date",
-                                        value:
-                                            widget.scanData['contract_date'] ??
-                                            "Unknown",
-                                        isEditing: _isEditing,
-                                        controller: _dateController,
-                                        colorSlate100: colorSlate100,
-                                        colorSlate500: colorSlate500,
-                                        colorSlate800: colorSlate800,
-                                      ),
-                                      _DetailRow(
-                                        label: "APR Rate",
-                                        value:
-                                            widget.scanData['interest_rate'] !=
-                                                null
-                                            ? "${widget.scanData['interest_rate']}%"
-                                            : "N/A",
-                                        isHigh:
-                                            (widget.scanData['interest_rate'] ??
-                                                0) >
-                                            10,
-                                        isEditing: _isEditing,
-                                        controller: _aprController,
-                                        colorSlate100: colorSlate100,
-                                        colorSlate500: colorSlate500,
-                                        colorSlate800: colorSlate800,
-                                        colorRed100: colorRed100,
-                                        colorRed700: colorRed700,
-                                      ),
-                                      _DetailRow(
-                                        label: "Payment",
-                                        value:
-                                            widget.scanData['bi_weekly_payment'] !=
-                                                null
-                                            ? "${NumberFormat.currency(symbol: '\$', decimalDigits: 2).format(widget.scanData['bi_weekly_payment'])}/bw"
-                                            : widget.scanData['monthly_payment'] !=
-                                                  null
-                                            ? "${NumberFormat.currency(symbol: '\$', decimalDigits: 2).format(widget.scanData['monthly_payment'])}/mo"
-                                            : "N/A",
-                                        isEditing: _isEditing,
-                                        controller: _paymentController,
-                                        colorSlate100: colorSlate100,
-                                        colorSlate500: colorSlate500,
-                                        colorSlate800: colorSlate800,
-                                      ),
-                                      _DetailRow(
-                                        label: "Financed Amount",
-                                        value:
-                                            widget.scanData['current_balance'] !=
-                                                null
-                                            ? NumberFormat.currency(
-                                                symbol: '\$',
-                                                decimalDigits: 0,
-                                              ).format(
-                                                widget
-                                                    .scanData['current_balance'],
-                                              )
-                                            : "N/A",
-                                        isEditing: _isEditing,
-                                        controller: _balanceController,
-                                        colorSlate100: colorSlate100,
-                                        colorSlate500: colorSlate500,
-                                        colorSlate800: colorSlate800,
-                                      ),
+                                      const SizedBox(height: 12),
+                                      if (!_isManualEntry)
+                                        SizedBox(
+                                          width: double.infinity,
+                                          child: TextButton(
+                                            onPressed: () {
+                                              setState(() {
+                                                _isEditing = !_isEditing;
+                                              });
+                                            },
+                                            style: TextButton.styleFrom(
+                                              foregroundColor: _isEditing
+                                                  ? colorSlate400
+                                                  : colorSlate500,
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    vertical: 16,
+                                                  ),
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(14),
+                                              ),
+                                            ),
+                                            child: Text(
+                                              _isEditing
+                                                  ? "Cancel editing"
+                                                  : "Edit manually",
+                                              style: GoogleFonts.outfit(
+                                                fontSize: 15,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
                                     ],
                                   ),
-
-                                  const SizedBox(height: 32),
-                                  // Unified Action Buttons
-                                  SizedBox(
-                                    width: double.infinity,
-                                    child: ElevatedButton(
-                                      onPressed: () {
-                                        if (_isEditing) {
-                                          _handleVerify();
-                                        } else if (hasConflict) {
-                                          _handleUseDocumentDetails();
-                                        } else {
-                                          _handleVerify();
-                                        }
-                                      },
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: colorVibrantGreen,
-                                        foregroundColor: Colors.white,
-                                        padding: const EdgeInsets.symmetric(
-                                          vertical: 18,
-                                        ),
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            14,
-                                          ),
-                                        ),
-                                        elevation: _isEditing ? 4 : 2,
-                                        shadowColor: colorVibrantGreen
-                                            .withValues(alpha: 0.3),
-                                      ),
-                                      child: Text(
-                                        _isEditing
-                                            ? "Save & Verify"
-                                            : (hasConflict
-                                                  ? "Update with Scanned Data"
-                                                  : "Looks Correct"),
-                                        style: GoogleFonts.outfit(
-                                          fontSize: _isEditing ? 18 : 16,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 12),
-                                  SizedBox(
-                                    width: double.infinity,
-                                    child: TextButton(
-                                      onPressed: () {
-                                        setState(() {
-                                          _isEditing = !_isEditing;
-                                        });
-                                      },
-                                      style: TextButton.styleFrom(
-                                        foregroundColor: _isEditing
-                                            ? colorSlate400
-                                            : colorSlate500,
-                                        padding: const EdgeInsets.symmetric(
-                                          vertical: 16,
-                                        ),
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            14,
-                                          ),
-                                        ),
-                                      ),
-                                      child: Text(
-                                        _isEditing
-                                            ? "Cancel editing"
-                                            : "Edit manually",
-                                        style: GoogleFonts.outfit(
-                                          fontSize: 15,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            // --- The Floating Icon ---
-                            Positioned(
-                              top: -36,
-                              child: Container(
-                                width: 72,
-                                height: 72,
-                                decoration: BoxDecoration(
-                                  color: statusIconBg,
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: Colors.white,
-                                    width: 4,
-                                  ),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withValues(
-                                        alpha: 0.1,
-                                      ),
-                                      blurRadius: 10,
-                                      offset: const Offset(0, 4),
-                                    ),
-                                  ],
                                 ),
-                                child: Center(
-                                  child: Icon(
-                                    statusIcon,
-                                    size: 36,
-                                    color: statusIconColor,
+                                // --- The Floating Icon ---
+                                Positioned(
+                                  top: -36,
+                                  child: Container(
+                                    width: 72,
+                                    height: 72,
+                                    decoration: BoxDecoration(
+                                      color: statusIconBg,
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: Colors.white,
+                                        width: 4,
+                                      ),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withValues(
+                                            alpha: 0.1,
+                                          ),
+                                          blurRadius: 10,
+                                          offset: const Offset(0, 4),
+                                        ),
+                                      ],
+                                    ),
+                                    child: Center(
+                                      child: Icon(
+                                        statusIcon,
+                                        size: 36,
+                                        color: statusIconColor,
+                                      ),
+                                    ),
                                   ),
                                 ),
-                              ),
+                              ],
                             ),
                           ],
                         ),

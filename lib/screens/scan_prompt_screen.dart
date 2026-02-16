@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:file_picker/file_picker.dart';
+import '../services/api_service.dart';
+import '../services/auth_service.dart';
 
 class ScanPromptScreen extends StatefulWidget {
-  final Function(String) setStep;
+  final void Function(String, [Map<String, dynamic>?]) setStep;
   final VoidCallback? onBack;
 
   const ScanPromptScreen({super.key, required this.setStep, this.onBack});
@@ -56,18 +59,6 @@ class _ScanPromptScreenState extends State<ScanPromptScreen>
       body: SafeArea(
         child: Stack(
           children: [
-            // Back Button
-            if (widget.onBack != null)
-              Positioned(
-                top: 16,
-                left: 16,
-                child: IconButton(
-                  icon: const Icon(LucideIcons.arrowLeft),
-                  color: colorSlate900,
-                  onPressed: widget.onBack,
-                ),
-              ),
-
             CustomScrollView(
               slivers: [
                 SliverFillRemaining(
@@ -109,7 +100,6 @@ class _ScanPromptScreenState extends State<ScanPromptScreen>
                                   ),
                                 ),
                               ),
-
                               // Heading
                               Text(
                                 "Let's make this official.",
@@ -199,7 +189,7 @@ class _ScanPromptScreenState extends State<ScanPromptScreen>
                         const SizedBox(height: 24),
                         Column(
                           children: [
-                            // Primary Button
+                            // Primary Button: Add Document
                             Container(
                               width: double.infinity,
                               height: 60,
@@ -228,24 +218,19 @@ class _ScanPromptScreenState extends State<ScanPromptScreen>
                               child: Material(
                                 color: Colors.transparent,
                                 child: InkWell(
-                                  onTap: () {
-                                    debugPrint(
-                                      "[SCAN-PROMPT] User clicked Scan Document",
-                                    );
-                                    widget.setStep('scanner');
-                                  },
+                                  onTap: _showDocumentOptionsSheet,
                                   borderRadius: BorderRadius.circular(12),
                                   child: Row(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
                                       const Icon(
-                                        LucideIcons.camera,
+                                        LucideIcons.filePlus,
                                         size: 22,
                                         color: Colors.white,
                                       ),
                                       const SizedBox(width: 12),
                                       Text(
-                                        "Scan Document",
+                                        "Add Document",
                                         style: GoogleFonts.outfit(
                                           fontSize: 18,
                                           fontWeight: FontWeight.bold,
@@ -259,6 +244,42 @@ class _ScanPromptScreenState extends State<ScanPromptScreen>
                             ),
 
                             const SizedBox(height: 16),
+
+                            // Secondary Button: Enter Manually
+                            SizedBox(
+                              width: double.infinity,
+                              height: 60,
+                              child: OutlinedButton(
+                                onPressed: () {
+                                  debugPrint(
+                                    "[SCAN-PROMPT] User chose manual entry",
+                                  );
+                                  // Pass empty map to trigger manual mode and clear stale data
+                                  widget.setStep('verify', {});
+                                },
+                                style: OutlinedButton.styleFrom(
+                                  side: const BorderSide(
+                                    color: colorSlate100,
+                                    width: 2,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                                child: Text(
+                                  "Enter details manually",
+                                  style: GoogleFonts.outfit(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                    color: colorSlate600,
+                                  ),
+                                ),
+                              ),
+                            ),
+
+                            const SizedBox(height: 8),
+
+                            // Tertiary Button: Skip
                             TextButton(
                               onPressed: () {
                                 debugPrint(
@@ -269,7 +290,7 @@ class _ScanPromptScreenState extends State<ScanPromptScreen>
                               style: TextButton.styleFrom(
                                 foregroundColor: colorSlate600,
                                 padding: const EdgeInsets.symmetric(
-                                  vertical: 8,
+                                  vertical: 12,
                                 ),
                               ),
                               child: Text(
@@ -289,9 +310,203 @@ class _ScanPromptScreenState extends State<ScanPromptScreen>
                 ),
               ],
             ),
+            // Back Button
+            if (widget.onBack != null)
+              Positioned(
+                top: 16,
+                left: 16,
+                child: IconButton(
+                  icon: const Icon(LucideIcons.arrowLeft),
+                  color: colorSlate900,
+                  onPressed: widget.onBack,
+                ),
+              ),
           ],
         ),
       ),
+    );
+  }
+
+  Future<void> _handleFileUpload() async {
+    try {
+      // 1. Let user pick a PDF or Image
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['jpg', 'jpeg', 'png', 'pdf'],
+      );
+
+      // Check if user cancelled the picker
+      if (result == null) {
+        debugPrint("[SCAN-PROMPT] User cancelled file picker.");
+        return;
+      }
+
+      // Check if path is valid
+      if (result.files.single.path == null) {
+        debugPrint("[SCAN-PROMPT] File path is null.");
+        return;
+      }
+
+      String filePath = result.files.single.path!;
+
+      // 2. Close the bottom sheet
+      if (mounted) Navigator.pop(context);
+
+      // 3. Show a loading dialog so the user knows OCR is running
+      _showLoadingDialog();
+
+      // 4. Send to OCR API
+      final scanResult = await ApiService.scanDocument(
+        filePath,
+        userId: AuthService().userId,
+      );
+
+      if (!mounted) return;
+      Navigator.pop(context); // Hide loading dialog
+
+      if (scanResult.containsKey('error')) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              "Low quality document. Please try again or enter manually.",
+            ),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      } else {
+        // 5. Success! Route to verify screen with the data
+        widget.setStep('verify', scanResult);
+      }
+    } catch (e) {
+      debugPrint("[SCAN-PROMPT] File Upload Error: $e");
+      if (!mounted) return;
+      // Close bottom sheet if it's still open
+      if (Navigator.canPop(context)) Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Error picking file: $e"),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    }
+  }
+
+  void _showLoadingDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const CircularProgressIndicator(color: colorVibrantGreen),
+              const SizedBox(height: 16),
+              Text(
+                "Extracting details...",
+                style: GoogleFonts.outfit(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: colorSlate900,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showDocumentOptionsSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  "Add Document",
+                  style: GoogleFonts.outfit(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: colorSlate900,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                ListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: colorSlate50,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(LucideIcons.camera, color: colorSlate900),
+                  ),
+                  title: Text(
+                    "Take Photo",
+                    style: GoogleFonts.outfit(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  subtitle: Text(
+                    "Scan with your camera",
+                    style: GoogleFonts.outfit(
+                      fontSize: 13,
+                      color: colorSlate400,
+                    ),
+                  ),
+                  onTap: () {
+                    Navigator.pop(context);
+                    widget.setStep('scanner');
+                  },
+                ),
+                const SizedBox(height: 8),
+                ListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: colorSlate50,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(
+                      LucideIcons.uploadCloud,
+                      color: colorSlate900,
+                    ),
+                  ),
+                  title: Text(
+                    "Upload File",
+                    style: GoogleFonts.outfit(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  subtitle: Text(
+                    "Choose PDF or Image from device",
+                    style: GoogleFonts.outfit(
+                      fontSize: 13,
+                      color: colorSlate400,
+                    ),
+                  ),
+                  onTap: () {
+                    _handleFileUpload();
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }
