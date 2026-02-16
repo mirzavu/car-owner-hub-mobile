@@ -54,7 +54,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   double vehicleValue = 22500;
   double loanBalance = 18000;
   double monthlyPayment = 420;
-  double interestRate = 7.99;
+  double interestRate = 0.0;
   double? marketRate;
 
   double get equity => vehicleValue - loanBalance;
@@ -80,7 +80,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         } else {
           monthlyPayment = (financials['monthlyPayment'] ?? 420).toDouble();
         }
-        interestRate = (financials['interestRate'] ?? 7.99).toDouble();
+        interestRate = (financials['interestRate'] ?? 0.0).toDouble();
       });
       if (widget.onFinancialsUpdate != null) {
         widget.onFinancialsUpdate!({

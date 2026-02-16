@@ -94,7 +94,7 @@ class _FintechAutoFlowState extends State<FintechAutoFlow> {
   Map<String, dynamic> financials = {
     'estimatedValue': 22500.0,
     'userEstimatedLoan': 18000.0,
-    'actualRate': 7.99,
+    'actualRate': 0.0,
     'marketRate': null,
     'monthlyPayment': 420.0,
     'lender': 'TD Auto Finance',

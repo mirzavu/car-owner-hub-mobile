@@ -40,7 +40,7 @@ class _CashUnlockScreenState extends State<CashUnlockScreen> {
 
   double get _currentPayment => _asDouble(widget.financials['monthlyPayment']);
 
-  double get _currentRate => _asDouble(widget.financials['actualRate'], 7.99);
+  double get _currentRate => _asDouble(widget.financials['actualRate'], 0.0);
 
   CashbackOffer get _cashOffer => FinanceService.getCashbackOffer(
     vehicleValue: _vehicleValue,
