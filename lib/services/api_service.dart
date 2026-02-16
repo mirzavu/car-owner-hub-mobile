@@ -380,6 +380,7 @@ class ApiService {
   // 4. Fetch Inventory
   static Future<List<dynamic>> getInventory({
     double? equity,
+    double? targetPayment,
     String? city,
     String? province,
   }) async {
@@ -387,6 +388,7 @@ class ApiService {
     String url = '${Config.inventory}?userId=$userId';
 
     if (equity != null) url += '&equity=$equity';
+    if (targetPayment != null) url += '&target_payment=$targetPayment';
     if (city != null) url += '&city=$city';
     if (province != null) url += '&province=$province';
 

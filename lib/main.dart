@@ -83,21 +83,21 @@ class _FintechAutoFlowState extends State<FintechAutoFlow> {
 
   // User Data State
   Map<String, String> carDetails = {
-    'year': '2021',
-    'make': 'Honda',
-    'model': 'Civic',
-    'trim': 'EX',
-    'vin': '2HGFC2F60MH59....',
-    'plate': 'BS4 92X',
+    'year': '',
+    'make': '',
+    'model': '',
+    'trim': '',
+    'vin': '',
+    'plate': '',
   };
 
   Map<String, dynamic> financials = {
-    'estimatedValue': 22500.0,
-    'userEstimatedLoan': 18000.0,
+    'estimatedValue': 0.0,
+    'userEstimatedLoan': 0.0,
     'actualRate': 0.0,
     'marketRate': null,
-    'monthlyPayment': 420.0,
-    'lender': 'TD Auto Finance',
+    'monthlyPayment': 0.0,
+    'lender': 'Pending...',
     'equity': 0.0,
   };
 
@@ -446,6 +446,7 @@ class _FintechAutoFlowState extends State<FintechAutoFlow> {
         make: carDetails['make'] ?? '',
         model: carDetails['model'] ?? '',
       ),
+      initialFinancials: financials,
       setOverlayScreen: (screen) => setOverlay(screen),
       setActiveTab: (tab) => setActiveTab(tab),
       onLogout: () => setStep('auth-login'),
@@ -453,6 +454,7 @@ class _FintechAutoFlowState extends State<FintechAutoFlow> {
       onFinancialsUpdate: (data) {
         setState(() {
           financials.addAll(data);
+          _calculateEquity();
         });
       },
     );

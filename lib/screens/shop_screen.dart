@@ -21,12 +21,9 @@ class ShopScreen extends StatefulWidget {
 }
 
 class _ShopScreenState extends State<ShopScreen> {
-  // Initialize with a default, will update in initState or build if needed
-  double _maxPayment = 0.0;
-  bool _isInit = true;
   bool _isLoading = true;
   List<dynamic> _inventory = [];
-  final bool _keepPaymentSame = true;
+  bool _keepPaymentSame = true;
 
   @override
   void initState() {
@@ -37,8 +34,15 @@ class _ShopScreenState extends State<ShopScreen> {
   Future<void> _fetchInventory() async {
     setState(() => _isLoading = true);
     try {
-      final equity = widget.financials['equity']?.toDouble() ?? 0.0;
-      final data = await ApiService.getInventory(equity: equity);
+      final equity = (widget.financials['equity'] as num?)?.toDouble() ?? 0.0;
+      final targetPayment =
+          (widget.financials['monthlyPayment'] as num?)?.toDouble() ?? 0.0;
+
+      final data = await ApiService.getInventory(
+        equity: equity,
+        targetPayment: targetPayment,
+      );
+
       setState(() {
         _inventory = data;
         _isLoading = false;
@@ -50,32 +54,22 @@ class _ShopScreenState extends State<ShopScreen> {
   }
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (_isInit) {
-      // Set initial max payment to user's current payment
-      final double userPayment =
-          widget.financials['monthlyPayment']?.toDouble() ?? 420.0;
-      _maxPayment = userPayment;
-      _isInit = false;
-    }
-  }
-
-  @override
   Widget build(BuildContext context) {
-    // Colors
-    const colorBg = Color(0xFFE6F0FA); // Light Blue to match other screens
+    const colorBg = Color(0xFFE6F0FA);
     const colorSlate800 = Color(0xFF1E293B);
     const colorGreen = Color(0xFF00CA50);
     const colorNavy = Color(0xFF003366);
 
-    // Derived Financials
     final double userPayment =
-        widget.financials['monthlyPayment']?.toDouble() ?? 420.0;
+        (widget.financials['monthlyPayment'] as num?)?.toDouble() ?? 0.0;
+    final double equity =
+        (widget.financials['equity'] as num?)?.toDouble() ?? 0.0;
+    final bool isPaidOff = userPayment <= 0;
 
-    // Sort logic
+    // Sorting Logic
     List<dynamic> displayInventory = List.from(_inventory);
-    if (_keepPaymentSame) {
+    if (!isPaidOff && _keepPaymentSame) {
+      // Sort to show cars closest to current payment first
       displayInventory.sort(
         (a, b) =>
             (a['payment_diff'] as num).compareTo(b['payment_diff'] as num),
@@ -83,11 +77,11 @@ class _ShopScreenState extends State<ShopScreen> {
     }
 
     return Scaffold(
-      backgroundColor: colorBg, // Match Refinance Light Blue
+      backgroundColor: colorBg,
       body: SafeArea(
         child: Column(
           children: [
-            // --- 1. Minimal Fixed Header ---
+            // --- Header ---
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
               child: Row(
@@ -117,7 +111,7 @@ class _ShopScreenState extends State<ShopScreen> {
                   Text(
                     "Upgrade Power",
                     style: GoogleFonts.outfit(
-                      fontSize: 20, // Match Refinance Title Size
+                      fontSize: 20,
                       fontWeight: FontWeight.bold,
                       color: colorSlate800,
                     ),
@@ -126,7 +120,7 @@ class _ShopScreenState extends State<ShopScreen> {
               ),
             ),
 
-            // --- 2. Scrollable Content (Equity + Filters + List) ---
+            // --- Scrollable Content ---
             Expanded(
               child: ListView.builder(
                 padding: const EdgeInsets.symmetric(
@@ -136,168 +130,148 @@ class _ShopScreenState extends State<ShopScreen> {
                 physics: const BouncingScrollPhysics(),
                 itemCount: _isLoading ? 2 : displayInventory.length + 1,
                 itemBuilder: (context, index) {
-                  // Index 0: Header Content (Equity & Filter)
+                  // Index 0: Headers & Filters
                   if (index == 0) {
-                    final double equity =
-                        widget.financials['equity']?.toDouble() ?? 0.0;
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Equity Badge
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: Colors.white),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.02),
-                                blurRadius: 8,
-                                offset: const Offset(0, 2),
+                        if (isPaidOff) ...[
+                          // Paid Off Archetype UI
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(
+                                colors: [Color(0xFF003366), Color(0xFF002244)],
                               ),
-                            ],
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(
-                                LucideIcons.trendingUp,
-                                size: 16,
-                                color: colorGreen,
-                              ),
-                              const SizedBox(width: 8),
-                              RichText(
-                                text: TextSpan(
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  "No Monthly Payments 🎉",
                                   style: GoogleFonts.outfit(
-                                    fontSize: 14,
-                                    color: colorSlate800,
-                                    fontWeight: FontWeight.w500,
+                                    color: Colors.greenAccent,
+                                    fontWeight: FontWeight.bold,
                                   ),
-                                  children: [
-                                    const TextSpan(text: "You have "),
-                                    TextSpan(
-                                      text: _fmt(equity),
-                                      style: GoogleFonts.outfit(
-                                        fontWeight: FontWeight.bold,
-                                        color: colorGreen,
-                                      ),
-                                    ),
-                                    const TextSpan(text: " equity to use."),
-                                  ],
                                 ),
-                              ),
-                            ],
+                                const SizedBox(height: 8),
+                                Text(
+                                  "Use your ${_fmt(equity)} equity to upgrade entirely, or keep your next car's payments incredibly low.",
+                                  style: GoogleFonts.outfit(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 20),
-
-                        // Payment Slider Control
-                        Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(20),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.02),
-                                blurRadius: 8,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(
-                                    "Max Payment",
+                          const SizedBox(height: 24),
+                        ] else ...[
+                          // Standard & Underwater Archetype UI
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  equity >= 0
+                                      ? LucideIcons.trendingUp
+                                      : LucideIcons.trendingDown,
+                                  size: 16,
+                                  color: equity >= 0
+                                      ? colorGreen
+                                      : Colors.orangeAccent,
+                                ),
+                                const SizedBox(width: 8),
+                                RichText(
+                                  text: TextSpan(
                                     style: GoogleFonts.outfit(
                                       fontSize: 14,
-                                      fontWeight: FontWeight.w600,
                                       color: colorSlate800,
+                                      fontWeight: FontWeight.w500,
                                     ),
-                                  ),
-                                  Text(
-                                    _fmt(_maxPayment),
-                                    style: GoogleFonts.outfit(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                      color: colorGreen,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 8),
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: SliderTheme(
-                                      data: SliderTheme.of(context).copyWith(
-                                        activeTrackColor: colorGreen,
-                                        inactiveTrackColor:
-                                            Colors.blueGrey.shade100,
-                                        trackHeight: 4.0,
-                                        thumbShape: const RoundSliderThumbShape(
-                                          enabledThumbRadius: 10,
-                                        ),
-                                        overlayShape:
-                                            const RoundSliderOverlayShape(
-                                              overlayRadius: 20,
-                                            ),
-                                        thumbColor: Colors.white,
-                                        overlayColor: colorGreen.withValues(
-                                          alpha: 0.1,
+                                    children: [
+                                      TextSpan(
+                                        text: equity >= 0
+                                            ? "You have "
+                                            : "Rolling in ",
+                                      ),
+                                      TextSpan(
+                                        text: _fmt(equity.abs()),
+                                        style: GoogleFonts.outfit(
+                                          fontWeight: FontWeight.bold,
+                                          color: equity >= 0
+                                              ? colorGreen
+                                              : Colors.orangeAccent,
                                         ),
                                       ),
-                                      child: Slider(
-                                        value: _maxPayment,
-                                        min: userPayment,
-                                        max: userPayment + 500,
-                                        divisions: 50,
-                                        onChanged: (value) {
-                                          setState(() {
-                                            _maxPayment = value;
-                                          });
-                                        },
+                                      TextSpan(
+                                        text: equity >= 0
+                                            ? " equity to use."
+                                            : " from current loan.",
                                       ),
-                                    ),
+                                    ],
                                   ),
-                                  const SizedBox(width: 8),
-                                  Container(
-                                    decoration: BoxDecoration(
-                                      color: colorNavy,
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: IconButton(
-                                      icon: const Icon(
-                                        LucideIcons.check,
-                                        size: 20,
-                                        color: Colors.white,
-                                      ),
-                                      onPressed: () {
-                                        // TODO: Implement actual filtering
-                                      },
-                                      constraints: const BoxConstraints(
-                                        minWidth: 44,
-                                        minHeight: 44,
-                                      ),
-                                      padding: EdgeInsets.zero,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 24),
+                          const SizedBox(height: 16),
+                          // Keep Payment Same Toggle
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 8,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      "Keep my payment same",
+                                      style: GoogleFonts.outfit(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                        color: colorSlate800,
+                                      ),
+                                    ),
+                                    Text(
+                                      "Around ${_fmt(userPayment)}/mo",
+                                      style: GoogleFonts.outfit(
+                                        fontSize: 12,
+                                        color: Colors.blueGrey,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                Switch(
+                                  value: _keepPaymentSame,
+                                  activeColor: colorGreen,
+                                  onChanged: (val) {
+                                    setState(() => _keepPaymentSame = val);
+                                  },
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+                        ],
                       ],
                     );
                   }
 
-                  // Loading State
+                  // Loading Indicator
                   if (_isLoading && index == 1) {
                     return const Center(
                       child: Padding(
@@ -365,7 +339,12 @@ class _ShopScreenState extends State<ShopScreen> {
       iconColor = Colors.grey.shade700.withValues(alpha: 0.5);
     }
 
-    final bool isGoodDeal = (car['payment'] as double) <= userPayment;
+    final double projectedPayment = (car['payment'] as num).toDouble();
+    final bool isPaidOff = projectedPayment <= 0;
+
+    // Quick fallback check to highlight card text if it's equal to or under target
+    final bool isGoodDeal =
+        !isPaidOff && userPayment > 0 && projectedPayment <= userPayment;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -417,13 +396,28 @@ class _ShopScreenState extends State<ShopScreen> {
                       : Icon(LucideIcons.car, size: 80, color: iconColor),
                 ),
               ),
+
+              // Dynamic Badges Rendered from API
               Positioned(
                 top: 12,
                 right: 12,
                 child: Row(
                   children: [
-                    ...(car['badges'] as List).map(
-                      (badge) => Container(
+                    ...(car['badges'] as List).map((badge) {
+                      Color textColor;
+                      switch (badge['color']) {
+                        case 'green':
+                        case 'emerald':
+                          textColor = colorGreen;
+                          break;
+                        case 'blue':
+                          textColor = colorNavy;
+                          break;
+                        default:
+                          textColor = Colors.blueGrey;
+                      }
+
+                      return Container(
                         margin: const EdgeInsets.only(left: 4),
                         padding: const EdgeInsets.symmetric(
                           horizontal: 8,
@@ -438,13 +432,11 @@ class _ShopScreenState extends State<ShopScreen> {
                           style: GoogleFonts.outfit(
                             fontSize: 10,
                             fontWeight: FontWeight.bold,
-                            color: badge['color'] == 'blue'
-                                ? colorNavy
-                                : colorGreen,
+                            color: textColor,
                           ),
                         ),
-                      ),
-                    ),
+                      );
+                    }),
                   ],
                 ),
               ),
@@ -485,22 +477,25 @@ class _ShopScreenState extends State<ShopScreen> {
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
                         Text(
-                          "\$${car['payment'].toInt()}/mo",
+                          isPaidOff
+                              ? "Paid in Full"
+                              : "\$${projectedPayment.toInt()}/mo",
                           style: GoogleFonts.outfit(
-                            fontSize: 20,
+                            fontSize: isPaidOff ? 16 : 20,
                             fontWeight: FontWeight.bold,
-                            color: isGoodDeal
+                            color: isPaidOff || isGoodDeal
                                 ? colorGreen
                                 : const Color(0xFF1E293B),
                           ),
                         ),
-                        Text(
-                          "with trade-in",
-                          style: GoogleFonts.outfit(
-                            fontSize: 10,
-                            color: Colors.blueGrey.shade400,
+                        if (!isPaidOff)
+                          Text(
+                            "with trade-in",
+                            style: GoogleFonts.outfit(
+                              fontSize: 10,
+                              color: Colors.blueGrey.shade400,
+                            ),
                           ),
-                        ),
                       ],
                     ),
                   ],
@@ -523,9 +518,7 @@ class _ShopScreenState extends State<ShopScreen> {
                     ),
                     InkWell(
                       onTap: () {
-                        widget.setOverlayScreen(
-                          'success',
-                        ); // Placeholder action
+                        widget.setOverlayScreen('success');
                       },
                       child: Row(
                         children: [

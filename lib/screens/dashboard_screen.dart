@@ -33,9 +33,11 @@ class DashboardScreen extends StatefulWidget {
     required this.setActiveTab,
     required this.onLogout,
     required this.onReverify,
+    required this.initialFinancials,
     this.onFinancialsUpdate,
   });
 
+  final Map<String, dynamic> initialFinancials;
   final Function(Map<String, dynamic>)? onFinancialsUpdate;
 
   @override
@@ -50,11 +52,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
   bool _showStickyHeader = false;
   bool _useDarkBackground = false;
 
-  // Real Data State
-  double vehicleValue = 22500;
-  double loanBalance = 18000;
-  double monthlyPayment = 420;
-  double interestRate = 0.0;
+  // Real Data State - Initialized from props
+  late double vehicleValue;
+  late double loanBalance;
+  late double monthlyPayment;
+  late double interestRate;
   double? marketRate;
 
   double get equity => vehicleValue - loanBalance;
@@ -62,6 +64,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   void initState() {
     super.initState();
+    // Initialize state from what the app already knows
+    vehicleValue = (widget.initialFinancials['estimatedValue'] ?? 0.0)
+        .toDouble();
+    loanBalance = (widget.initialFinancials['userEstimatedLoan'] ?? 0.0)
+        .toDouble();
+    monthlyPayment = (widget.initialFinancials['monthlyPayment'] ?? 0.0)
+        .toDouble();
+    interestRate = (widget.initialFinancials['actualRate'] ?? 0.0).toDouble();
+
     _scrollController.addListener(_scrollListener);
     _fetchDashboardData();
     _fetchMarketRate();
@@ -86,8 +97,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         widget.onFinancialsUpdate!({
           'actualRate': interestRate,
           'monthlyPayment': monthlyPayment,
-          'loanBalance': loanBalance,
-          'vehicleValue': vehicleValue,
+          'userEstimatedLoan': loanBalance,
+          'estimatedValue': vehicleValue,
         });
       }
     } catch (e) {
