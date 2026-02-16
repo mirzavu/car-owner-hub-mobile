@@ -497,7 +497,7 @@ class _CashUnlockScreenState extends State<CashUnlockScreen> {
                                                 ),
                                                 const TextSpan(
                                                   text:
-                                                      ", but current balance passes to ",
+                                                      ". Your estimated new balance will be ",
                                                 ),
                                                 TextSpan(
                                                   text:
