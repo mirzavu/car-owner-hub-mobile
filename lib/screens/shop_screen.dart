@@ -397,30 +397,32 @@ class _ShopScreenState extends State<ShopScreen> {
             color: equity >= 0 ? const Color(0xFF00CA50) : Colors.orangeAccent,
           ),
           const SizedBox(width: 8),
-          RichText(
-            text: TextSpan(
-              style: GoogleFonts.outfit(
-                fontSize: 14,
-                color: const Color(0xFF1E293B),
-                fontWeight: FontWeight.w500,
-              ),
-              children: [
-                TextSpan(text: equity >= 0 ? 'You have ' : 'Rolling in '),
-                TextSpan(
-                  text: _fmt(equity.abs()),
-                  style: GoogleFonts.outfit(
-                    fontWeight: FontWeight.bold,
-                    color: equity >= 0
-                        ? const Color(0xFF00CA50)
-                        : Colors.orangeAccent,
+          Expanded(
+            child: RichText(
+              text: TextSpan(
+                style: GoogleFonts.outfit(
+                  fontSize: 14,
+                  color: const Color(0xFF1E293B),
+                  fontWeight: FontWeight.w500,
+                ),
+                children: [
+                  TextSpan(text: equity >= 0 ? 'You have ' : 'Rolling in '),
+                  TextSpan(
+                    text: _fmt(equity.abs()),
+                    style: GoogleFonts.outfit(
+                      fontWeight: FontWeight.bold,
+                      color: equity >= 0
+                          ? const Color(0xFF00CA50)
+                          : Colors.orangeAccent,
+                    ),
                   ),
-                ),
-                TextSpan(
-                  text: equity >= 0
-                      ? ' equity to use for your next vehicle.'
-                      : ' from your current loan.',
-                ),
-              ],
+                  TextSpan(
+                    text: equity >= 0
+                        ? ' equity to use for your next vehicle.'
+                        : ' from your current loan.',
+                  ),
+                ],
+              ),
             ),
           ),
         ],
@@ -445,25 +447,27 @@ class _ShopScreenState extends State<ShopScreen> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Keep my payment same',
-                    style: GoogleFonts.outfit(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: colorSlate800,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Keep my payment same',
+                      style: GoogleFonts.outfit(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: colorSlate800,
+                      ),
                     ),
-                  ),
-                  Text(
-                    'Current: ${_fmt(userPayment)}/mo',
-                    style: GoogleFonts.outfit(
-                      fontSize: 12,
-                      color: Colors.blueGrey,
+                    Text(
+                      'Current: ${_fmt(userPayment)}/mo',
+                      style: GoogleFonts.outfit(
+                        fontSize: 12,
+                        color: Colors.blueGrey,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
               Switch(
                 value: _keepPaymentSame,

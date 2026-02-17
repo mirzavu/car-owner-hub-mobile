@@ -2,11 +2,83 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../services/auth_service.dart';
+import '../services/push_token_service.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   final VoidCallback onLogout;
 
   const ProfileScreen({super.key, required this.onLogout});
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  final AuthService _auth = AuthService();
+  final PushTokenService _pushTokenService = PushTokenService();
+
+  bool _pushNotificationsEnabled = true;
+  bool _isPushSettingLoading = true;
+  bool _isPushUpdating = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPushPreference();
+  }
+
+  Future<void> _loadPushPreference() async {
+    try {
+      final enabled = await _pushTokenService.getPushNotificationsEnabled();
+      if (!mounted) return;
+      setState(() {
+        _pushNotificationsEnabled = enabled;
+      });
+    } catch (error) {
+      debugPrint('[PROFILE] Failed to load push preference: $error');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isPushSettingLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _handlePushToggle(bool enabled) async {
+    if (_isPushUpdating || _isPushSettingLoading) return;
+
+    final previousValue = _pushNotificationsEnabled;
+    setState(() {
+      _pushNotificationsEnabled = enabled;
+      _isPushUpdating = true;
+    });
+
+    try {
+      if (enabled) {
+        await _pushTokenService.enablePushNotifications();
+      } else {
+        await _pushTokenService.disablePushNotifications();
+      }
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _pushNotificationsEnabled = previousValue;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to update notification setting: $error'),
+          backgroundColor: Colors.red.shade600,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isPushUpdating = false;
+        });
+      }
+    }
+  }
 
   String _getInitials(String name) {
     if (name.isEmpty) return "??";
@@ -18,10 +90,9 @@ class ProfileScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final auth = AuthService();
-    final email = auth.userEmail;
-    final phone = auth.userPhone;
-    final name = auth.userName.isNotEmpty ? auth.userName : "Car Owner";
+    final email = _auth.userEmail;
+    final phone = _auth.userPhone;
+    final name = _auth.userName.isNotEmpty ? _auth.userName : "Car Owner";
 
     // Colors
     const colorSlate50 = Color(0xFFF8FAFC);
@@ -156,10 +227,32 @@ class ProfileScreen extends StatelessWidget {
                       _buildListTile(
                         icon: LucideIcons.bell,
                         title: "Push Notifications",
-                        trailing: Switch(
-                          value: true,
-                          onChanged: (val) {},
-                          activeThumbColor: colorNavy,
+                        subtitle: _isPushSettingLoading
+                            ? "Loading..."
+                            : (_pushNotificationsEnabled
+                                  ? "Enabled"
+                                  : "Disabled"),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (_isPushUpdating)
+                              const SizedBox(
+                                width: 14,
+                                height: 14,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              ),
+                            if (_isPushUpdating) const SizedBox(width: 8),
+                            Switch(
+                              value: _pushNotificationsEnabled,
+                              onChanged:
+                                  (_isPushSettingLoading || _isPushUpdating)
+                                  ? null
+                                  : _handlePushToggle,
+                              activeThumbColor: colorNavy,
+                            ),
+                          ],
                         ),
                       ),
                     ]),
@@ -198,8 +291,8 @@ class ProfileScreen extends StatelessWidget {
                       width: double.infinity,
                       child: ElevatedButton(
                         onPressed: () {
-                          auth.logout();
-                          onLogout();
+                          _auth.logout();
+                          widget.onLogout();
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.white,

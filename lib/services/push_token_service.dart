@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'auth_service.dart';
 
@@ -11,14 +12,25 @@ class PushTokenService {
 
   static final PushTokenService _instance = PushTokenService._internal();
   factory PushTokenService() => _instance;
+  static const String _pushEnabledPrefKeyBase = 'push_notifications_enabled';
 
   bool _initialized = false;
   String _lastSyncedToken = '';
   StreamSubscription<String>? _tokenRefreshSubscription;
 
-  Future<String?> initAndSyncToken() async {
+  Future<String?> initAndSyncToken({bool force = false}) async {
     final auth = AuthService();
     if (!auth.isAuthenticated || auth.userId.isEmpty) return null;
+
+    if (!force) {
+      final shouldSync = await _shouldSyncToken();
+      if (!shouldSync) {
+        debugPrint(
+          '[PUSH] initAndSyncToken skipped (disabled by user preference).',
+        );
+        return null;
+      }
+    }
 
     try {
       if (!_initialized) {
@@ -28,6 +40,9 @@ class PushTokenService {
 
       await _requestPermission();
       final token = await _syncCurrentToken();
+      if (token != null && token.isNotEmpty) {
+        await _setPushPreference(true);
+      }
 
       _tokenRefreshSubscription ??= FirebaseMessaging.instance.onTokenRefresh
           .listen((token) {
@@ -38,6 +53,82 @@ class PushTokenService {
       debugPrint('[PUSH] initAndSyncToken failed: $error');
       return null;
     }
+  }
+
+  Future<bool> getPushNotificationsEnabled() async {
+    final prefs = await SharedPreferences.getInstance();
+    final key = _pushPreferenceKey();
+    if (prefs.containsKey(key)) {
+      return prefs.getBool(key) ?? true;
+    }
+
+    // Backward compatibility for older builds that used a global key.
+    if (prefs.containsKey(_pushEnabledPrefKeyBase)) {
+      return prefs.getBool(_pushEnabledPrefKeyBase) ?? true;
+    }
+
+    final auth = AuthService();
+    if (!auth.isAuthenticated) return true;
+    final existingToken =
+        auth.pb.authStore.record?.getStringValue('fcm_token') ?? '';
+    return existingToken.isNotEmpty;
+  }
+
+  Future<void> enablePushNotifications() async {
+    final token = await initAndSyncToken(force: true);
+    if (token == null || token.isEmpty) {
+      throw Exception(
+        'Unable to enable push notifications. Please allow notification permission and try again.',
+      );
+    }
+    await _setPushPreference(true);
+  }
+
+  Future<void> disablePushNotifications() async {
+    final auth = AuthService();
+    if (auth.isAuthenticated && auth.userId.isNotEmpty) {
+      await auth.pb
+          .collection('users')
+          .update(auth.userId, body: {'fcm_token': ''});
+    }
+
+    _lastSyncedToken = '';
+
+    if (_initialized) {
+      try {
+        await FirebaseMessaging.instance.deleteToken();
+      } catch (error) {
+        debugPrint('[PUSH] deleteToken failed: $error');
+      }
+    }
+
+    await _setPushPreference(false);
+  }
+
+  Future<bool> _shouldSyncToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    final key = _pushPreferenceKey();
+    if (prefs.containsKey(key)) {
+      return prefs.getBool(key) ?? true;
+    }
+    if (prefs.containsKey(_pushEnabledPrefKeyBase)) {
+      return prefs.getBool(_pushEnabledPrefKeyBase) ?? true;
+    }
+    return true;
+  }
+
+  Future<void> _setPushPreference(bool enabled) async {
+    final prefs = await SharedPreferences.getInstance();
+    final key = _pushPreferenceKey();
+    await prefs.setBool(key, enabled);
+    // Clean up legacy global key after first successful write.
+    await prefs.remove(_pushEnabledPrefKeyBase);
+  }
+
+  String _pushPreferenceKey() {
+    final userId = AuthService().userId.trim();
+    if (userId.isEmpty) return _pushEnabledPrefKeyBase;
+    return '${_pushEnabledPrefKeyBase}_$userId';
   }
 
   Future<void> _initializeFirebase() async {

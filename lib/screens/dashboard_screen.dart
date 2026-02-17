@@ -553,7 +553,7 @@ class _DashboardScreenState extends State<DashboardScreen>
         ? Colors.redAccent.shade100
         : Colors.white;
     final String balanceDisplayText = isPaidOff ? "PAID OFF" : fmt(loanBalance);
-    const String stickyBalanceCaption = "BAL";
+    const String stickyBalanceCaption = "BALANCE";
     final RefinanceQuote? refinancePreview = marketRate == null
         ? null
         : RefinanceService.buildQuote(
