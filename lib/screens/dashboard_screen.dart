@@ -35,16 +35,19 @@ class DashboardScreen extends StatefulWidget {
     required this.onReverify,
     required this.initialFinancials,
     this.onFinancialsUpdate,
+    this.onCarDetailsUpdate,
   });
 
   final Map<String, dynamic> initialFinancials;
   final Function(Map<String, dynamic>)? onFinancialsUpdate;
+  final Function(Map<String, dynamic>)? onCarDetailsUpdate;
 
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
 }
 
-class _DashboardScreenState extends State<DashboardScreen> {
+class _DashboardScreenState extends State<DashboardScreen>
+    with WidgetsBindingObserver {
   final ScrollController _scrollController = ScrollController();
 
   // State to track scroll for animations
@@ -61,12 +64,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
   late String _vehicleMake;
   late String _vehicleModel;
   double? marketRate;
+  int _tradePreviewRequestId = 0;
+  String _tradePreviewYear = '';
+  String _tradePreviewMake = '';
+  String _tradePreviewModel = '';
+  double _tradePreviewPayment = 0;
 
   double get equity => vehicleValue - loanBalance;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     // Initialize state from what the app already knows
     vehicleValue = (widget.initialFinancials['estimatedValue'] ?? 0.0)
         .toDouble();
@@ -115,8 +124,33 @@ class _DashboardScreenState extends State<DashboardScreen> {
           'estimatedValue': vehicleValue,
         });
       }
+      if (widget.onCarDetailsUpdate != null) {
+        widget.onCarDetailsUpdate!(carDetails);
+      }
+      await _fetchTradeUpPreview();
     } catch (e) {
       debugPrint("Error fetching dashboard data: $e");
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant DashboardScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Sync state if props changed from parent (e.g. after Time Travel)
+    if (widget.initialFinancials != oldWidget.initialFinancials) {
+      setState(() {
+        vehicleValue =
+            (widget.initialFinancials['estimatedValue'] ?? vehicleValue)
+                .toDouble();
+        loanBalance =
+            (widget.initialFinancials['userEstimatedLoan'] ?? loanBalance)
+                .toDouble();
+        monthlyPayment =
+            (widget.initialFinancials['monthlyPayment'] ?? monthlyPayment)
+                .toDouble();
+        interestRate = (widget.initialFinancials['actualRate'] ?? interestRate)
+            .toDouble();
+      });
     }
   }
 
@@ -133,6 +167,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
     } catch (e) {
       debugPrint("Error fetching market rate: $e");
     }
+  }
+
+  void _openProfileScreen() {
+    Navigator.of(context).push(
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) =>
+            ProfileScreen(onLogout: widget.onLogout),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          final tween = Tween<Offset>(
+            begin: const Offset(-1.0, 0.0),
+            end: Offset.zero,
+          ).chain(CurveTween(curve: Curves.easeOutCubic));
+
+          return SlideTransition(
+            position: animation.drive(tween),
+            child: child,
+          );
+        },
+        transitionDuration: const Duration(milliseconds: 280),
+        reverseTransitionDuration: const Duration(milliseconds: 220),
+      ),
+    );
   }
 
   void _scrollListener() {
@@ -164,9 +220,83 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _scrollController.removeListener(_scrollListener);
     _scrollController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _fetchTradeUpPreview();
+    }
+  }
+
+  double _asDouble(dynamic value, [double fallback = 0.0]) {
+    if (value is num) return value.toDouble();
+    if (value is String) return double.tryParse(value) ?? fallback;
+    return fallback;
+  }
+
+  Future<void> _fetchTradeUpPreview() async {
+    final requestId = ++_tradePreviewRequestId;
+
+    try {
+      final data = await ApiService.getTradeUpPreview();
+      if (!mounted || requestId != _tradePreviewRequestId) return;
+
+      final vehicleRaw = data['vehicle'];
+      final vehicleLog = vehicleRaw is Map
+          ? Map<String, dynamic>.from(vehicleRaw)
+          : <String, dynamic>{};
+      debugPrint(
+        '[DASHBOARD][TRADE_PREVIEW] year=${(vehicleLog['year'] ?? '-').toString()} make=${(vehicleLog['make'] ?? '-').toString()} model=${(vehicleLog['model'] ?? '-').toString()} payment=${(vehicleLog['monthlyPayment'] ?? '-').toString()}',
+      );
+      if (vehicleRaw is! Map) {
+        setState(() {
+          _tradePreviewYear = '';
+          _tradePreviewMake = '';
+          _tradePreviewModel = '';
+          _tradePreviewPayment = 0;
+        });
+        return;
+      }
+
+      final vehicle = Map<String, dynamic>.from(vehicleRaw);
+      setState(() {
+        _tradePreviewYear = (vehicle['year'] ?? '').toString().trim();
+        _tradePreviewMake = (vehicle['make'] ?? '').toString().trim();
+        _tradePreviewModel = (vehicle['model'] ?? '').toString().trim();
+        _tradePreviewPayment = _asDouble(vehicle['monthlyPayment']);
+      });
+    } catch (e) {
+      debugPrint('Error fetching trade-up preview: $e');
+      if (!mounted || requestId != _tradePreviewRequestId) return;
+      setState(() {
+        _tradePreviewYear = '';
+        _tradePreviewMake = '';
+        _tradePreviewModel = '';
+        _tradePreviewPayment = 0;
+      });
+    }
+  }
+
+  bool _hasTradeUpPreview() {
+    return _tradePreviewYear.isNotEmpty ||
+        _tradePreviewMake.isNotEmpty ||
+        _tradePreviewModel.isNotEmpty;
+  }
+
+  String _tradePreviewVehicleLabel() {
+    final parts = [
+      _tradePreviewYear,
+      _tradePreviewMake,
+      _tradePreviewModel,
+    ].where((part) => part.trim().isNotEmpty).toList();
+
+    if (parts.isEmpty) return 'upgrade options';
+    return parts.join(' ');
   }
 
   String fmt(num n) {
@@ -268,6 +398,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
         .toUpperCase();
   }
 
+  int _actionPriority(_DashboardActionKind kind) {
+    switch (kind) {
+      case _DashboardActionKind.tradeUp:
+        return 0;
+      case _DashboardActionKind.getCash:
+        return 1;
+      case _DashboardActionKind.refinance:
+        return 2;
+    }
+  }
+
+  List<Widget> _orderedActionWidgets(List<_DashboardActionItem> items) {
+    final sorted = List<_DashboardActionItem>.from(items)
+      ..sort((a, b) {
+        if (a.isTerminalAction != b.isTerminalAction) {
+          return a.isTerminalAction ? 1 : -1;
+        }
+        return _actionPriority(a.kind) - _actionPriority(b.kind);
+      });
+    return sorted.map((item) => item.widget).toList();
+  }
+
   @override
   Widget build(BuildContext context) {
     // Colors
@@ -332,6 +484,265 @@ class _DashboardScreenState extends State<DashboardScreen> {
         !refinanceUnavailableForPaidOff &&
         hasRefinanceData &&
         refinanceQualifies;
+    final bool refinancePopupOnly =
+        refinanceUnavailableForPaidOff ||
+        (hasRefinanceData && !refinanceQualifies);
+
+    final quickActionItems = <_DashboardActionItem>[
+      _DashboardActionItem(
+        kind: _DashboardActionKind.tradeUp,
+        isTerminalAction: false,
+        widget: _ActionButton(
+          icon: LucideIcons.car,
+          label: "Trade Up",
+          onTap: () => widget.setActiveTab('shop'),
+        ),
+      ),
+      _DashboardActionItem(
+        kind: _DashboardActionKind.getCash,
+        isTerminalAction: cashOffer.isLocked,
+        widget: _ActionButton(
+          icon: LucideIcons.dollarSign,
+          label: "Get Cash",
+          isLocked: cashOffer.isLocked,
+          onTap: () {
+            if (cashOffer.isLocked) {
+              _showCashLockedDialog(cashOffer);
+              return;
+            }
+            widget.setOverlayScreen('cash-unlock');
+          },
+        ),
+      ),
+      _DashboardActionItem(
+        kind: _DashboardActionKind.refinance,
+        isTerminalAction: refinancePopupOnly,
+        widget: refinanceUnavailableForPaidOff
+            ? _ActionButton(
+                icon: LucideIcons.arrowRightLeft,
+                label: "Refinance",
+                isLocked: true,
+                onTap: _showRefinanceUnavailableDialog,
+              )
+            : hasRefinanceData && !refinanceQualifies
+            ? _ActionButton(
+                icon: LucideIcons.shieldCheck,
+                label: "Rate Shield",
+                onTap: () => _showRateShieldDialog(
+                  currentRate: interestRate,
+                  marketRate: marketRate!,
+                ),
+              )
+            : _ActionButton(
+                icon: LucideIcons.arrowRightLeft,
+                label: "Refinance",
+                onTap: () => widget.setOverlayScreen('refinance'),
+              ),
+      ),
+    ];
+    final orderedQuickActionWidgets = _orderedActionWidgets(quickActionItems);
+
+    final Widget tradeUpOpportunityCard = _OpportunityCard(
+      icon: LucideIcons.car,
+      iconColor: Colors.blue.shade600,
+      iconBg: Colors.blue.shade50,
+      title: "Trade Up",
+      body: _hasTradeUpPreview()
+          ? RichText(
+              text: TextSpan(
+                style: GoogleFonts.outfit(
+                  fontSize: 12,
+                  color: Colors.blueGrey.shade400,
+                  height: 1.5,
+                ),
+                children: [
+                  const TextSpan(text: "Drive a "),
+                  TextSpan(
+                    text: _tradePreviewVehicleLabel(),
+                    style: TextStyle(
+                      color: colorSlate800,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const TextSpan(text: " for about "),
+                  TextSpan(
+                    text: "\$${_fmtNoSymbol(_tradePreviewPayment)}/mo",
+                    style: TextStyle(
+                      color: colorSlate800,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const TextSpan(text: "."),
+                ],
+              ),
+            )
+          : Text(
+              "See what you can upgrade to with your equity.",
+              style: GoogleFonts.outfit(
+                fontSize: 12,
+                color: Colors.blueGrey.shade400,
+                height: 1.5,
+              ),
+            ),
+      buttonText: "See Upgrades",
+      buttonColor: Colors.white,
+      buttonBorderColor: Colors.blueGrey.shade200,
+      buttonTextColor: colorSlate800,
+      onTap: () => widget.setActiveTab('shop'),
+    );
+
+    final Widget getCashOpportunityCard = _OpportunityCard(
+      icon: LucideIcons.dollarSign,
+      iconColor: Colors.teal.shade600,
+      iconBg: Colors.teal.shade50,
+      title: cashOffer.isLocked
+          ? (isUnderwater ? "Building Equity" : "Almost Cash-Ready")
+          : "Unlock Your Equity",
+      body: cashOffer.isLocked
+          ? RichText(
+              text: TextSpan(
+                style: GoogleFonts.outfit(
+                  fontSize: 12,
+                  color: Colors.blueGrey.shade400,
+                  height: 1.5,
+                ),
+                children: [
+                  TextSpan(
+                    text: isUnderwater
+                        ? "You need at least ${fmt(FinanceService.minimumEquityForCashback)} in positive equity to unlock cash access."
+                        : "Pay down ",
+                  ),
+                  if (!isUnderwater)
+                    TextSpan(
+                      text: fmt(cashOffer.shortfallToUnlock),
+                      style: TextStyle(
+                        color: colorSlate800,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  if (!isUnderwater)
+                    const TextSpan(text: " more to unlock your cash options."),
+                ],
+              ),
+            )
+          : RichText(
+              text: TextSpan(
+                style: GoogleFonts.outfit(
+                  fontSize: 12,
+                  color: Colors.blueGrey.shade400,
+                  height: 1.5,
+                ),
+                children: [
+                  const TextSpan(text: "Access up to "),
+                  TextSpan(
+                    text: "\$${_fmtNoSymbol(cashOffer.maxCash)}",
+                    style: TextStyle(
+                      color: colorSlate800,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const TextSpan(
+                    text: " from your equity today without selling.",
+                  ),
+                ],
+              ),
+            ),
+      buttonText: cashOffer.isLocked ? "Keep Building" : "Check Options",
+      buttonColor: Colors.white,
+      buttonBorderColor: Colors.blueGrey.shade200,
+      buttonTextColor: colorSlate800,
+      onTap: () {
+        if (cashOffer.isLocked) {
+          _showCashLockedDialog(cashOffer);
+          return;
+        }
+        widget.setOverlayScreen('cash-unlock');
+      },
+    );
+
+    final Widget? refinanceOpportunityCard = showScanRateOpportunity
+        ? _OpportunityCard(
+            icon: LucideIcons.scan,
+            iconColor: Colors.blue.shade600,
+            iconBg: Colors.blue.shade50,
+            title: "Check Your Rate",
+            body: Text(
+              "You might be overpaying. Scan your documents to see if you can lower your payment.",
+              style: GoogleFonts.outfit(
+                fontSize: 12,
+                color: Colors.blueGrey.shade400,
+                height: 1.5,
+              ),
+            ),
+            buttonText: "Scan Now",
+            buttonColor: colorSlate800,
+            buttonTextColor: Colors.white,
+            onTap: widget.onReverify,
+          )
+        : showRateAlertOpportunity
+        ? _OpportunityCard(
+            icon: LucideIcons.arrowRightLeft,
+            iconColor: Colors.red.shade600,
+            iconBg: Colors.red.shade50,
+            title: "Rate Alert",
+            body: RichText(
+              text: TextSpan(
+                style: GoogleFonts.outfit(
+                  fontSize: 12,
+                  color: Colors.blueGrey.shade400,
+                  height: 1.5,
+                ),
+                children: [
+                  const TextSpan(text: "You pay "),
+                  TextSpan(
+                    text: "${interestRate.toStringAsFixed(2)}%",
+                    style: TextStyle(
+                      color: Colors.red.shade600,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const TextSpan(text: ". Market is "),
+                  TextSpan(
+                    text: "${marketRate!.toStringAsFixed(2)}%",
+                    style: TextStyle(
+                      color: Colors.green.shade600,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  TextSpan(
+                    text:
+                        ". You could save ${fmt(refinancePreview!.monthlySavings)}/mo.",
+                  ),
+                ],
+              ),
+            ),
+            buttonText: "Lower Payment",
+            buttonColor: colorSlate800,
+            buttonTextColor: Colors.white,
+            hasNotification: true,
+            onTap: () => widget.setOverlayScreen('refinance'),
+          )
+        : null;
+
+    final opportunityItems = <_DashboardActionItem>[
+      _DashboardActionItem(
+        kind: _DashboardActionKind.tradeUp,
+        isTerminalAction: false,
+        widget: tradeUpOpportunityCard,
+      ),
+      _DashboardActionItem(
+        kind: _DashboardActionKind.getCash,
+        isTerminalAction: cashOffer.isLocked,
+        widget: getCashOpportunityCard,
+      ),
+      if (refinanceOpportunityCard != null)
+        _DashboardActionItem(
+          kind: _DashboardActionKind.refinance,
+          isTerminalAction: false,
+          widget: refinanceOpportunityCard,
+        ),
+    ];
+    final orderedOpportunityCards = _orderedActionWidgets(opportunityItems);
 
     return Scaffold(
       backgroundColor: colorSlate50,
@@ -369,15 +780,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   children: [
                     // Avatar
                     GestureDetector(
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) =>
-                                ProfileScreen(onLogout: widget.onLogout),
-                          ),
-                        );
-                      },
+                      onTap: _openProfileScreen,
                       behavior: HitTestBehavior.opaque,
                       child: Container(
                         width: 44, // Increased from 36
@@ -541,17 +944,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   Row(
                                     children: [
                                       GestureDetector(
-                                        onTap: () {
-                                          Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                              builder: (context) =>
-                                                  ProfileScreen(
-                                                    onLogout: widget.onLogout,
-                                                  ),
-                                            ),
-                                          );
-                                        },
+                                        onTap: _openProfileScreen,
                                         child: Container(
                                           width: 44,
                                           height: 44,
@@ -991,49 +1384,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      _ActionButton(
-                        icon: LucideIcons.dollarSign,
-                        label: "Get Cash",
-                        isLocked: cashOffer.isLocked,
-                        onTap: () {
-                          if (cashOffer.isLocked) {
-                            _showCashLockedDialog(cashOffer);
-                            return;
-                          }
-                          widget.setOverlayScreen('cash-unlock');
-                        },
-                      ),
-                      _ActionButton(
-                        icon: LucideIcons.car,
-                        label: "Trade Up",
-                        onTap: () => widget.setActiveTab('shop'),
-                      ),
+                      ...orderedQuickActionWidgets,
                       _ActionButton(
                         icon: LucideIcons.wrench,
                         label: "Garage",
                         onTap: () => widget.setActiveTab('garage'),
                       ),
-                      refinanceUnavailableForPaidOff
-                          ? _ActionButton(
-                              icon: LucideIcons.arrowRightLeft,
-                              label: "Refinance",
-                              isLocked: true,
-                              onTap: _showRefinanceUnavailableDialog,
-                            )
-                          : hasRefinanceData && !refinanceQualifies
-                          ? _ActionButton(
-                              icon: LucideIcons.shieldCheck,
-                              label: "Rate Shield",
-                              onTap: () => _showRateShieldDialog(
-                                currentRate: interestRate,
-                                marketRate: marketRate!,
-                              ),
-                            )
-                          : _ActionButton(
-                              icon: LucideIcons.arrowRightLeft,
-                              label: "Refinance",
-                              onTap: () => widget.setOverlayScreen('refinance'),
-                            ),
                     ],
                   ),
                   if (showCashProgress) ...[
@@ -1130,190 +1486,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     physics: const BouncingScrollPhysics(),
                     child: Row(
                       children: [
-                        // --- REFINE LOGIC ---
-                        if (showScanRateOpportunity)
-                          _OpportunityCard(
-                            icon: LucideIcons.scan,
-                            iconColor: Colors.blue.shade600,
-                            iconBg: Colors.blue.shade50,
-                            title: "Check Your Rate",
-                            body: Text(
-                              "You might be overpaying. Scan your documents to see if you can lower your payment.",
-                              style: GoogleFonts.outfit(
-                                fontSize: 12,
-                                color: Colors.blueGrey.shade400,
-                                height: 1.5,
-                              ),
-                            ),
-                            buttonText: "Scan Now",
-                            buttonColor: colorSlate800,
-                            buttonTextColor: Colors.white,
-                            onTap: widget.onReverify,
-                          )
-                        else if (showRateAlertOpportunity)
-                          _OpportunityCard(
-                            icon: LucideIcons.arrowRightLeft,
-                            iconColor: Colors.red.shade600,
-                            iconBg: Colors.red.shade50,
-                            title: "Rate Alert",
-                            body: RichText(
-                              text: TextSpan(
-                                style: GoogleFonts.outfit(
-                                  fontSize: 12,
-                                  color: Colors.blueGrey.shade400,
-                                  height: 1.5,
-                                ),
-                                children: [
-                                  const TextSpan(text: "You pay "),
-                                  TextSpan(
-                                    text: "${interestRate.toStringAsFixed(2)}%",
-                                    style: TextStyle(
-                                      color: Colors.red.shade600,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  const TextSpan(text: ". Market is "),
-                                  TextSpan(
-                                    text: "${marketRate!.toStringAsFixed(2)}%",
-                                    style: TextStyle(
-                                      color: Colors.green.shade600,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  TextSpan(
-                                    text:
-                                        ". You could save ${fmt(refinancePreview!.monthlySavings)}/mo.",
-                                  ),
-                                ],
-                              ),
-                            ),
-                            buttonText: "Lower Payment",
-                            buttonColor: colorSlate800,
-                            buttonTextColor: Colors.white,
-                            hasNotification: true,
-                            onTap: () => widget.setOverlayScreen('refinance'),
-                          ),
-                        if (showScanRateOpportunity || showRateAlertOpportunity)
-                          const SizedBox(width: 16),
-                        _OpportunityCard(
-                          icon: LucideIcons.dollarSign,
-                          iconColor: Colors.teal.shade600,
-                          iconBg: Colors.teal.shade50,
-                          title: cashOffer.isLocked
-                              ? (isUnderwater
-                                    ? "Building Equity"
-                                    : "Almost Cash-Ready")
-                              : "Unlock Your Equity",
-                          body: cashOffer.isLocked
-                              ? RichText(
-                                  text: TextSpan(
-                                    style: GoogleFonts.outfit(
-                                      fontSize: 12,
-                                      color: Colors.blueGrey.shade400,
-                                      height: 1.5,
-                                    ),
-                                    children: [
-                                      TextSpan(
-                                        text: isUnderwater
-                                            ? "You need at least ${fmt(FinanceService.minimumEquityForCashback)} in positive equity to unlock cash access."
-                                            : "Pay down ",
-                                      ),
-                                      if (!isUnderwater)
-                                        TextSpan(
-                                          text: fmt(
-                                            cashOffer.shortfallToUnlock,
-                                          ),
-                                          style: TextStyle(
-                                            color: colorSlate800,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                      if (!isUnderwater)
-                                        const TextSpan(
-                                          text:
-                                              " more to unlock your cash options.",
-                                        ),
-                                    ],
-                                  ),
-                                )
-                              : RichText(
-                                  text: TextSpan(
-                                    style: GoogleFonts.outfit(
-                                      fontSize: 12,
-                                      color: Colors.blueGrey.shade400,
-                                      height: 1.5,
-                                    ),
-                                    children: [
-                                      const TextSpan(text: "Access up to "),
-                                      TextSpan(
-                                        text:
-                                            "\$${_fmtNoSymbol(cashOffer.maxCash)}",
-                                        style: TextStyle(
-                                          color: colorSlate800,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                      const TextSpan(
-                                        text:
-                                            " from your equity today without selling.",
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                          buttonText: cashOffer.isLocked
-                              ? "Keep Building"
-                              : "Check Options",
-                          buttonColor: Colors.white,
-                          buttonBorderColor: Colors.blueGrey.shade200,
-                          buttonTextColor: colorSlate800,
-                          onTap: () {
-                            if (cashOffer.isLocked) {
-                              _showCashLockedDialog(cashOffer);
-                              return;
-                            }
-                            widget.setOverlayScreen('cash-unlock');
-                          },
-                        ),
-                        const SizedBox(width: 16),
-                        _OpportunityCard(
-                          icon: LucideIcons.car,
-                          iconColor: Colors.blue.shade600,
-                          iconBg: Colors.blue.shade50,
-                          title: "Trade Up",
-                          body: RichText(
-                            text: TextSpan(
-                              style: GoogleFonts.outfit(
-                                fontSize: 12,
-                                color: Colors.blueGrey.shade400,
-                                height: 1.5,
-                              ),
-                              children: [
-                                const TextSpan(text: "Drive a "),
-                                TextSpan(
-                                  text: "2026 Model",
-                                  style: TextStyle(
-                                    color: colorSlate800,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                const TextSpan(text: " for the same "),
-                                TextSpan(
-                                  text: "\$420/mo",
-                                  style: TextStyle(
-                                    color: colorSlate800,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                const TextSpan(text: "."),
-                              ],
-                            ),
-                          ),
-                          buttonText: "See Upgrades",
-                          buttonColor: Colors.white,
-                          buttonBorderColor: Colors.blueGrey.shade200,
-                          buttonTextColor: colorSlate800,
-                          onTap: () => widget.setActiveTab('shop'),
-                        ),
+                        for (
+                          int i = 0;
+                          i < orderedOpportunityCards.length;
+                          i++
+                        ) ...[
+                          orderedOpportunityCards[i],
+                          if (i < orderedOpportunityCards.length - 1)
+                            const SizedBox(width: 16),
+                        ],
                       ],
                     ),
                   ),
@@ -1466,6 +1647,20 @@ class _BellButton extends StatelessWidget {
       ),
     );
   }
+}
+
+enum _DashboardActionKind { tradeUp, getCash, refinance }
+
+class _DashboardActionItem {
+  final _DashboardActionKind kind;
+  final bool isTerminalAction;
+  final Widget widget;
+
+  const _DashboardActionItem({
+    required this.kind,
+    required this.isTerminalAction,
+    required this.widget,
+  });
 }
 
 class _ActionButton extends StatelessWidget {

@@ -10,6 +10,8 @@ class LoanSnapshot {
   final double monthlyPayment;
   final double interestRate;
   final int termMonths;
+  final String startDate;
+  final double originalBalance;
 
   const LoanSnapshot({
     required this.loanId,
@@ -17,6 +19,8 @@ class LoanSnapshot {
     required this.monthlyPayment,
     required this.interestRate,
     required this.termMonths,
+    required this.startDate,
+    required this.originalBalance,
   });
 }
 
@@ -209,6 +213,8 @@ class ApiService {
         'is_verified': isVerified,
       };
 
+      debugPrint("[SYNC] Loan Body for DB: ${jsonEncode(loanBody)}");
+
       String loanId;
       if (loans.items.isEmpty) {
         final record = await auth.pb.collection('loans').create(body: loanBody);
@@ -216,8 +222,11 @@ class ApiService {
         debugPrint("[SYNC] Created new loan for vehicle: $vehicleId");
       } else {
         loanId = loans.items.first.id;
+        debugPrint(
+          "[SYNC] Updating existing loan: $loanId with balance: ${loanBody['current_balance']}",
+        );
         await auth.pb.collection('loans').update(loanId, body: loanBody);
-        debugPrint("[SYNC] Updated existing loan: $loanId");
+        debugPrint("[SYNC] Update complete for loan: $loanId");
       }
 
       // 3. Link Document if provided
@@ -279,6 +288,26 @@ class ApiService {
       return jsonDecode(response.body);
     } else {
       throw Exception('Failed to load dashboard');
+    }
+  }
+
+  static Future<Map<String, dynamic>> getTradeUpPreview() async {
+    final userId = AuthService().userId;
+    if (userId.isEmpty) throw Exception('User not logged in');
+
+    final response = await http.get(
+      Uri.parse('${Config.tradeUpPreview}?userId=$userId'),
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    } else {
+      debugPrint(
+        '[API] trade-up-preview failed: ${response.statusCode} - ${response.body}',
+      );
+      throw Exception(
+        'Failed to load trade-up preview (${response.statusCode})',
+      );
     }
   }
 
@@ -352,6 +381,8 @@ class ApiService {
       monthlyPayment: _toDouble(data['monthly_payment']),
       interestRate: _toDouble(data['interest_rate']),
       termMonths: _toInt(data['term_months']),
+      startDate: (data['start_date'] ?? '').toString(),
+      originalBalance: _toDouble(data['original_balance']),
     );
   }
 
@@ -513,6 +544,10 @@ class ApiService {
       }),
     );
 
+    debugPrint(
+      "[API] calculateLoanEquity Response: ${response.statusCode} - ${response.body}",
+    );
+
     if (response.statusCode == 200) {
       return jsonDecode(response.body);
     } else {
@@ -542,7 +577,9 @@ class ApiService {
       await auth.pb
           .collection('loans')
           .update(loanId, body: {'current_balance': newBalance});
-      debugPrint("[API] Loan balance updated in DB: $newBalance");
+      debugPrint(
+        "[API] SUCCESS: Loan balance updated in PB: $newBalance for loanId: $loanId",
+      );
     } catch (e) {
       debugPrint("Error updating loan balance: $e");
     }

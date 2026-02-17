@@ -703,7 +703,7 @@ class _ShopScreenState extends State<ShopScreen> {
                         children: [
                           Text(
                             '${car['year']} ${car['make']} ${car['model']}',
-                            maxLines: 1,
+                            maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                             style: GoogleFonts.outfit(
                               fontSize: 18,
@@ -713,6 +713,8 @@ class _ShopScreenState extends State<ShopScreen> {
                           ),
                           Text(
                             (car['trim'] ?? '').toString(),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
                             style: GoogleFonts.outfit(
                               fontSize: 14,
                               color: Colors.blueGrey.shade400,
@@ -760,31 +762,21 @@ class _ShopScreenState extends State<ShopScreen> {
                       'Price: ${_fmt(car['price'] as num? ?? 0)}',
                       style: GoogleFonts.outfit(
                         fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.blueGrey.shade500,
+                        fontWeight: FontWeight.w700,
+                        color: colorGreen,
                       ),
                     ),
                     InkWell(
                       onTap: () {
                         widget.setOverlayScreen('success');
                       },
-                      child: Row(
-                        children: [
-                          Text(
-                            'See Deal',
-                            style: GoogleFonts.outfit(
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                              color: colorGreen,
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          Icon(
-                            LucideIcons.arrowRight,
-                            size: 16,
-                            color: colorGreen,
-                          ),
-                        ],
+                      child: Text(
+                        (car['city'] ?? 'See Deal').toString(),
+                        style: GoogleFonts.outfit(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.blueGrey.shade600,
+                        ),
                       ),
                     ),
                   ],

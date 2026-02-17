@@ -50,6 +50,7 @@ class Config {
   static String get scanDoc => '$baseUrl/api/scan-document';
   static String get dashboard => '$baseUrl/api/dashboard';
   static String get inventory => '$baseUrl/api/inventory';
+  static String get tradeUpPreview => '$baseUrl/api/trade-up-preview';
   static String get submitLead => '$baseUrl/api/submit-lead';
   static String get estimateValue => '$baseUrl/api/estimate-value';
   static String get calculateEquity => '$baseUrl/api/calculate-equity';

@@ -137,7 +137,7 @@ class _ScannerScreenState extends State<ScannerScreen>
       await Future.delayed(const Duration(milliseconds: 1000));
 
       if (!mounted) return;
-      setState(() => _statusText = "Extracting details...");
+      setState(() => _statusText = "Fetching details...");
 
       debugPrint("[SCAN] Starting OCR scan for file: $filePath");
       // Call real OCR API

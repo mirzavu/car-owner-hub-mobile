@@ -140,8 +140,29 @@ class _FintechAutoFlowState extends State<FintechAutoFlow> {
 
     // Determine where to land based on progress
     if (auth.isOnboardingCompleted) {
-      debugPrint("Routing to: main-app");
+      debugPrint("[INIT] Routing to: main-app. Fetching initial data...");
+
+      // Fetch current snapshot FIRST so we don't show 0s
+      final snapshot = await ApiService.getCurrentLoanSnapshot();
+      if (snapshot != null) {
+        setState(() {
+          financials['userEstimatedLoan'] = snapshot.currentBalance;
+          financials['actualRate'] = snapshot.interestRate;
+          financials['monthlyPayment'] = snapshot.monthlyPayment;
+          // Note: we'll recalculate the "live" balance in a moment
+        });
+      }
+
       setState(() => step = 'main-app');
+
+      // Trigger auto-recalculation on restart from DB data
+      if (snapshot != null) {
+        _runTimeTravel(snapshot: snapshot);
+      } else {
+        debugPrint(
+          "[INIT] Could not fetch loan snapshot for auto-recalculation.",
+        );
+      }
     } else if (!auth.hasPhone) {
       debugPrint("Routing to: auth-phone");
       setState(() => step = 'auth-phone');
@@ -197,21 +218,38 @@ class _FintechAutoFlowState extends State<FintechAutoFlow> {
     });
   }
 
-  Future<void> _runTimeTravel() async {
-    if (lastScanData == null) {
-      debugPrint("[TIME-TRAVEL] No scan data found. Skipping.");
+  Future<void> _runTimeTravel({LoanSnapshot? snapshot}) async {
+    debugPrint("[TIME-TRAVEL] Function called.");
+
+    double originalBalance;
+    double interestRate;
+    int termMonths;
+    String? startDate;
+    double monthlyPayment;
+
+    if (snapshot != null) {
+      debugPrint("[TIME-TRAVEL] Using database snapshot data.");
+      originalBalance = snapshot.originalBalance;
+      interestRate = snapshot.interestRate;
+      termMonths = snapshot.termMonths;
+      startDate = snapshot.startDate;
+      monthlyPayment = snapshot.monthlyPayment;
+    } else if (lastScanData != null) {
+      debugPrint("[TIME-TRAVEL] Using lastScanData from memory (fresh scan).");
+      originalBalance = (lastScanData!['current_balance'] ?? 0).toDouble();
+      interestRate = (lastScanData!['interest_rate'] ?? 0).toDouble();
+      termMonths = (lastScanData!['term_months'] ?? 0).toInt();
+      startDate = lastScanData!['contract_date']?.toString();
+      monthlyPayment =
+          (lastScanData!['monthly_payment'] ??
+                  (lastScanData!['bi_weekly_payment'] ?? 0) * 2.16)
+              .toDouble();
+    } else {
+      debugPrint(
+        "[TIME-TRAVEL] No data source available (restart or no scan). Skipping.",
+      );
       return;
     }
-
-    debugPrint("[TIME-TRAVEL] Starting calculation for balance sync...");
-    final originalBalance = (lastScanData!['current_balance'] ?? 0).toDouble();
-    final interestRate = (lastScanData!['interest_rate'] ?? 0).toDouble();
-    final termMonths = (lastScanData!['term_months'] ?? 0).toInt();
-    final startDate = lastScanData!['contract_date']?.toString();
-    final monthlyPayment =
-        (lastScanData!['monthly_payment'] ??
-                (lastScanData!['bi_weekly_payment'] ?? 0) * 2.16)
-            .toDouble();
 
     debugPrint(
       "[TIME-TRAVEL] Input: Balance=$originalBalance, Rate=$interestRate, Term=$termMonths, Start=$startDate, Payment=$monthlyPayment",
@@ -220,7 +258,8 @@ class _FintechAutoFlowState extends State<FintechAutoFlow> {
     if (originalBalance == 0 ||
         interestRate == 0 ||
         termMonths == 0 ||
-        startDate == null) {
+        startDate == null ||
+        startDate.isEmpty) {
       debugPrint("[TIME-TRAVEL] Missing required parameters. Aborting.");
       return;
     }
@@ -251,10 +290,14 @@ class _FintechAutoFlowState extends State<FintechAutoFlow> {
 
           _calculateEquity();
           debugPrint(
-            "[TIME-TRAVEL] Equity recalculated: ${financials['equity']}",
+            "[TIME-TRAVEL] Equity recalculated: ${financials['equity']}. Proceeding to DB update...",
           );
           // Sync new balance to DB
           ApiService.updateLoanBalance(newBalance);
+        } else {
+          debugPrint(
+            "[TIME-TRAVEL] API returned null calculated_balance. No update performed.",
+          );
         }
       });
     } catch (e) {
@@ -456,6 +499,15 @@ class _FintechAutoFlowState extends State<FintechAutoFlow> {
         setState(() {
           financials.addAll(data);
           _calculateEquity();
+        });
+      },
+      onCarDetailsUpdate: (data) {
+        setState(() {
+          carDetails.addAll(
+            Map<String, String>.from(
+              data.map((key, value) => MapEntry(key, value.toString())),
+            ),
+          );
         });
       },
     );

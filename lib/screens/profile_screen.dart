@@ -162,15 +162,6 @@ class ProfileScreen extends StatelessWidget {
                           activeThumbColor: colorNavy,
                         ),
                       ),
-                      _buildListTile(
-                        icon: LucideIcons.moon,
-                        title: "Dark Mode",
-                        trailing: Switch(
-                          value: false,
-                          onChanged: (val) {},
-                          activeThumbColor: colorNavy,
-                        ),
-                      ),
                     ]),
 
                     const SizedBox(height: 24),

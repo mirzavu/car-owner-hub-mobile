@@ -406,7 +406,7 @@ class _ScanPromptScreenState extends State<ScanPromptScreen>
               const CircularProgressIndicator(color: colorVibrantGreen),
               const SizedBox(height: 16),
               Text(
-                "Extracting details...",
+                "Fetching details...",
                 style: GoogleFonts.outfit(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
