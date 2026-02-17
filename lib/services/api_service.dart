@@ -584,4 +584,63 @@ class ApiService {
       debugPrint("Error updating loan balance: $e");
     }
   }
+  // --- Garage Document Methods ---
+
+  // Fetch all documents for the current user
+  static Future<List<Map<String, dynamic>>> getUserDocuments() async {
+    final auth = AuthService();
+    if (!auth.isAuthenticated) return [];
+
+    try {
+      final records = await auth.pb
+          .collection('documents')
+          .getList(filter: 'user_id = "${auth.userId}"', sort: '-created');
+
+      return records.items.map((r) {
+        return {
+          'id': r.id,
+          'doc_type': r.data['doc_type'],
+          // Build the PocketBase file URL format
+          'file_url':
+              '${auth.pb.baseURL}/api/files/${r.collectionId}/${r.id}/${r.data['file_blob']}',
+          'status': r.data['status'],
+        };
+      }).toList();
+    } catch (e) {
+      debugPrint("Error fetching user documents: $e");
+      return [];
+    }
+  }
+
+  // Upload a generic garage document directly to PocketBase
+  static Future<void> uploadGarageDocument(
+    String filePath,
+    String docType, {
+    String? loanId,
+  }) async {
+    final auth = AuthService();
+    if (!auth.isAuthenticated) throw Exception('Not authenticated');
+
+    try {
+      final body = {
+        'user_id': auth.userId,
+        'doc_type': docType,
+        'status': 'verified', // Skip processing since it's just for storage
+      };
+
+      if (loanId != null) {
+        body['loan_id'] = loanId;
+      }
+
+      await auth.pb
+          .collection('documents')
+          .create(
+            body: body,
+            files: [await http.MultipartFile.fromPath('file_blob', filePath)],
+          );
+    } catch (e) {
+      debugPrint("Error uploading garage document: $e");
+      rethrow;
+    }
+  }
 }

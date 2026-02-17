@@ -102,6 +102,7 @@ class _FintechAutoFlowState extends State<FintechAutoFlow> {
   };
 
   Map<String, dynamic>? lastScanData;
+  String? loanId; // Store the current loan ID
   String tempPhone = ''; // Persist phone number across screens
 
   @override
@@ -146,6 +147,7 @@ class _FintechAutoFlowState extends State<FintechAutoFlow> {
       final snapshot = await ApiService.getCurrentLoanSnapshot();
       if (snapshot != null) {
         setState(() {
+          loanId = snapshot.loanId;
           financials['userEstimatedLoan'] = snapshot.currentBalance;
           financials['actualRate'] = snapshot.interestRate;
           financials['monthlyPayment'] = snapshot.monthlyPayment;
@@ -212,6 +214,10 @@ class _FintechAutoFlowState extends State<FintechAutoFlow> {
         }
         if (data['current_balance'] != null) {
           financials['userEstimatedLoan'] = data['current_balance'];
+        }
+        if (data['documentId'] != null) {
+          // If we have a documentId from OCR, we can't easily get loanId yet
+          // as it's created in syncOnboardingData later.
         }
         _calculateEquity();
       }
@@ -480,6 +486,7 @@ class _FintechAutoFlowState extends State<FintechAutoFlow> {
     if (activeTab == 'garage') {
       return GarageScreen(
         carDetails: carDetails,
+        loanId: loanId,
         setActiveTab: (tab) => setActiveTab(tab),
       );
     }

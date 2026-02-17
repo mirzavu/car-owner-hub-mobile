@@ -1,14 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../services/api_service.dart';
 
 class GarageScreen extends StatefulWidget {
   final Map<String, String> carDetails;
+  final String? loanId;
   final Function(String) setActiveTab;
 
   const GarageScreen({
     super.key,
     required this.carDetails,
+    this.loanId,
     required this.setActiveTab,
   });
 
@@ -21,9 +26,99 @@ class _GarageScreenState extends State<GarageScreen> {
   bool _insuranceExpiry = true;
   bool _equityAlerts = true;
 
+  // Document States
+  List<Map<String, dynamic>> _documents = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchDocuments();
+  }
+
+  Future<void> _fetchDocuments() async {
+    final docs = await ApiService.getUserDocuments();
+    if (!mounted) return;
+    setState(() {
+      _documents = docs;
+    });
+  }
+
+  Future<void> _handleDocTap(String docType) async {
+    final docList = _documents.where((d) => d['doc_type'] == docType).toList();
+    final isUploaded = docList.isNotEmpty;
+
+    if (isUploaded) {
+      // 1. View Document
+      final url = Uri.parse(docList.first['file_url']);
+      if (await canLaunchUrl(url)) {
+        await launchUrl(url);
+      } else {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Could not open document")),
+        );
+      }
+    } else {
+      // 2. Upload Document
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['jpg', 'jpeg', 'png', 'pdf'],
+      );
+
+      if (result != null && result.files.single.path != null) {
+        _showLoadingDialog("Uploading document...");
+        try {
+          await ApiService.uploadGarageDocument(
+            result.files.single.path!,
+            docType,
+            loanId: widget.loanId,
+          );
+          if (!mounted) return;
+          Navigator.pop(context); // Close dialog
+          _fetchDocuments(); // Refresh the list
+        } catch (e) {
+          if (!mounted) return;
+          Navigator.pop(context); // Close dialog
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text("Upload failed: $e")));
+        }
+      }
+    }
+  }
+
+  void _showLoadingDialog(String message) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const CircularProgressIndicator(color: Color(0xFF003366)),
+              const SizedBox(height: 16),
+              Text(
+                message,
+                style: GoogleFonts.outfit(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF0F172A),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    const colorBg = Color(0xFFF8FAFC); // Slate 50
+    const colorBg = Color(0xFFF8FAFC);
     const colorSlate800 = Color(0xFF1E293B);
     const colorGreen = Color(0xFF00CA50);
     const colorNavy = Color(0xFF003366);
@@ -35,7 +130,7 @@ class _GarageScreenState extends State<GarageScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // --- 1. Minimal Header (Transparent/Ice Blue) ---
+            // --- 1. Minimal Header ---
             Padding(
               padding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
               child: Row(
@@ -62,18 +157,13 @@ class _GarageScreenState extends State<GarageScreen> {
                     ),
                   ),
                   const SizedBox(width: 16),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        "My Garage",
-                        style: GoogleFonts.outfit(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: colorSlate800,
-                        ),
-                      ),
-                    ],
+                  Text(
+                    "My Garage",
+                    style: GoogleFonts.outfit(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: colorSlate800,
+                    ),
                   ),
                 ],
               ),
@@ -172,7 +262,7 @@ class _GarageScreenState extends State<GarageScreen> {
                                 ],
                               ),
                               InkWell(
-                                onTap: () {}, // Simple copy logic placeholder
+                                onTap: () {},
                                 child: const Padding(
                                   padding: EdgeInsets.all(8.0),
                                   child: Icon(
@@ -201,9 +291,9 @@ class _GarageScreenState extends State<GarageScreen> {
                     ),
                     child: Column(
                       children: [
-                        _buildDocItem("Bill of Sale", true),
-                        _buildDocItem("Insurance Policy", true),
-                        _buildDocItem("Registration", false),
+                        _buildDocItem("Bill of Sale", "bill_of_sale", true),
+                        _buildDocItem("Insurance Policy", "insurance", true),
+                        _buildDocItem("Registration", "registration", false),
                       ],
                     ),
                   ),
@@ -309,42 +399,79 @@ class _GarageScreenState extends State<GarageScreen> {
     );
   }
 
-  Widget _buildDocItem(String title, bool showDivider) {
+  Widget _buildDocItem(String title, String docType, bool showDivider) {
+    // Check if the document exists in our fetched data
+    final docList = _documents.where((d) => d['doc_type'] == docType).toList();
+    final isUploaded = docList.isNotEmpty;
+
     return Column(
       children: [
-        Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE6F0FA),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(
-                  LucideIcons.fileText,
-                  size: 18,
-                  color: Color(0xFF003366),
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Text(
-                  title,
-                  style: GoogleFonts.outfit(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: const Color(0xFF1E293B),
+        InkWell(
+          onTap: () => _handleDocTap(docType),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: isUploaded
+                        ? Colors.green.shade50
+                        : const Color(0xFFE6F0FA),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    isUploaded
+                        ? LucideIcons.checkCircle2
+                        : LucideIcons.fileText,
+                    size: 18,
+                    color: isUploaded
+                        ? const Color(0xFF00CA50)
+                        : const Color(0xFF003366),
                   ),
                 ),
-              ),
-              Icon(
-                LucideIcons.chevronRight,
-                size: 16,
-                color: Colors.blueGrey.shade300,
-              ),
-            ],
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: GoogleFonts.outfit(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: const Color(0xFF1E293B),
+                        ),
+                      ),
+                      if (isUploaded)
+                        Text(
+                          "Tap to view",
+                          style: GoogleFonts.outfit(
+                            fontSize: 11,
+                            color: Colors.blueGrey.shade400,
+                          ),
+                        )
+                      else
+                        Text(
+                          "Tap to upload",
+                          style: GoogleFonts.outfit(
+                            fontSize: 11,
+                            color: Colors.blueGrey.shade400,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                Icon(
+                  isUploaded ? LucideIcons.externalLink : LucideIcons.upload,
+                  size: 16,
+                  color: isUploaded
+                      ? Colors.blueGrey.shade300
+                      : const Color(0xFF003366),
+                ),
+              ],
+            ),
           ),
         ),
         if (showDivider)
@@ -375,7 +502,7 @@ class _GarageScreenState extends State<GarageScreen> {
                   style: GoogleFonts.outfit(
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
-                    color: const Color(0xFF1E293B), // colorSlate700 equiv
+                    color: const Color(0xFF1E293B),
                   ),
                 ),
               ),
