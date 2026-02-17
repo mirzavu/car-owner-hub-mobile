@@ -429,6 +429,7 @@ class _FintechAutoFlowState extends State<FintechAutoFlow> {
     if (activeTab == 'shop') {
       return ShopScreen(
         financials: financials,
+        carDetails: carDetails,
         setOverlayScreen: (screen) => setOverlay(screen),
         setActiveTab: (tab) => setActiveTab(tab),
       );

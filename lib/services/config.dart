@@ -2,9 +2,14 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 
 class Config {
+  static const String androidLanHost = String.fromEnvironment(
+    'ANDROID_DEV_HOST',
+    defaultValue: '192.168.29.174',
+  );
+
   // 1. Determine the Base URL based on the platform
   static String get baseUrl {
-    // Check if provided via build-args (e.g. flutter build --define=BACKEND_URL=...)
+    // Check if provided via build-args (e.g. flutter run --dart-define=BACKEND_URL=...)
     const String fromEnv = String.fromEnvironment('BACKEND_URL');
     if (fromEnv.isNotEmpty) return fromEnv;
 
@@ -15,7 +20,7 @@ class Config {
 
     // Development URLs
     if (Platform.isAndroid) {
-      return 'http://10.0.2.2:3007'; // Standard Android Emulator loopback
+      return 'http://$androidLanHost:3007';
     } else if (Platform.isIOS) {
       return 'http://127.0.0.1:3007';
     } else {
@@ -32,7 +37,13 @@ class Config {
       return 'https://pb.carownershub.com';
     }
 
-    return 'http://127.0.0.1:8097';
+    if (Platform.isAndroid) {
+      return 'http://$androidLanHost:8097';
+    } else if (Platform.isIOS) {
+      return 'http://127.0.0.1:8097';
+    } else {
+      return 'http://localhost:8097';
+    }
   }
 
   // API Endpoints

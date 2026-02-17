@@ -381,18 +381,52 @@ class ApiService {
   static Future<List<dynamic>> getInventory({
     double? equity,
     double? targetPayment,
+    double? currentPayment,
+    int? currentYear,
+    String? currentMake,
+    String? currentModel,
+    String? currentBodyStyle,
+    String? targetMode,
     String? city,
     String? province,
   }) async {
     final userId = AuthService().userId;
-    String url = '${Config.inventory}?userId=$userId';
+    debugPrint(
+      '[SHOP] getInventory request location city=${city ?? '-'} province=${province ?? '-'}',
+    );
+    final queryParameters = <String, String>{'userId': userId};
+    if (equity != null) queryParameters['equity'] = equity.toStringAsFixed(2);
+    if (targetPayment != null) {
+      queryParameters['target_payment'] = targetPayment.toStringAsFixed(2);
+    }
+    if (currentPayment != null) {
+      queryParameters['current_payment'] = currentPayment.toStringAsFixed(2);
+    }
+    if (currentYear != null) {
+      queryParameters['current_year'] = currentYear.toString();
+    }
+    if (currentMake != null && currentMake.trim().isNotEmpty) {
+      queryParameters['current_make'] = currentMake.trim();
+    }
+    if (currentModel != null && currentModel.trim().isNotEmpty) {
+      queryParameters['current_model'] = currentModel.trim();
+    }
+    if (currentBodyStyle != null && currentBodyStyle.trim().isNotEmpty) {
+      queryParameters['current_body_style'] = currentBodyStyle.trim();
+    }
+    if (targetMode != null && targetMode.trim().isNotEmpty) {
+      queryParameters['target_mode'] = targetMode.trim();
+    }
+    if (city != null && city.trim().isNotEmpty) {
+      queryParameters['city'] = city.trim();
+    }
+    if (province != null && province.trim().isNotEmpty) {
+      queryParameters['province'] = province.trim();
+    }
 
-    if (equity != null) url += '&equity=$equity';
-    if (targetPayment != null) url += '&target_payment=$targetPayment';
-    if (city != null) url += '&city=$city';
-    if (province != null) url += '&province=$province';
-
-    final response = await http.get(Uri.parse(url));
+    final response = await http.get(
+      Uri.parse(Config.inventory).replace(queryParameters: queryParameters),
+    );
 
     if (response.statusCode == 200) {
       return jsonDecode(response.body);

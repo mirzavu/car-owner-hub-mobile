@@ -57,6 +57,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
   late double loanBalance;
   late double monthlyPayment;
   late double interestRate;
+  late String _vehicleYear;
+  late String _vehicleMake;
+  late String _vehicleModel;
   double? marketRate;
 
   double get equity => vehicleValue - loanBalance;
@@ -72,6 +75,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     monthlyPayment = (widget.initialFinancials['monthlyPayment'] ?? 0.0)
         .toDouble();
     interestRate = (widget.initialFinancials['actualRate'] ?? 0.0).toDouble();
+    _vehicleYear = widget.carDetails.year;
+    _vehicleMake = widget.carDetails.make;
+    _vehicleModel = widget.carDetails.model;
 
     _scrollController.addListener(_scrollListener);
     _fetchDashboardData();
@@ -82,6 +88,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     try {
       final data = await ApiService.getDashboardData();
       final financials = data['financials'] ?? {};
+      final carDetails = data['carDetails'] as Map<String, dynamic>? ?? {};
       setState(() {
         vehicleValue = (financials['vehicleValue'] ?? 22500).toDouble();
         loanBalance = (financials['loanBalance'] ?? 18000).toDouble();
@@ -92,6 +99,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
           monthlyPayment = (financials['monthlyPayment'] ?? 420).toDouble();
         }
         interestRate = (financials['interestRate'] ?? 0.0).toDouble();
+
+        final yearText = (carDetails['year'] ?? '').toString().trim();
+        final makeText = (carDetails['make'] ?? '').toString().trim();
+        final modelText = (carDetails['model'] ?? '').toString().trim();
+        if (yearText.isNotEmpty) _vehicleYear = yearText;
+        if (makeText.isNotEmpty) _vehicleMake = makeText;
+        if (modelText.isNotEmpty) _vehicleModel = modelText;
       });
       if (widget.onFinancialsUpdate != null) {
         widget.onFinancialsUpdate!({
@@ -169,6 +183,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
       symbol: '',
       decimalDigits: 0,
     ).format(n).trim();
+  }
+
+  String _vehicleDisplayName() {
+    final parts = [
+      _vehicleYear,
+      _vehicleMake,
+      _vehicleModel,
+    ].map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+    if (parts.isEmpty) return "Unknown Vehicle";
+    return parts.join(' ');
   }
 
   void _showCashLockedDialog(CashbackOffer offer) {
@@ -707,7 +731,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   ),
                                   const SizedBox(height: 8), // Increased from 2
                                   Text(
-                                    "${widget.carDetails.year} ${widget.carDetails.make} ${widget.carDetails.model}",
+                                    _vehicleDisplayName(),
                                     style: GoogleFonts.outfit(
                                       color: Colors.white,
                                       fontSize: 18,
