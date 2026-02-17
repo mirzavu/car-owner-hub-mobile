@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "616425668695",
+    "project_id": "carownerhub",
+    "storage_bucket": "carownerhub.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:616425668695:android:0df403a70456a6f9dde312",
+        "android_client_info": {
+          "package_name": "com.carownerhub.mobile_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBkqQyBDzS7oJbddjfhobSV3n0fOvnzXB0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

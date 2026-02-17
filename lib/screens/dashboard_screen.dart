@@ -69,6 +69,8 @@ class _DashboardScreenState extends State<DashboardScreen>
   String _tradePreviewMake = '';
   String _tradePreviewModel = '';
   double _tradePreviewPayment = 0;
+  int _unreadNotificationCount = 0;
+  List<ActivityFeedItem> _recentActivities = [];
 
   double get equity => vehicleValue - loanBalance;
 
@@ -98,6 +100,9 @@ class _DashboardScreenState extends State<DashboardScreen>
       final data = await ApiService.getDashboardData();
       final financials = data['financials'] ?? {};
       final carDetails = data['carDetails'] as Map<String, dynamic>? ?? {};
+      final activity = data['activity'] as List<dynamic>? ?? const [];
+      final notificationSummary =
+          data['notificationSummary'] as Map<String, dynamic>? ?? const {};
       setState(() {
         vehicleValue = (financials['vehicleValue'] ?? 22500).toDouble();
         loanBalance = (financials['loanBalance'] ?? 18000).toDouble();
@@ -115,6 +120,12 @@ class _DashboardScreenState extends State<DashboardScreen>
         if (yearText.isNotEmpty) _vehicleYear = yearText;
         if (makeText.isNotEmpty) _vehicleMake = makeText;
         if (modelText.isNotEmpty) _vehicleModel = modelText;
+        _unreadNotificationCount =
+            (notificationSummary['unreadCount'] as num?)?.toInt() ?? 0;
+        _recentActivities = activity
+            .whereType<Map<String, dynamic>>()
+            .map(ActivityFeedItem.fromJson)
+            .toList();
       });
       if (widget.onFinancialsUpdate != null) {
         widget.onFinancialsUpdate!({
@@ -191,6 +202,41 @@ class _DashboardScreenState extends State<DashboardScreen>
     );
   }
 
+  Future<void> _openNotificationScreen() async {
+    final route = await Navigator.push<String>(
+      context,
+      MaterialPageRoute(builder: (context) => const NotificationScreen()),
+    );
+
+    if (!mounted) return;
+    await _fetchDashboardData();
+
+    if (route != null && route.trim().isNotEmpty) {
+      _handleNotificationRoute(route);
+    }
+  }
+
+  void _handleNotificationRoute(String rawRoute) {
+    final route = rawRoute.trim().replaceFirst(RegExp(r'^/+'), '');
+
+    switch (route) {
+      case 'refinance':
+        widget.setOverlayScreen('refinance');
+        break;
+      case 'cash-unlock':
+        widget.setOverlayScreen('cash-unlock');
+        break;
+      case 'shop':
+        widget.setActiveTab('shop');
+        break;
+      case 'garage':
+        widget.setActiveTab('garage');
+        break;
+      default:
+        break;
+    }
+  }
+
   void _scrollListener() {
     final offset = _scrollController.offset;
 
@@ -230,6 +276,7 @@ class _DashboardScreenState extends State<DashboardScreen>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       _fetchTradeUpPreview();
+      _fetchDashboardData();
     }
   }
 
@@ -323,6 +370,52 @@ class _DashboardScreenState extends State<DashboardScreen>
     ].map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
     if (parts.isEmpty) return "Unknown Vehicle";
     return parts.join(' ');
+  }
+
+  String _relativeTime(String iso) {
+    try {
+      final created = DateTime.parse(iso).toLocal();
+      final now = DateTime.now();
+      final diff = now.difference(created);
+
+      if (diff.inMinutes < 1) return 'Just now';
+      if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
+      if (diff.inHours < 24) return '${diff.inHours}h ago';
+      if (diff.inDays < 7) return '${diff.inDays}d ago';
+      return '${created.month}/${created.day}/${created.year}';
+    } catch (_) {
+      return iso;
+    }
+  }
+
+  _ActivityVisual _activityVisual(ActivityFeedItem activity) {
+    switch (activity.iconType) {
+      case 'file':
+        return const _ActivityVisual(
+          icon: LucideIcons.fileText,
+          color: Color(0xFF2563EB),
+          bg: Color(0xFFDBEAFE),
+        );
+      case 'check':
+        return const _ActivityVisual(
+          icon: LucideIcons.checkCircle2,
+          color: Color(0xFF059669),
+          bg: Color(0xFFD1FAE5),
+        );
+      case 'user':
+        return const _ActivityVisual(
+          icon: LucideIcons.user,
+          color: Color(0xFF7C3AED),
+          bg: Color(0xFFF5F3FF),
+        );
+      case 'clock':
+      default:
+        return const _ActivityVisual(
+          icon: LucideIcons.clock3,
+          color: Color(0xFF475569),
+          bg: Color(0xFFF1F5F9),
+        );
+    }
   }
 
   void _showCashLockedDialog(CashbackOffer offer) {
@@ -889,14 +982,8 @@ class _DashboardScreenState extends State<DashboardScreen>
                     const Spacer(),
                     // Bell Icon
                     _BellButton(
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const NotificationScreen(),
-                          ),
-                        );
-                      },
+                      onTap: _openNotificationScreen,
+                      showBadge: _unreadNotificationCount > 0,
                     ),
                   ],
                 ),
@@ -1011,15 +1098,8 @@ class _DashboardScreenState extends State<DashboardScreen>
                                     ],
                                   ),
                                   _BellButton(
-                                    onTap: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (context) =>
-                                              const NotificationScreen(),
-                                        ),
-                                      );
-                                    },
+                                    onTap: _openNotificationScreen,
+                                    showBadge: _unreadNotificationCount > 0,
                                   ),
                                 ],
                               ),
@@ -1467,7 +1547,9 @@ class _DashboardScreenState extends State<DashboardScreen>
                           borderRadius: BorderRadius.circular(50),
                         ),
                         child: Text(
-                          "3 New",
+                          _unreadNotificationCount > 0
+                              ? "$_unreadNotificationCount New"
+                              : "Live",
                           style: GoogleFonts.outfit(
                             fontSize: 10,
                             fontWeight: FontWeight.w600,
@@ -1550,42 +1632,30 @@ class _DashboardScreenState extends State<DashboardScreen>
                       ],
                     ),
                     padding: const EdgeInsets.all(4),
-                    child: const Column(
-                      children: [
-                        _ActivityItem(
-                          icon: LucideIcons.shieldCheck,
-                          color: Color(0xFF2563EB),
-                          bg: Color(0xFFDBEAFE),
-                          title: "Insurance Verified",
-                          desc: "Policy renewed successfully",
-                          date: "Today",
-                        ),
-                        _ActivityItem(
-                          icon: LucideIcons.trendingUp,
-                          color: Color(0xFF059669),
-                          bg: Color(0xFFD1FAE5),
-                          title: "Equity Updated",
-                          desc: "Market value increased",
-                          value: "+\$150",
-                        ),
-                        _ActivityItem(
-                          icon: LucideIcons.checkCircle2,
-                          color: Color(0xFF475569),
-                          bg: Color(0xFFF1F5F9),
-                          title: "Payment Received",
-                          desc: "Loan installment processed",
-                          date: "July 28",
-                        ),
-                        _ActivityItem(
-                          icon: LucideIcons.fileText,
-                          color: Color(0xFFD97706),
-                          bg: Color(0xFFFEF3C7),
-                          title: "Registration Check",
-                          desc: "Valid until Dec 2026",
-                          date: "July 15",
-                        ),
-                      ],
-                    ),
+                    child: _recentActivities.isEmpty
+                        ? Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Text(
+                              "No recent activity yet.",
+                              style: GoogleFonts.outfit(
+                                fontSize: 13,
+                                color: Colors.blueGrey.shade400,
+                              ),
+                            ),
+                          )
+                        : Column(
+                            children: _recentActivities.take(4).map((activity) {
+                              final visual = _activityVisual(activity);
+                              return _ActivityItem(
+                                icon: visual.icon,
+                                color: visual.color,
+                                bg: visual.bg,
+                                title: activity.title,
+                                desc: activity.description,
+                                date: _relativeTime(activity.created),
+                              );
+                            }).toList(),
+                          ),
                   ),
 
                   // Bottom Padding
@@ -1604,7 +1674,8 @@ class _DashboardScreenState extends State<DashboardScreen>
 
 class _BellButton extends StatelessWidget {
   final VoidCallback onTap;
-  const _BellButton({required this.onTap});
+  final bool showBadge;
+  const _BellButton({required this.onTap, this.showBadge = false});
 
   @override
   Widget build(BuildContext context) {
@@ -1624,24 +1695,25 @@ class _BellButton extends StatelessWidget {
           alignment: Alignment.center,
           children: [
             const Icon(LucideIcons.bell, color: Colors.white, size: 18),
-            Positioned(
-              top: 10,
-              right: 10,
-              child: Container(
-                width: 8,
-                height: 8,
-                decoration: BoxDecoration(
-                  color: Colors.red.shade400,
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.red.shade400.withValues(alpha: 0.5),
-                      blurRadius: 6,
-                    ),
-                  ],
+            if (showBadge)
+              Positioned(
+                top: 10,
+                right: 10,
+                child: Container(
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color: Colors.red.shade400,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.red.shade400.withValues(alpha: 0.5),
+                        blurRadius: 6,
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
           ],
         ),
       ),
@@ -1872,6 +1944,18 @@ class _OpportunityCard extends StatelessWidget {
   }
 }
 
+class _ActivityVisual {
+  final IconData icon;
+  final Color color;
+  final Color bg;
+
+  const _ActivityVisual({
+    required this.icon,
+    required this.color,
+    required this.bg,
+  });
+}
+
 class _ActivityItem extends StatelessWidget {
   final IconData icon;
   final Color color;
@@ -1879,7 +1963,6 @@ class _ActivityItem extends StatelessWidget {
   final String title;
   final String desc;
   final String? date;
-  final String? value;
 
   const _ActivityItem({
     required this.icon,
@@ -1888,7 +1971,6 @@ class _ActivityItem extends StatelessWidget {
     required this.title,
     required this.desc,
     this.date,
-    this.value,
   });
 
   @override
@@ -1926,24 +2008,14 @@ class _ActivityItem extends StatelessWidget {
               ],
             ),
           ),
-          if (value != null)
-            Text(
-              value!,
-              style: GoogleFonts.outfit(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                color: const Color(0xFF059669),
-              ),
-            )
-          else
-            Text(
-              date!,
-              style: GoogleFonts.outfit(
-                fontSize: 10,
-                fontWeight: FontWeight.w500,
-                color: Colors.blueGrey.shade300,
-              ),
+          Text(
+            date ?? '-',
+            style: GoogleFonts.outfit(
+              fontSize: 10,
+              fontWeight: FontWeight.w500,
+              color: Colors.blueGrey.shade300,
             ),
+          ),
         ],
       ),
     );

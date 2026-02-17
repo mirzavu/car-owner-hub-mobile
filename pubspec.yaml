@@ -48,6 +48,8 @@ dependencies:
   shared_preferences: ^2.2.2 # To remember if user is logged in
   flutter_web_auth_2: ^5.0.1 # For OAuth2 with Chrome Auth Tab (Android 15+ compatible)
   file_picker: ^10.3.10
+  firebase_core: ^3.8.0
+  firebase_messaging: ^15.1.6
 
 dev_dependencies:
   flutter_test:

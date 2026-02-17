@@ -20,6 +20,7 @@ import 'screens/garage_screen.dart';
 import 'screens/success_screen.dart';
 
 import 'package:mobile_app/services/auth_service.dart'; // Import AuthService
+import 'package:mobile_app/services/push_token_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -135,6 +136,11 @@ class _FintechAutoFlowState extends State<FintechAutoFlow> {
       return;
     }
 
+    final fcmToken = await PushTokenService().initAndSyncToken();
+    if (fcmToken != null && fcmToken.isNotEmpty) {
+      debugPrint('[PUSH] FCM Token: $fcmToken');
+    }
+
     debugPrint("Onboarding Status: ${auth.onboardingStatus}");
     debugPrint("Onboarding Completed: ${auth.isOnboardingCompleted}");
     debugPrint("Has Phone: ${auth.hasPhone} (${auth.userPhone})");
@@ -151,6 +157,7 @@ class _FintechAutoFlowState extends State<FintechAutoFlow> {
           financials['userEstimatedLoan'] = snapshot.currentBalance;
           financials['actualRate'] = snapshot.interestRate;
           financials['monthlyPayment'] = snapshot.monthlyPayment;
+          financials['estimatedValue'] = snapshot.estimatedValue;
           // Note: we'll recalculate the "live" balance in a moment
         });
       }
@@ -212,7 +219,9 @@ class _FintechAutoFlowState extends State<FintechAutoFlow> {
         if (data['monthly_payment'] != null) {
           financials['monthlyPayment'] = data['monthly_payment'];
         }
-        if (data['current_balance'] != null) {
+        if (data['original_amount_financed'] != null) {
+          financials['userEstimatedLoan'] = data['original_amount_financed'];
+        } else if (data['current_balance'] != null) {
           financials['userEstimatedLoan'] = data['current_balance'];
         }
         if (data['documentId'] != null) {
@@ -242,7 +251,11 @@ class _FintechAutoFlowState extends State<FintechAutoFlow> {
       monthlyPayment = snapshot.monthlyPayment;
     } else if (lastScanData != null) {
       debugPrint("[TIME-TRAVEL] Using lastScanData from memory (fresh scan).");
-      originalBalance = (lastScanData!['current_balance'] ?? 0).toDouble();
+      originalBalance =
+          (lastScanData!['original_amount_financed'] ??
+                  lastScanData!['current_balance'] ??
+                  0)
+              .toDouble();
       interestRate = (lastScanData!['interest_rate'] ?? 0).toDouble();
       termMonths = (lastScanData!['term_months'] ?? 0).toInt();
       startDate = lastScanData!['contract_date']?.toString();

@@ -54,4 +54,8 @@ class Config {
   static String get submitLead => '$baseUrl/api/submit-lead';
   static String get estimateValue => '$baseUrl/api/estimate-value';
   static String get calculateEquity => '$baseUrl/api/calculate-equity';
+  static String get notifications => '$baseUrl/api/notifications';
+  static String get notificationsMarkRead =>
+      '$baseUrl/api/notifications/mark-read';
+  static String get activity => '$baseUrl/api/activity';
 }

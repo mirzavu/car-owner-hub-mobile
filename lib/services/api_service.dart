@@ -12,6 +12,7 @@ class LoanSnapshot {
   final int termMonths;
   final String startDate;
   final double originalBalance;
+  final double estimatedValue;
 
   const LoanSnapshot({
     required this.loanId,
@@ -21,6 +22,97 @@ class LoanSnapshot {
     required this.termMonths,
     required this.startDate,
     required this.originalBalance,
+    required this.estimatedValue,
+  });
+}
+
+class NotificationFeedItem {
+  final String id;
+  final String type;
+  final String title;
+  final String message;
+  final bool isRead;
+  final String actionRoute;
+  final String created;
+
+  const NotificationFeedItem({
+    required this.id,
+    required this.type,
+    required this.title,
+    required this.message,
+    required this.isRead,
+    required this.actionRoute,
+    required this.created,
+  });
+
+  factory NotificationFeedItem.fromJson(Map<String, dynamic> json) {
+    return NotificationFeedItem(
+      id: (json['id'] ?? '').toString(),
+      type: (json['type'] ?? '').toString(),
+      title: (json['title'] ?? '').toString(),
+      message: (json['message'] ?? '').toString(),
+      isRead: json['isRead'] == true,
+      actionRoute: (json['actionRoute'] ?? '').toString(),
+      created: (json['created'] ?? '').toString(),
+    );
+  }
+}
+
+class NotificationPage {
+  final List<NotificationFeedItem> items;
+  final bool hasMore;
+  final String? nextCursor;
+  final int unreadCount;
+
+  const NotificationPage({
+    required this.items,
+    required this.hasMore,
+    required this.nextCursor,
+    required this.unreadCount,
+  });
+}
+
+class ActivityFeedItem {
+  final String id;
+  final String actionType;
+  final String title;
+  final String description;
+  final String created;
+  final String iconType;
+  final String color;
+
+  const ActivityFeedItem({
+    required this.id,
+    required this.actionType,
+    required this.title,
+    required this.description,
+    required this.created,
+    required this.iconType,
+    required this.color,
+  });
+
+  factory ActivityFeedItem.fromJson(Map<String, dynamic> json) {
+    return ActivityFeedItem(
+      id: (json['id'] ?? '').toString(),
+      actionType: (json['actionType'] ?? '').toString(),
+      title: (json['title'] ?? '').toString(),
+      description: (json['description'] ?? json['desc'] ?? '').toString(),
+      created: (json['created'] ?? json['date'] ?? '').toString(),
+      iconType: (json['iconType'] ?? '').toString(),
+      color: (json['color'] ?? '').toString(),
+    );
+  }
+}
+
+class ActivityPage {
+  final List<ActivityFeedItem> items;
+  final bool hasMore;
+  final String? nextCursor;
+
+  const ActivityPage({
+    required this.items,
+    required this.hasMore,
+    required this.nextCursor,
   });
 }
 
@@ -197,12 +289,48 @@ class ApiService {
           .collection('loans')
           .getList(page: 1, perPage: 1, filter: 'vehicle_id = "$vehicleId"');
 
+      // 3. Calculate Current Balance dynamically if possible
+      double originalBalance =
+          (scanData['original_amount_financed'] ??
+                  scanData['current_balance'] ??
+                  0.0)
+              .toDouble();
+      double currentBalance = originalBalance;
+
+      // If we have the necessary data, calculate the real-time balance
+      if (originalBalance > 0 &&
+          scanData['interest_rate'] != null &&
+          scanData['term_months'] != null &&
+          scanData['contract_date'] != null) {
+        try {
+          final calculation = await calculateLoanEquity(
+            originalBalance: originalBalance,
+            interestRate: (scanData['interest_rate'] ?? 0.0).toDouble(),
+            termMonths: (scanData['term_months'] ?? 0).toInt(),
+            startDate: scanData['contract_date'].toString(),
+            monthlyPayment:
+                (scanData['monthly_payment'] ??
+                        (scanData['bi_weekly_payment'] ?? 0.0) * 2.16)
+                    .toDouble(),
+          );
+          if (calculation['calculated_balance'] != null) {
+            currentBalance = calculation['calculated_balance'].toDouble();
+            debugPrint(
+              "[SYNC] Dynamically calculated current_balance: $currentBalance",
+            );
+          }
+        } catch (e) {
+          debugPrint("[SYNC] Dynamic balance calculation failed: $e");
+          // Fallback to originalBalance if calculation fails
+        }
+      }
+
       final loanBody = {
         'vehicle_id': vehicleId,
         'lender_name': scanData['lender_name'] ?? '',
         'interest_rate': (scanData['interest_rate'] ?? 0.0).toDouble(),
-        'original_balance': (scanData['current_balance'] ?? 0.0).toDouble(),
-        'current_balance': (scanData['current_balance'] ?? 0.0).toDouble(),
+        'original_balance': originalBalance,
+        'current_balance': currentBalance,
         'monthly_payment':
             (scanData['monthly_payment'] ??
                     (scanData['bi_weekly_payment'] ?? 0.0) * 2.16)
@@ -291,6 +419,111 @@ class ApiService {
     }
   }
 
+  static Future<NotificationPage> getNotifications({
+    String status = 'all',
+    int limit = 20,
+    String? cursor,
+  }) async {
+    final userId = AuthService().userId;
+    if (userId.isEmpty) throw Exception('User not logged in');
+
+    final query = <String, String>{
+      'userId': userId,
+      'status': status,
+      'limit': '$limit',
+    };
+    if (cursor != null && cursor.trim().isNotEmpty) {
+      query['cursor'] = cursor.trim();
+    }
+
+    final response = await http.get(
+      Uri.parse(Config.notifications).replace(queryParameters: query),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to load notifications');
+    }
+
+    final json = jsonDecode(response.body) as Map<String, dynamic>;
+    final rawItems = (json['items'] as List<dynamic>? ?? const []);
+    final meta = (json['meta'] as Map<String, dynamic>? ?? const {});
+
+    return NotificationPage(
+      items: rawItems
+          .whereType<Map<String, dynamic>>()
+          .map(NotificationFeedItem.fromJson)
+          .toList(),
+      hasMore: meta['hasMore'] == true,
+      nextCursor: (meta['nextCursor'] ?? '').toString().isEmpty
+          ? null
+          : (meta['nextCursor'] ?? '').toString(),
+      unreadCount: _toInt(meta['unreadCount'], 0),
+    );
+  }
+
+  static Future<int> markNotificationsRead({
+    List<String> ids = const [],
+    String? beforeCreatedAt,
+  }) async {
+    final userId = AuthService().userId;
+    if (userId.isEmpty) return 0;
+
+    final body = <String, dynamic>{'userId': userId};
+    if (ids.isNotEmpty) body['ids'] = ids;
+    if (beforeCreatedAt != null && beforeCreatedAt.trim().isNotEmpty) {
+      body['markAllVisible'] = {'beforeCreatedAt': beforeCreatedAt.trim()};
+    }
+
+    final response = await http.post(
+      Uri.parse(Config.notificationsMarkRead),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(body),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to mark notifications read');
+    }
+
+    final json = jsonDecode(response.body) as Map<String, dynamic>;
+    return _toInt(json['unreadCount'], 0);
+  }
+
+  static Future<ActivityPage> getActivityFeed({
+    int limit = 20,
+    String? cursor,
+  }) async {
+    final userId = AuthService().userId;
+    if (userId.isEmpty) throw Exception('User not logged in');
+
+    final query = <String, String>{'userId': userId, 'limit': '$limit'};
+    if (cursor != null && cursor.trim().isNotEmpty) {
+      query['cursor'] = cursor.trim();
+    }
+
+    final response = await http.get(
+      Uri.parse(Config.activity).replace(queryParameters: query),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to load activity feed');
+    }
+
+    final json = jsonDecode(response.body) as Map<String, dynamic>;
+    final rawItems = (json['items'] as List<dynamic>? ?? const []);
+    final meta = (json['meta'] as Map<String, dynamic>? ?? const {});
+
+    return ActivityPage(
+      items: rawItems
+          .whereType<Map<String, dynamic>>()
+          .map(ActivityFeedItem.fromJson)
+          .toList(),
+      hasMore: meta['hasMore'] == true,
+      nextCursor: (meta['nextCursor'] ?? '').toString().isEmpty
+          ? null
+          : (meta['nextCursor'] ?? '').toString(),
+    );
+  }
+
   static Future<Map<String, dynamic>> getTradeUpPreview() async {
     final userId = AuthService().userId;
     if (userId.isEmpty) throw Exception('User not logged in');
@@ -364,9 +597,10 @@ class ApiService {
     final vehicles = await auth.pb
         .collection('vehicles')
         .getList(page: 1, perPage: 1, filter: 'user_id = "$userId"');
-    if (vehicles.items.isEmpty) return null;
+    final vehicle = vehicles.items.first;
+    final vehicleId = vehicle.id;
+    final estimatedValue = _toDouble(vehicle.data['current_market_value']);
 
-    final vehicleId = vehicles.items.first.id;
     final loans = await auth.pb
         .collection('loans')
         .getList(page: 1, perPage: 1, filter: 'vehicle_id = "$vehicleId"');
@@ -383,6 +617,7 @@ class ApiService {
       termMonths: _toInt(data['term_months']),
       startDate: (data['start_date'] ?? '').toString(),
       originalBalance: _toDouble(data['original_balance']),
+      estimatedValue: estimatedValue,
     );
   }
 

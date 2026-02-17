@@ -119,12 +119,16 @@ class _VerifyScanScreenState extends State<VerifyScanScreen>
     }
     _paymentController = TextEditingController(text: paymentStr);
 
+    final balanceValue =
+        widget.scanData['original_amount_financed'] ??
+        widget.scanData['current_balance'];
+
     _balanceController = TextEditingController(
-      text: widget.scanData['current_balance'] != null
+      text: balanceValue != null
           ? NumberFormat.currency(
               symbol: '\$',
               decimalDigits: 0,
-            ).format(widget.scanData['current_balance'])
+            ).format(balanceValue)
           : "",
     );
   }
@@ -270,6 +274,9 @@ class _VerifyScanScreenState extends State<VerifyScanScreen>
       } else {
         widget.scanData['monthly_payment'] = double.tryParse(paymentText);
       }
+      widget.scanData['original_amount_financed'] = double.tryParse(
+        balanceText,
+      );
       widget.scanData['current_balance'] = double.tryParse(balanceText);
 
       // 2. Update Car Details if vehicle string was changed
