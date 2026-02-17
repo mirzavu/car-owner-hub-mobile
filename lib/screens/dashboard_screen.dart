@@ -93,6 +93,13 @@ class _DashboardScreenState extends State<DashboardScreen>
     _scrollController.addListener(_scrollListener);
     _fetchDashboardData();
     _fetchMarketRate();
+    AuthService().addListener(_onAuthChanged);
+  }
+
+  void _onAuthChanged() {
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   Future<void> _fetchDashboardData() async {
@@ -266,6 +273,7 @@ class _DashboardScreenState extends State<DashboardScreen>
 
   @override
   void dispose() {
+    AuthService().removeListener(_onAuthChanged);
     WidgetsBinding.instance.removeObserver(this);
     _scrollController.removeListener(_scrollListener);
     _scrollController.dispose();
@@ -892,13 +900,36 @@ class _DashboardScreenState extends State<DashboardScreen>
                             ],
                           ),
                         ),
-                        child: Text(
-                          _getInitials(AuthService().userName),
-                          style: GoogleFonts.outfit(
-                            fontSize: 12, // Slightly larger
-                            fontWeight: FontWeight.bold,
-                            color: colorSlate800,
-                          ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(50),
+                          child:
+                              AuthService().getAvatarUrl(thumb: '100x100') !=
+                                  null
+                              ? Image.network(
+                                  AuthService().getAvatarUrl(thumb: '100x100')!,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) =>
+                                      Center(
+                                        child: Text(
+                                          _getInitials(AuthService().userName),
+                                          style: GoogleFonts.outfit(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.bold,
+                                            color: colorSlate800,
+                                          ),
+                                        ),
+                                      ),
+                                )
+                              : Center(
+                                  child: Text(
+                                    _getInitials(AuthService().userName),
+                                    style: GoogleFonts.outfit(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                      color: colorSlate800,
+                                    ),
+                                  ),
+                                ),
                         ),
                       ),
                     ),
@@ -1054,17 +1085,59 @@ class _DashboardScreenState extends State<DashboardScreen>
                                                 ],
                                               ),
                                             ),
-                                            child: Center(
-                                              child: Text(
-                                                _getInitials(
-                                                  AuthService().userName,
-                                                ),
-                                                style: GoogleFonts.outfit(
-                                                  fontSize: 12,
-                                                  fontWeight: FontWeight.bold,
-                                                  color: colorSlate800,
-                                                ),
-                                              ),
+                                            child: ClipRRect(
+                                              borderRadius:
+                                                  BorderRadius.circular(50),
+                                              child:
+                                                  AuthService().getAvatarUrl(
+                                                        thumb: '100x100',
+                                                      ) !=
+                                                      null
+                                                  ? Image.network(
+                                                      AuthService()
+                                                          .getAvatarUrl(
+                                                            thumb: '100x100',
+                                                          )!,
+                                                      fit: BoxFit.cover,
+                                                      errorBuilder:
+                                                          (
+                                                            context,
+                                                            error,
+                                                            stackTrace,
+                                                          ) => Center(
+                                                            child: Text(
+                                                              _getInitials(
+                                                                AuthService()
+                                                                    .userName,
+                                                              ),
+                                                              style: GoogleFonts.outfit(
+                                                                fontSize: 12,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .bold,
+                                                                color:
+                                                                    colorSlate800,
+                                                              ),
+                                                            ),
+                                                          ),
+                                                    )
+                                                  : Center(
+                                                      child: Text(
+                                                        _getInitials(
+                                                          AuthService()
+                                                              .userName,
+                                                        ),
+                                                        style:
+                                                            GoogleFonts.outfit(
+                                                              fontSize: 12,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .bold,
+                                                              color:
+                                                                  colorSlate800,
+                                                            ),
+                                                      ),
+                                                    ),
                                             ),
                                           ),
                                         ),

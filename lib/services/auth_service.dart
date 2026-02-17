@@ -2,9 +2,10 @@ import 'package:flutter/foundation.dart'; // For debugPrint
 import 'package:pocketbase/pocketbase.dart';
 import 'package:flutter_web_auth_2/flutter_web_auth_2.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
 import 'config.dart';
 
-class AuthService {
+class AuthService extends ChangeNotifier {
   // Singleton instance
   static final AuthService _instance = AuthService._internal();
   factory AuthService() => _instance;
@@ -57,11 +58,27 @@ class AuthService {
   String get userName => pb.authStore.record?.getStringValue('name') ?? '';
   String get userPhone => pb.authStore.record?.getStringValue('phone') ?? '';
 
+  String? getAvatarUrl({String? thumb}) {
+    final record = pb.authStore.record;
+    if (record == null) return null;
+
+    final avatar = record.getStringValue('avatar');
+    if (avatar.isEmpty) return null;
+
+    String url =
+        '${Config.pbUrl}/api/files/${record.collectionId}/${record.id}/$avatar';
+    if (thumb != null) {
+      url += '?thumb=$thumb';
+    }
+    return url;
+  }
+
   // 1. Login with Email/Password (Fallback)
   Future<void> login(String email, String password) async {
     debugPrint("[AUTH] Login attempt: $email");
     await pb.collection('users').authWithPassword(email, password);
     debugPrint("[AUTH] Login successful: $userId");
+    notifyListeners();
   }
 
   // 2. Login with Google (OAuth2)
@@ -116,6 +133,7 @@ class AuthService {
           );
 
       debugPrint('[AUTH] Google login successful: $userId');
+      notifyListeners();
     } catch (e) {
       debugPrint('[AUTH] Google Login Error: $e');
       throw Exception('Google Sign In Failed: $e');
@@ -130,6 +148,26 @@ class AuthService {
         .collection('users')
         .update(userId, body: {'name': name, 'phone': phone});
     debugPrint("[AUTH] Profile updated.");
+    notifyListeners();
+  }
+
+  // 3b. Update Avatar
+  Future<void> updateAvatar(String filePath) async {
+    if (!isAuthenticated) return;
+    debugPrint("[AUTH] Updating avatar: $filePath");
+
+    // PocketBase handles multipart file upload automatically when a MultipartFile is in the body
+    await pb
+        .collection('users')
+        .update(
+          userId,
+          files: [await http.MultipartFile.fromPath('avatar', filePath)],
+        );
+
+    // Refresh auth store to get updated record with avatar filename
+    await verifySession();
+    debugPrint("[AUTH] Avatar updated and session refreshed.");
+    notifyListeners();
   }
 
   // 4. Update Onboarding Status
@@ -150,6 +188,7 @@ class AuthService {
   void logout() {
     debugPrint("[AUTH] Logging out user: $userId");
     pb.authStore.clear();
+    notifyListeners();
   }
 
   // Verify Session with Server
@@ -162,6 +201,7 @@ class AuthService {
     try {
       await pb.collection('users').authRefresh();
       debugPrint("[AUTH] Session verified and refreshed.");
+      notifyListeners();
       return true;
     } catch (e) {
       debugPrint("[AUTH] Session verification error: $e");

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:file_picker/file_picker.dart';
 import '../services/auth_service.dart';
 import '../services/push_token_service.dart';
 
@@ -20,6 +21,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _pushNotificationsEnabled = true;
   bool _isPushSettingLoading = true;
   bool _isPushUpdating = false;
+  bool _isAvatarUpdating = false;
 
   @override
   void initState() {
@@ -88,6 +90,49 @@ class _ProfileScreenState extends State<ProfileScreen> {
         .toUpperCase();
   }
 
+  Future<void> _pickAndUploadAvatar() async {
+    if (_isAvatarUpdating) return;
+
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.image,
+        allowMultiple: false,
+      );
+
+      if (result == null || result.files.single.path == null) return;
+
+      setState(() => _isAvatarUpdating = true);
+
+      final filePath = result.files.single.path!;
+      await _auth.updateAvatar(filePath);
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Profile photo updated successfully'),
+          backgroundColor: Color(0xFF00CA50),
+        ),
+      );
+    } catch (error) {
+      debugPrint('[PROFILE] Avatar update failed: $error');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to update profile photo: $error'),
+          backgroundColor: Colors.red.shade600,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isAvatarUpdating = false);
+      }
+    }
+  }
+
+  String? _getAvatarUrl() {
+    return _auth.getAvatarUrl(thumb: '100x100');
+  }
+
   @override
   Widget build(BuildContext context) {
     final email = _auth.userEmail;
@@ -150,35 +195,103 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     Center(
                       child: Column(
                         children: [
-                          Container(
-                            width: 100,
-                            height: 100,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              gradient: LinearGradient(
-                                colors: [
-                                  Colors.blueGrey.shade200,
-                                  Colors.blueGrey.shade400,
-                                ],
-                              ),
-                              border: Border.all(color: Colors.white, width: 4),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.1),
-                                  blurRadius: 20,
-                                  offset: const Offset(0, 10),
+                          GestureDetector(
+                            onTap: _pickAndUploadAvatar,
+                            child: Stack(
+                              children: [
+                                Container(
+                                  width: 100,
+                                  height: 100,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    gradient: LinearGradient(
+                                      colors: [
+                                        Colors.blueGrey.shade200,
+                                        Colors.blueGrey.shade400,
+                                      ],
+                                    ),
+                                    border: Border.all(
+                                      color: Colors.white,
+                                      width: 4,
+                                    ),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withValues(
+                                          alpha: 0.1,
+                                        ),
+                                        blurRadius: 20,
+                                        offset: const Offset(0, 10),
+                                      ),
+                                    ],
+                                  ),
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(50),
+                                    child: _getAvatarUrl() != null
+                                        ? Image.network(
+                                            _getAvatarUrl()!,
+                                            fit: BoxFit.cover,
+                                            errorBuilder:
+                                                (
+                                                  context,
+                                                  error,
+                                                  stackTrace,
+                                                ) => Center(
+                                                  child: Text(
+                                                    _getInitials(name),
+                                                    style: GoogleFonts.outfit(
+                                                      fontSize: 32,
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                      color: colorSlate800,
+                                                    ),
+                                                  ),
+                                                ),
+                                          )
+                                        : Center(
+                                            child: Text(
+                                              _getInitials(name),
+                                              style: GoogleFonts.outfit(
+                                                fontSize: 32,
+                                                fontWeight: FontWeight.bold,
+                                                color: colorSlate800,
+                                              ),
+                                            ),
+                                          ),
+                                  ),
                                 ),
+                                if (_isAvatarUpdating)
+                                  Container(
+                                    width: 100,
+                                    height: 100,
+                                    decoration: BoxDecoration(
+                                      color: Colors.black38,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Center(
+                                      child: CircularProgressIndicator(
+                                        color: Colors.white,
+                                        strokeWidth: 3,
+                                      ),
+                                    ),
+                                  )
+                                else
+                                  Positioned(
+                                    right: 0,
+                                    bottom: 0,
+                                    child: Container(
+                                      padding: const EdgeInsets.all(6),
+                                      decoration: const BoxDecoration(
+                                        color: colorNavy,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: const Icon(
+                                        LucideIcons.camera,
+                                        size: 14,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ),
                               ],
-                            ),
-                            child: Center(
-                              child: Text(
-                                _getInitials(name),
-                                style: GoogleFonts.outfit(
-                                  fontSize: 32,
-                                  fontWeight: FontWeight.bold,
-                                  color: colorSlate800,
-                                ),
-                              ),
                             ),
                           ),
                           const SizedBox(height: 16),
