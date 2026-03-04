@@ -24,17 +24,26 @@ class BuyerDashboardBottomSheet extends StatefulWidget {
       _BuyerDashboardBottomSheetState();
 }
 
-class _BuyerDashboardBottomSheetState extends State<BuyerDashboardBottomSheet> {
-  late TextEditingController _homeAddressController;
-  late TextEditingController _empCompanyController;
-  late TextEditingController _empTitleController;
-  late TextEditingController _notesController;
+class _BuyerDashboardBottomSheetState extends State<BuyerDashboardBottomSheet>
+    with SingleTickerProviderStateMixin {
+  late final TextEditingController _homeAddressController;
+  late final TextEditingController _empCompanyController;
+  late final TextEditingController _empTitleController;
+  late final TextEditingController _notesController;
+
+  late final AnimationController _entryController;
 
   bool _isSubmittingLead = false;
 
   @override
   void initState() {
     super.initState();
+
+    _entryController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 340),
+    )..forward();
+
     _homeAddressController = TextEditingController(
       text: widget.viewModel.homeAddress,
     );
@@ -66,6 +75,7 @@ class _BuyerDashboardBottomSheetState extends State<BuyerDashboardBottomSheet> {
 
   @override
   void dispose() {
+    _entryController.dispose();
     _homeAddressController.dispose();
     _empCompanyController.dispose();
     _empTitleController.dispose();
@@ -80,399 +90,374 @@ class _BuyerDashboardBottomSheetState extends State<BuyerDashboardBottomSheet> {
     return '\$${value.toInt()}';
   }
 
+  Future<void> _submitLead() async {
+    if (_isSubmittingLead || !widget.viewModel.acceptedTerms) return;
+
+    setState(() => _isSubmittingLead = true);
+
+    final auth = AuthService();
+
+    final extraDetails =
+        '''
+DOB: ${widget.viewModel.dobMonth ?? ''}/${widget.viewModel.dobDay ?? ''}/${widget.viewModel.dobYear ?? ''}
+Address: ${_homeAddressController.text}
+Employment: ${_empCompanyController.text}, ${_empTitleController.text} (${widget.viewModel.incomeYears ?? '0'}y ${widget.viewModel.incomeMonths ?? '0'}m)
+Housing: ${_formatCurrency(widget.viewModel.housingCost)}/mo
+Downpayment: ${_formatCurrency(widget.viewModel.downpayment)}
+Co-signer: ${widget.viewModel.hasCosigner ?? 'unspecified'}
+Notes: ${_notesController.text}
+        '''
+            .trim();
+
+    final navigator = Navigator.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+
+    try {
+      await ApiService.submitBuyerPreapprovalLead(
+        name: auth.userName.isEmpty ? 'User' : auth.userName,
+        phone: auth.userPhone.isEmpty ? '0000000000' : auth.userPhone,
+        monthlyBudgetTarget: widget.viewModel.budget,
+        incomeRange: widget.viewModel.income!,
+        employmentStatus: widget.viewModel.employment!,
+        creditBand: widget.viewModel.credit!,
+        notes: extraDetails,
+        inventoryContext: widget.inventoryContextIds.take(8).toList(),
+      );
+
+      if (!mounted) return;
+      navigator.pop();
+      widget.onLeadSubmitted?.call();
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Request sent successfully.')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isSubmittingLead = false);
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Could not submit request right now.')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    // Note: The UI for the Bottom Sheet goes here, replicating lines 351-908
-    // I will replace `setSheetState` with standard `setState` or update the viewModel directly
-    // and rely on Provider to rebuild the root if necessary, but since this is a StatefulWidget
-    // local `setState` handles UI feedback instantly.
+    final vm = widget.viewModel;
+    final showEmploymentDetails =
+        vm.employment == 'Full-time' ||
+        vm.employment == 'Part-time' ||
+        vm.employment == 'Self-employed';
 
-    final bool showEmploymentDetails =
-        widget.viewModel.employment == 'Full-time' ||
-        widget.viewModel.employment == 'Part-time' ||
-        widget.viewModel.employment == 'Self-employed';
+    final media = MediaQuery.of(context);
 
-    return Container(
-      decoration: const BoxDecoration(
-        color: cLightBg,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(40)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black12,
-            blurRadius: 40,
-            offset: Offset(0, -10),
-          ),
-        ],
-      ),
-      child: Stack(
-        children: [
-          // Background subtle design
-          Positioned(
-            top: -50,
-            right: -50,
-            child: Container(
-              width: 150,
-              height: 150,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: cNeon.withValues(alpha: 0.15),
+    return AnimatedBuilder(
+      animation: _entryController,
+      builder: (context, child) {
+        final eased = Curves.easeOutCubic.transform(_entryController.value);
+        final dy = (1 - eased) * 56;
+
+        return Transform.translate(
+          offset: Offset(0, dy),
+          child: Opacity(opacity: eased, child: child),
+        );
+      },
+      child: Padding(
+        padding: EdgeInsets.only(bottom: media.viewInsets.bottom),
+        child: Container(
+          constraints: BoxConstraints(maxHeight: media.size.height * 0.90),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(34)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black12,
+                blurRadius: 30,
+                offset: Offset(0, -8),
               ),
-            ),
+            ],
           ),
-          Positioned(
-            top: 12,
-            left: 0,
-            right: 0,
-            child: Center(
-              child: Container(
-                width: 48,
-                height: 6,
-                decoration: BoxDecoration(
-                  color: Colors.grey[300],
-                  borderRadius: BorderRadius.circular(999),
-                ),
-              ),
-            ),
-          ),
-          Positioned(
-            top: 24,
-            right: 24,
-            child: InkWell(
-              onTap: () => Navigator.of(context).pop(),
-              borderRadius: BorderRadius.circular(999),
-              child: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  boxShadow: [
-                    BoxShadow(
-                      color: cDarkBg.withValues(alpha: 0.05),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: const Icon(LucideIcons.x, size: 16, color: cDarkBg),
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(24, 56, 24, 24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 10, 20, 8),
+                child: Column(
                   children: [
                     Container(
-                      padding: const EdgeInsets.all(10),
+                      width: 44,
+                      height: 5,
                       decoration: BoxDecoration(
-                        color: cNeon.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Icon(
-                        LucideIcons.zap,
-                        color: cDarkBg,
-                        size: 24,
+                        color: Colors.grey[300],
+                        borderRadius: BorderRadius.circular(999),
                       ),
                     ),
-                    const SizedBox(width: 16),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    const SizedBox(height: 12),
+                    Row(
                       children: [
-                        Text(
-                          'Final Step',
-                          style: GoogleFonts.outfit(
-                            fontSize: 28,
-                            fontWeight: FontWeight.w900,
-                            color: cDarkBg,
-                            letterSpacing: -0.5,
-                            height: 1.1,
+                        Expanded(
+                          child: Text(
+                            'Complete Application',
+                            style: GoogleFonts.outfit(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w900,
+                              color: cDarkBg,
+                              letterSpacing: -0.3,
+                            ),
                           ),
                         ),
-                        Text(
-                          'Secure your approval in seconds.',
-                          style: GoogleFonts.outfit(
-                            fontSize: 14,
-                            color: Colors.grey[600],
-                            fontWeight: FontWeight.w500,
+                        InkWell(
+                          onTap: () => Navigator.of(context).pop(),
+                          borderRadius: BorderRadius.circular(999),
+                          child: Container(
+                            width: 34,
+                            height: 34,
+                            decoration: BoxDecoration(
+                              color: Colors.grey[100],
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            child: const Icon(
+                              LucideIcons.x,
+                              size: 16,
+                              color: cDarkBg,
+                            ),
                           ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        _infoPill(
+                          icon: LucideIcons.wallet,
+                          label: 'Budget',
+                          value: '${_formatCurrency(vm.budget)}/mo',
+                        ),
+                        const SizedBox(width: 8),
+                        _infoPill(
+                          icon: LucideIcons.badgeCheck,
+                          label: 'Profile',
+                          value: '${(vm.approvalProgress * 100).round()}%',
                         ),
                       ],
                     ),
                   ],
                 ),
-                const SizedBox(height: 32),
-                Expanded(
-                  child: ListView(
-                    physics: const BouncingScrollPhysics(),
-                    children: [
-                      _buildSheetLabel('Date of Birth'),
-                      Row(
+              ),
+              Divider(color: Colors.grey[200], height: 1),
+              Expanded(
+                child: ListView(
+                  physics: const BouncingScrollPhysics(),
+                  padding: const EdgeInsets.fromLTRB(20, 14, 20, 20),
+                  children: [
+                    _sectionCard(
+                      icon: LucideIcons.user,
+                      title: 'Personal Details',
+                      child: Column(
                         children: [
-                          Expanded(
-                            child: _buildDropdown(
-                              hint: 'Month',
-                              value: widget.viewModel.dobMonth,
-                              items: List.generate(
-                                12,
-                                (i) => (i + 1).toString().padLeft(2, '0'),
-                              ),
-                              onChanged: (v) {
-                                setState(() => widget.viewModel.dobMonth = v);
-                                widget.viewModel.saveDraft();
-                              },
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: _buildDropdown(
-                              hint: 'Day',
-                              value: widget.viewModel.dobDay,
-                              items: List.generate(
-                                31,
-                                (i) => (i + 1).toString().padLeft(2, '0'),
-                              ),
-                              onChanged: (v) {
-                                setState(() => widget.viewModel.dobDay = v);
-                                widget.viewModel.saveDraft();
-                              },
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: _buildDropdown(
-                              hint: 'Year',
-                              value: widget.viewModel.dobYear,
-                              items: List.generate(
-                                80,
-                                (i) =>
-                                    (DateTime.now().year - 18 - i).toString(),
-                              ),
-                              onChanged: (v) {
-                                setState(() => widget.viewModel.dobYear = v);
-                                widget.viewModel.saveDraft();
-                              },
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 20),
-                      _buildSheetLabel('Home Address'),
-                      TextField(
-                        controller: _homeAddressController,
-                        style: GoogleFonts.outfit(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                          color: cDarkBg,
-                        ),
-                        decoration: _buildInputDecoration(
-                          '123 Main St, City, Prov',
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      if (showEmploymentDetails) ...[
-                        Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: cLightBg,
-                            border: Border.all(color: Colors.grey[200]!),
-                            borderRadius: BorderRadius.circular(24),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                          _buildSheetLabel('Date of Birth'),
+                          Row(
                             children: [
-                              _buildSheetLabel('Employment Details'),
-                              TextField(
-                                controller: _empCompanyController,
-                                style: GoogleFonts.outfit(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w700,
-                                  color: cDarkBg,
-                                ),
-                                decoration: _buildInputDecoration(
-                                  'Company / Institution',
-                                  fillColor: Colors.white,
+                              Expanded(
+                                child: _buildDropdown(
+                                  hint: 'Month',
+                                  value: vm.dobMonth,
+                                  items: List.generate(
+                                    12,
+                                    (i) => (i + 1).toString().padLeft(2, '0'),
+                                  ),
+                                  onChanged: (v) {
+                                    setState(() => vm.dobMonth = v);
+                                    vm.saveDraft();
+                                  },
                                 ),
                               ),
-                              const SizedBox(height: 12),
-                              TextField(
-                                controller: _empTitleController,
-                                style: GoogleFonts.outfit(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w700,
-                                  color: cDarkBg,
-                                ),
-                                decoration: _buildInputDecoration(
-                                  'Job Title',
-                                  fillColor: Colors.white,
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: _buildDropdown(
+                                  hint: 'Day',
+                                  value: vm.dobDay,
+                                  items: List.generate(
+                                    31,
+                                    (i) => (i + 1).toString().padLeft(2, '0'),
+                                  ),
+                                  onChanged: (v) {
+                                    setState(() => vm.dobDay = v);
+                                    vm.saveDraft();
+                                  },
                                 ),
                               ),
-                              const SizedBox(height: 16),
-                              const Divider(height: 1),
-                              const SizedBox(height: 16),
-                              _buildSheetLabel('Time at Current Income'),
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: _buildDropdown(
-                                      hint: 'Years',
-                                      value: widget.viewModel.incomeYears,
-                                      items: List.generate(
-                                        31,
-                                        (i) => i.toString(),
-                                      ),
-                                      onChanged: (v) {
-                                        setState(
-                                          () =>
-                                              widget.viewModel.incomeYears = v,
-                                        );
-                                        widget.viewModel.saveDraft();
-                                      },
-                                      fillColor: Colors.white,
-                                    ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: _buildDropdown(
+                                  hint: 'Year',
+                                  value: vm.dobYear,
+                                  items: List.generate(
+                                    80,
+                                    (i) => (DateTime.now().year - 18 - i)
+                                        .toString(),
                                   ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: _buildDropdown(
-                                      hint: 'Months',
-                                      value: widget.viewModel.incomeMonths,
-                                      items: List.generate(
-                                        12,
-                                        (i) => i.toString(),
-                                      ),
-                                      onChanged: (v) {
-                                        setState(
-                                          () =>
-                                              widget.viewModel.incomeMonths = v,
-                                        );
-                                        widget.viewModel.saveDraft();
-                                      },
-                                      fillColor: Colors.white,
-                                    ),
-                                  ),
-                                ],
+                                  onChanged: (v) {
+                                    setState(() => vm.dobYear = v);
+                                    vm.saveDraft();
+                                  },
+                                ),
                               ),
                             ],
                           ),
-                        ),
-                        const SizedBox(height: 20),
-                      ],
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          _buildSheetLabel('Monthly Housing Cost'),
-                          Text(
-                            '${_formatCurrency(widget.viewModel.housingCost)}${widget.viewModel.housingCost >= 5000 ? '+' : ''}/mo',
+                          const SizedBox(height: 14),
+                          _buildSheetLabel('Home Address'),
+                          TextField(
+                            controller: _homeAddressController,
                             style: GoogleFonts.outfit(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w900,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
                               color: cDarkBg,
+                            ),
+                            decoration: _buildInputDecoration(
+                              '123 Main St, City, Prov',
+                              prefix: const Icon(
+                                LucideIcons.home,
+                                size: 16,
+                                color: Colors.grey,
+                              ),
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 4),
-                      SliderTheme(
-                        data: SliderTheme.of(context).copyWith(
-                          padding: EdgeInsets.zero,
-                          activeTrackColor: cNeon,
-                          inactiveTrackColor: Colors.grey[200],
-                          trackHeight: 8,
-                          thumbShape: const RoundSliderThumbShape(
-                            enabledThumbRadius: 14,
-                            elevation: 4,
-                          ),
-                          thumbColor: cDarkBg,
-                          overlayColor: cNeon.withValues(alpha: 0.2),
-                        ),
-                        child: Slider(
-                          min: 0,
-                          max: 5000,
-                          divisions: 100,
-                          value: widget.viewModel.housingCost,
-                          onChanged: (v) =>
-                              setState(() => widget.viewModel.housingCost = v),
-                          onChangeEnd: (_) => widget.viewModel.saveDraft(),
+                    ),
+                    const SizedBox(height: 12),
+                    if (showEmploymentDetails) ...[
+                      _sectionCard(
+                        icon: LucideIcons.briefcase,
+                        title: 'Employment Details',
+                        child: Column(
+                          children: [
+                            _buildSheetLabel('Company / Institution'),
+                            TextField(
+                              controller: _empCompanyController,
+                              style: GoogleFonts.outfit(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: cDarkBg,
+                              ),
+                              decoration: _buildInputDecoration('Company name'),
+                            ),
+                            const SizedBox(height: 12),
+                            _buildSheetLabel('Job Title'),
+                            TextField(
+                              controller: _empTitleController,
+                              style: GoogleFonts.outfit(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: cDarkBg,
+                              ),
+                              decoration: _buildInputDecoration('Job title'),
+                            ),
+                            const SizedBox(height: 12),
+                            _buildSheetLabel('Time at Current Income'),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: _buildDropdown(
+                                    hint: 'Years',
+                                    value: vm.incomeYears,
+                                    items: List.generate(
+                                      31,
+                                      (i) => i.toString(),
+                                    ),
+                                    onChanged: (v) {
+                                      setState(() => vm.incomeYears = v);
+                                      vm.saveDraft();
+                                    },
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: _buildDropdown(
+                                    hint: 'Months',
+                                    value: vm.incomeMonths,
+                                    items: List.generate(
+                                      12,
+                                      (i) => i.toString(),
+                                    ),
+                                    onChanged: (v) {
+                                      setState(() => vm.incomeMonths = v);
+                                      vm.saveDraft();
+                                    },
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
                         ),
                       ),
-                      const SizedBox(height: 20),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        crossAxisAlignment: CrossAxisAlignment.end,
+                      const SizedBox(height: 12),
+                    ],
+                    _sectionCard(
+                      icon: LucideIcons.piggyBank,
+                      title: 'Financial Inputs',
+                      child: Column(
                         children: [
-                          _buildSheetLabel('Downpayment'),
-                          Text(
-                            _formatCurrency(widget.viewModel.downpayment),
-                            style: GoogleFonts.outfit(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w900,
-                              color: cDarkBg,
-                            ),
+                          _sliderField(
+                            label: 'Monthly Housing Cost',
+                            valueLabel:
+                                '${_formatCurrency(vm.housingCost)}${vm.housingCost >= 5000 ? '+' : ''}/mo',
+                            value: vm.housingCost,
+                            min: 0,
+                            max: 5000,
+                            onChanged: (v) =>
+                                setState(() => vm.housingCost = v),
+                            onChangeEnd: (_) => vm.saveDraft(),
+                          ),
+                          const SizedBox(height: 14),
+                          _sliderField(
+                            label: 'Downpayment',
+                            valueLabel: _formatCurrency(vm.downpayment),
+                            value: vm.downpayment,
+                            min: 0,
+                            max: 10000,
+                            onChanged: (v) =>
+                                setState(() => vm.downpayment = v),
+                            onChangeEnd: (_) => vm.saveDraft(),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 4),
-                      SliderTheme(
-                        data: SliderTheme.of(context).copyWith(
-                          padding: EdgeInsets.zero,
-                          activeTrackColor: cNeon,
-                          inactiveTrackColor: Colors.grey[200],
-                          trackHeight: 8,
-                          thumbShape: const RoundSliderThumbShape(
-                            enabledThumbRadius: 14,
-                            elevation: 4,
-                          ),
-                          thumbColor: cDarkBg,
-                          overlayColor: cNeon.withValues(alpha: 0.2),
-                        ),
-                        child: Slider(
-                          min: 0,
-                          max: 10000,
-                          divisions: 100,
-                          value: widget.viewModel.downpayment,
-                          onChanged: (v) =>
-                              setState(() => widget.viewModel.downpayment = v),
-                          onChangeEnd: (_) => widget.viewModel.saveDraft(),
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      _buildSheetLabel('Do you have a co-signer?'),
-                      Row(
+                    ),
+                    const SizedBox(height: 12),
+                    _sectionCard(
+                      icon: LucideIcons.users,
+                      title: 'Co-signer',
+                      child: Row(
                         children: [
                           Expanded(
                             child: _buildToggleButton(
                               text: 'Yes',
-                              isSelected: widget.viewModel.hasCosigner == 'yes',
+                              isSelected: vm.hasCosigner == 'yes',
                               onTap: () {
-                                setState(
-                                  () => widget.viewModel.hasCosigner = 'yes',
-                                );
-                                widget.viewModel.saveDraft();
+                                setState(() => vm.hasCosigner = 'yes');
+                                vm.saveDraft();
                               },
                             ),
                           ),
-                          const SizedBox(width: 12),
+                          const SizedBox(width: 10),
                           Expanded(
                             child: _buildToggleButton(
                               text: 'No',
-                              isSelected: widget.viewModel.hasCosigner == 'no',
+                              isSelected: vm.hasCosigner == 'no',
                               onTap: () {
-                                setState(
-                                  () => widget.viewModel.hasCosigner = 'no',
-                                );
-                                widget.viewModel.saveDraft();
+                                setState(() => vm.hasCosigner = 'no');
+                                vm.saveDraft();
                               },
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 20),
-                      _buildSheetLabel('Additional Comments (Optional)'),
-                      TextField(
+                    ),
+                    const SizedBox(height: 12),
+                    _sectionCard(
+                      icon: LucideIcons.messageSquare,
+                      title: 'Additional Notes',
+                      child: TextField(
                         controller: _notesController,
-                        maxLines: 2,
+                        maxLines: 3,
                         style: GoogleFonts.outfit(
                           fontSize: 14,
                           fontWeight: FontWeight.w700,
@@ -482,227 +467,324 @@ class _BuyerDashboardBottomSheetState extends State<BuyerDashboardBottomSheet> {
                           'Any specific requirements?',
                         ),
                       ),
-                      const SizedBox(height: 20),
-                      InkWell(
-                        onTap: () => setState(
-                          () => widget.viewModel.acceptedTerms =
-                              !widget.viewModel.acceptedTerms,
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 8.0),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Container(
-                                width: 20,
-                                height: 20,
-                                margin: const EdgeInsets.only(top: 2),
-                                decoration: BoxDecoration(
-                                  color: widget.viewModel.acceptedTerms
+                    ),
+                    const SizedBox(height: 12),
+                    InkWell(
+                      onTap: () {
+                        setState(() => vm.acceptedTerms = !vm.acceptedTerms);
+                        vm.saveDraft();
+                      },
+                      borderRadius: BorderRadius.circular(12),
+                      child: Padding(
+                        padding: const EdgeInsets.all(8),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            AnimatedContainer(
+                              duration: const Duration(milliseconds: 180),
+                              width: 22,
+                              height: 22,
+                              margin: const EdgeInsets.only(top: 1),
+                              decoration: BoxDecoration(
+                                color: vm.acceptedTerms ? cNeon : Colors.white,
+                                border: Border.all(
+                                  color: vm.acceptedTerms
                                       ? cNeon
-                                      : Colors.white,
-                                  border: Border.all(
-                                    color: widget.viewModel.acceptedTerms
-                                        ? cNeon
-                                        : Colors.grey[300]!,
-                                  ),
-                                  borderRadius: BorderRadius.circular(4),
+                                      : Colors.grey[300]!,
                                 ),
-                                child: widget.viewModel.acceptedTerms
-                                    ? const Icon(
-                                        LucideIcons.checkCircle,
-                                        size: 14,
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: vm.acceptedTerms
+                                  ? const Icon(
+                                      LucideIcons.check,
+                                      size: 14,
+                                      color: cDarkBg,
+                                    )
+                                  : null,
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text.rich(
+                                TextSpan(
+                                  style: GoogleFonts.outfit(
+                                    fontSize: 12,
+                                    color: Colors.grey[600],
+                                    fontWeight: FontWeight.w500,
+                                    height: 1.45,
+                                  ),
+                                  children: [
+                                    const TextSpan(text: 'I accept the '),
+                                    TextSpan(
+                                      text: 'Terms of Service',
+                                      style: GoogleFonts.outfit(
                                         color: cDarkBg,
-                                      )
-                                    : null,
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: RichText(
-                                  text: TextSpan(
-                                    style: GoogleFonts.outfit(
-                                      fontSize: 12,
-                                      color: Colors.grey[500],
-                                      fontWeight: FontWeight.w500,
-                                      height: 1.5,
+                                        fontWeight: FontWeight.w800,
+                                        decoration: TextDecoration.underline,
+                                      ),
                                     ),
-                                    children: [
-                                      const TextSpan(text: 'I accept the '),
-                                      TextSpan(
-                                        text: 'Terms of Service',
-                                        style: GoogleFonts.outfit(
-                                          color: cDarkBg,
-                                          fontWeight: FontWeight.w700,
-                                          decoration: TextDecoration.underline,
-                                        ),
+                                    const TextSpan(text: ' and '),
+                                    TextSpan(
+                                      text: 'Privacy Policy',
+                                      style: GoogleFonts.outfit(
+                                        color: cDarkBg,
+                                        fontWeight: FontWeight.w800,
+                                        decoration: TextDecoration.underline,
                                       ),
-                                      const TextSpan(text: ' and '),
-                                      TextSpan(
-                                        text: 'Privacy Policy',
-                                        style: GoogleFonts.outfit(
-                                          color: cDarkBg,
-                                          fontWeight: FontWeight.w700,
-                                          decoration: TextDecoration.underline,
-                                        ),
-                                      ),
-                                      const TextSpan(text: '.'),
-                                    ],
-                                  ),
+                                    ),
+                                    const TextSpan(text: '.'),
+                                  ],
                                 ),
                               ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
                       ),
-                      const SizedBox(height: 24),
-                      ElevatedButton(
-                        onPressed:
-                            (!widget.viewModel.acceptedTerms ||
-                                _isSubmittingLead)
-                            ? null
-                            : () async {
-                                setState(() => _isSubmittingLead = true);
-                                final auth = AuthService();
-
-                                final extraDetails =
-                                    '''
-DOB: ${widget.viewModel.dobMonth ?? ''}/${widget.viewModel.dobDay ?? ''}/${widget.viewModel.dobYear ?? ''}
-Address: ${_homeAddressController.text}
-Employment: ${_empCompanyController.text}, ${_empTitleController.text} (${widget.viewModel.incomeYears ?? '0'}y ${widget.viewModel.incomeMonths ?? '0'}m)
-Housing: ${_formatCurrency(widget.viewModel.housingCost)}/mo
-Downpayment: ${_formatCurrency(widget.viewModel.downpayment)}
-Co-signer: ${widget.viewModel.hasCosigner ?? 'unspecified'}
-Notes: ${_notesController.text}
-                                '''
-                                        .trim();
-
-                                final navigator = Navigator.of(context);
-                                final scaffoldMessenger = ScaffoldMessenger.of(
-                                  context,
-                                );
-
-                                try {
-                                  await ApiService.submitBuyerPreapprovalLead(
-                                    name: auth.userName.isEmpty
-                                        ? 'User'
-                                        : auth.userName,
-                                    phone: auth.userPhone.isEmpty
-                                        ? '0000000000'
-                                        : auth.userPhone,
-                                    monthlyBudgetTarget:
-                                        widget.viewModel.budget,
-                                    incomeRange: widget.viewModel.income!,
-                                    employmentStatus:
-                                        widget.viewModel.employment!,
-                                    creditBand: widget.viewModel.credit!,
-                                    notes: extraDetails,
-                                    inventoryContext: widget.inventoryContextIds
-                                        .take(8)
-                                        .toList(),
-                                  );
-
-                                  if (!mounted) return;
-                                  navigator.pop();
-                                  widget.onLeadSubmitted?.call();
-                                  scaffoldMessenger.showSnackBar(
-                                    const SnackBar(
-                                      content: Text(
-                                        'Request sent successfully.',
-                                      ),
-                                    ),
-                                  );
-                                } catch (e) {
-                                  if (!mounted) return;
-                                  setState(() => _isSubmittingLead = false);
-                                  scaffoldMessenger.showSnackBar(
-                                    const SnackBar(
-                                      content: Text(
-                                        'Could not submit request right now.',
-                                      ),
-                                    ),
-                                  );
-                                }
-                              },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: cDarkBg,
-                          foregroundColor: Colors.white,
-                          disabledBackgroundColor: Colors.grey[200],
-                          disabledForegroundColor: Colors.grey[400],
-                          padding: const EdgeInsets.symmetric(vertical: 18),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          elevation: widget.viewModel.acceptedTerms ? 8 : 0,
-                          shadowColor: cDarkBg.withValues(alpha: 0.3),
-                        ),
-                        child: _isSubmittingLead
-                            ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Colors.white,
-                                ),
-                              )
-                            : Text(
-                                'SUBMIT REQUEST',
-                                style: GoogleFonts.outfit(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w900,
-                                  letterSpacing: 1.0,
-                                ),
-                              ),
+                    ),
+                    const SizedBox(height: 96),
+                  ],
+                ),
+              ),
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  border: Border(top: BorderSide(color: Colors.grey[200]!)),
+                ),
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: (!vm.acceptedTerms || _isSubmittingLead)
+                        ? null
+                        : _submitLead,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: cDarkBg,
+                      foregroundColor: Colors.white,
+                      disabledBackgroundColor: Colors.grey[200],
+                      disabledForegroundColor: Colors.grey[400],
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
                       ),
-                      const SizedBox(height: 24),
-                    ],
+                      elevation: vm.acceptedTerms ? 6 : 0,
+                      shadowColor: cDarkBg.withValues(alpha: 0.25),
+                    ),
+                    child: _isSubmittingLead
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : Text(
+                            'SUBMIT REQUEST',
+                            style: GoogleFonts.outfit(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 1.0,
+                            ),
+                          ),
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _infoPill({
+    required IconData icon,
+    required String label,
+    required String value,
+  }) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: cLightBg,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.grey[200]!),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 14, color: cDarkBg),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text.rich(
+                TextSpan(
+                  children: [
+                    TextSpan(
+                      text: '$label\n',
+                      style: GoogleFonts.outfit(
+                        fontSize: 10,
+                        color: Colors.grey[500],
+                        fontWeight: FontWeight.w700,
+                        height: 1.1,
+                      ),
+                    ),
+                    TextSpan(
+                      text: value,
+                      style: GoogleFonts.outfit(
+                        fontSize: 12,
+                        color: cDarkBg,
+                        fontWeight: FontWeight.w900,
+                        height: 1.2,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _sectionCard({
+    required IconData icon,
+    required String title,
+    required Widget child,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.grey[200]!),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 30,
+                height: 30,
+                decoration: BoxDecoration(
+                  color: cLightBg,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, size: 14, color: cDarkBg),
+              ),
+              const SizedBox(width: 10),
+              Text(
+                title,
+                style: GoogleFonts.outfit(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                  color: cDarkBg,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          child,
         ],
       ),
     );
   }
 
-  // --- Helpers for Bottom Sheet Form ---
+  Widget _sliderField({
+    required String label,
+    required String valueLabel,
+    required double value,
+    required double min,
+    required double max,
+    required ValueChanged<double> onChanged,
+    required ValueChanged<double> onChangeEnd,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(child: _buildSheetLabel(label)),
+            Text(
+              valueLabel,
+              style: GoogleFonts.outfit(
+                fontSize: 14,
+                fontWeight: FontWeight.w900,
+                color: cDarkBg,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        SliderTheme(
+          data: SliderTheme.of(context).copyWith(
+            activeTrackColor: cDarkBg,
+            inactiveTrackColor: Colors.grey[200],
+            trackHeight: 7,
+            thumbShape: const RoundSliderThumbShape(
+              enabledThumbRadius: 11,
+              elevation: 2,
+            ),
+            thumbColor: Colors.white,
+            overlayColor: cDarkBg.withValues(alpha: 0.10),
+          ),
+          child: Slider(
+            min: min,
+            max: max,
+            divisions: 100,
+            value: value,
+            onChanged: onChanged,
+            onChangeEnd: onChangeEnd,
+          ),
+        ),
+      ],
+    );
+  }
 
   Widget _buildSheetLabel(String text) {
     return Padding(
-      padding: const EdgeInsets.only(left: 4, bottom: 8),
+      padding: const EdgeInsets.only(left: 2, bottom: 6),
       child: Text(
         text,
         style: GoogleFonts.outfit(
           fontSize: 11,
           fontWeight: FontWeight.w800,
           color: Colors.grey[500],
-          letterSpacing: 1.5,
+          letterSpacing: 1.0,
         ),
       ),
     );
   }
 
-  InputDecoration _buildInputDecoration(String hint, {Color? fillColor}) {
+  InputDecoration _buildInputDecoration(String hint, {Widget? prefix}) {
     return InputDecoration(
       hintText: hint,
+      prefixIcon: prefix,
       hintStyle: GoogleFonts.outfit(
         color: Colors.grey[400],
         fontWeight: FontWeight.w600,
       ),
       filled: true,
-      fillColor: fillColor ?? Colors.white,
-      contentPadding: const EdgeInsets.all(18),
+      fillColor: Colors.grey[50],
+      isDense: true,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide.none,
+        borderRadius: BorderRadius.circular(14),
+        borderSide: BorderSide(color: Colors.grey[200]!),
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide(color: Colors.grey[200]!, width: 1),
+        borderRadius: BorderRadius.circular(14),
+        borderSide: BorderSide(color: Colors.grey[200]!),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: const BorderSide(color: cNeon, width: 2),
+        borderRadius: BorderRadius.circular(14),
+        borderSide: const BorderSide(color: cDarkBg, width: 1.5),
       ),
     );
   }
@@ -712,34 +794,33 @@ Notes: ${_notesController.text}
     required String? value,
     required List<String> items,
     required ValueChanged<String?> onChanged,
-    Color? fillColor,
   }) {
-    // Safety check: ensure the value exists in our items list.
     final safeValue = items.contains(value) ? value : null;
 
     return DropdownButtonFormField<String>(
       isExpanded: true,
-      // Use initialValue instead of value since it is deprecated.
       initialValue: safeValue,
-      items: items.map((item) {
-        return DropdownMenuItem(
-          value: item,
-          child: Text(
-            item,
-            style: GoogleFonts.outfit(
-              fontSize: 14,
-              fontWeight: FontWeight.w700,
-              color: cDarkBg,
+      items: items
+          .map(
+            (item) => DropdownMenuItem(
+              value: item,
+              child: Text(
+                item,
+                style: GoogleFonts.outfit(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: cDarkBg,
+                ),
+              ),
             ),
-          ),
-        );
-      }).toList(),
+          )
+          .toList(),
       onChanged: onChanged,
       icon: const Icon(LucideIcons.chevronDown, size: 16),
-      decoration: _buildInputDecoration(hint, fillColor: fillColor).copyWith(
+      decoration: _buildInputDecoration(hint).copyWith(
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 10,
-          vertical: 16,
+          vertical: 12,
         ),
       ),
       dropdownColor: Colors.white,
@@ -753,33 +834,21 @@ Notes: ${_notesController.text}
   }) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(12),
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(vertical: 16),
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
-          color: isSelected ? cDarkBg : Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: isSelected ? cDarkBg : Colors.grey[200]!,
-            width: isSelected ? 2 : 1,
-          ),
-          boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: cDarkBg.withValues(alpha: 0.2),
-                    blurRadius: 8,
-                    offset: const Offset(0, 4),
-                  ),
-                ]
-              : null,
+          color: isSelected ? cDarkBg : Colors.grey[50],
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: isSelected ? cDarkBg : Colors.grey[200]!),
         ),
         alignment: Alignment.center,
         child: Text(
           text,
           style: GoogleFonts.outfit(
-            fontSize: 15,
-            fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+            fontSize: 13,
+            fontWeight: FontWeight.w800,
             color: isSelected ? Colors.white : Colors.grey[600],
           ),
         ),

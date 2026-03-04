@@ -721,6 +721,12 @@ class _BuyerDashboardContentState extends State<_BuyerDashboardContent>
   }
 
   Widget _buildTipsSection() {
+    const tipGradients = [
+      [Color(0xFF7C3AED), Color(0xFFA855F7)],
+      [Color(0xFF0284C7), Color(0xFF06B6D4)],
+      [Color(0xFF059669), Color(0xFF10B981)],
+    ];
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -747,20 +753,22 @@ class _BuyerDashboardContentState extends State<_BuyerDashboardContent>
             separatorBuilder: (context, index) => const SizedBox(width: 16),
             itemBuilder: (context, index) {
               final tip = creditTips[index];
+              final gradient = tipGradients[index % tipGradients.length];
               return Container(
                 width: 280,
                 clipBehavior: Clip.antiAlias,
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
-                  color: cCardDark,
-                  borderRadius: BorderRadius.circular(32),
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.05),
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: gradient,
                   ),
+                  borderRadius: BorderRadius.circular(32),
                   boxShadow: [
                     BoxShadow(
-                      color: cDarkBg.withValues(alpha: 0.1),
-                      blurRadius: 30,
+                      color: gradient.last.withValues(alpha: 0.30),
+                      blurRadius: 22,
                       offset: const Offset(0, 10),
                     ),
                   ],
@@ -769,13 +777,25 @@ class _BuyerDashboardContentState extends State<_BuyerDashboardContent>
                   clipBehavior: Clip.none,
                   children: [
                     Positioned(
-                      top: -40,
-                      right: -40,
+                      top: -48,
+                      right: -36,
                       child: Container(
-                        width: 100,
-                        height: 100,
+                        width: 120,
+                        height: 120,
                         decoration: BoxDecoration(
-                          color: cNeon.withValues(alpha: 0.1),
+                          color: Colors.white.withValues(alpha: 0.18),
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      bottom: -44,
+                      left: -40,
+                      child: Container(
+                        width: 110,
+                        height: 110,
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.10),
                           shape: BoxShape.circle,
                         ),
                       ),
@@ -789,13 +809,17 @@ class _BuyerDashboardContentState extends State<_BuyerDashboardContent>
                               width: 48,
                               height: 48,
                               decoration: BoxDecoration(
-                                color: cDarkBg,
+                                color: Colors.white.withValues(alpha: 0.18),
                                 border: Border.all(
-                                  color: Colors.white.withValues(alpha: 0.1),
+                                  color: Colors.white.withValues(alpha: 0.25),
                                 ),
                                 shape: BoxShape.circle,
                               ),
-                              child: Icon(tip.icon, color: cNeon, size: 20),
+                              child: Icon(
+                                tip.icon,
+                                color: Colors.white,
+                                size: 20,
+                              ),
                             ),
                             const SizedBox(width: 16),
                             Expanded(
@@ -817,9 +841,9 @@ class _BuyerDashboardContentState extends State<_BuyerDashboardContent>
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           style: GoogleFonts.outfit(
-                            color: Colors.white70,
+                            color: Colors.white.withValues(alpha: 0.90),
                             fontSize: 13,
-                            fontWeight: FontWeight.w500,
+                            fontWeight: FontWeight.w600,
                             height: 1.5,
                           ),
                         ),
