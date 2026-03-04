@@ -643,6 +643,33 @@ class ApiService {
     }
   }
 
+  // 3b. Submit Buyer Preapproval Lead
+  static Future<void> submitBuyerPreapprovalLead({
+    required String name,
+    required String phone,
+    required double monthlyBudgetTarget,
+    required String incomeRange,
+    required String employmentStatus,
+    required String creditBand,
+    String? notes,
+    List<String> inventoryContext = const [],
+  }) async {
+    final userId = AuthService().userId;
+
+    await submitLead('buyer_preapproval', {
+      'user_id': userId,
+      'source': 'mobile_app_buyer_dashboard',
+      'name': name,
+      'phone': phone,
+      'monthly_budget_target': monthlyBudgetTarget,
+      'income_range': incomeRange,
+      'employment_status': employmentStatus,
+      'credit_band': creditBand,
+      if (notes != null && notes.trim().isNotEmpty) 'notes': notes.trim(),
+      if (inventoryContext.isNotEmpty) 'inventory_context': inventoryContext,
+    });
+  }
+
   // 4. Fetch Inventory
   static Future<List<dynamic>> getInventory({
     double? equity,
