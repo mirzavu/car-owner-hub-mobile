@@ -6,12 +6,12 @@ import '../components/car_icon.dart';
 import '../services/api_service.dart'; // Import API Service
 import '../services/config.dart' as app_config;
 
-class SoftEntryScreen extends StatefulWidget {
+class VehicleInfoScreen extends StatefulWidget {
   final ValueChanged<String> onNext;
   final VoidCallback? onBack;
   final Function(double value, Map<String, String> details)? onEstimateComplete;
 
-  const SoftEntryScreen({
+  const VehicleInfoScreen({
     super.key,
     required this.onNext,
     this.onBack,
@@ -19,10 +19,10 @@ class SoftEntryScreen extends StatefulWidget {
   });
 
   @override
-  State<SoftEntryScreen> createState() => _SoftEntryScreenState();
+  State<VehicleInfoScreen> createState() => _VehicleInfoScreenState();
 }
 
-class _SoftEntryScreenState extends State<SoftEntryScreen> {
+class _VehicleInfoScreenState extends State<VehicleInfoScreen> {
   bool loading = false;
   String loadingText = '';
 
@@ -129,7 +129,7 @@ class _SoftEntryScreenState extends State<SoftEntryScreen> {
     }
 
     debugPrint(
-      "[SOFT-ENTRY] Getting estimate for: $selectedYear $selectedMake $selectedModel (Trim: $selectedTrim)",
+      "[VEHICLE-INFO] Getting estimate for: $selectedYear $selectedMake $selectedModel (Trim: $selectedTrim)",
     );
 
     setState(() {

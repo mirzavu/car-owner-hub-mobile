@@ -3,9 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'screens/splash_screen.dart';
-import 'screens/soft_entry_screen.dart';
-import 'screens/teaser_screen.dart' as teaser;
+import 'screens/vehicle_info_screen.dart';
+import 'screens/teaser_equity_screen.dart' as teaser;
 import 'screens/login_screen.dart';
 import 'screens/registration_screen.dart';
 import 'screens/scan_prompt_screen.dart';
@@ -18,6 +19,8 @@ import 'screens/cash_unlock_screen.dart';
 import 'screens/shop_screen.dart';
 import 'screens/garage_screen.dart';
 import 'screens/success_screen.dart';
+import 'screens/user_type_screen.dart';
+import 'screens/buyer_dashboard_screen.dart';
 
 import 'package:mobile_app/services/auth_service.dart'; // Import AuthService
 import 'package:mobile_app/services/push_token_service.dart';
@@ -71,12 +74,15 @@ class FintechAutoFlow extends StatefulWidget {
 }
 
 class _FintechAutoFlowState extends State<FintechAutoFlow> {
+  static const String _userTypeStorageKey = 'selected_user_type';
+
   // --- STATE MANAGEMENT (Matches React useState) ---
 
   // Flow State
   String step = 'loading'; // Default to loading while we check auth
   String activeTab = 'home'; // home, shop, garage
   String? overlayScreen; // null, 'cash-unlock', 'refinance'
+  String userType = 'owner'; // 'owner' or 'buyer'
 
   // Loading State
   bool loading = false;
@@ -113,6 +119,33 @@ class _FintechAutoFlowState extends State<FintechAutoFlow> {
     _initApp();
   }
 
+  Future<void> _restoreUserType() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final storedType = prefs.getString(_userTypeStorageKey);
+      if (storedType == 'owner' || storedType == 'buyer') {
+        setState(() {
+          userType = storedType!;
+          if (storedType == 'buyer') {
+            activeTab = 'home';
+          }
+        });
+      }
+    } catch (e) {
+      debugPrint("[INIT] Failed to restore user type: $e");
+    }
+  }
+
+  Future<void> _persistUserType(String type) async {
+    if (type != 'owner' && type != 'buyer') return;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_userTypeStorageKey, type);
+    } catch (e) {
+      debugPrint("[INIT] Failed to persist user type: $e");
+    }
+  }
+
   Future<void> _initApp() async {
     final auth = AuthService();
 
@@ -135,6 +168,8 @@ class _FintechAutoFlowState extends State<FintechAutoFlow> {
       setState(() => step = 'splash');
       return;
     }
+
+    await _restoreUserType();
 
     final fcmToken = await PushTokenService().initAndSyncToken();
     if (fcmToken != null && fcmToken.isNotEmpty) {
@@ -176,9 +211,14 @@ class _FintechAutoFlowState extends State<FintechAutoFlow> {
       debugPrint("Routing to: auth-phone");
       setState(() => step = 'auth-phone');
     } else {
-      // Land on scan prompt if phone is already provided
-      debugPrint("Routing to: scan-intro");
-      setState(() => step = 'scan-intro');
+      if (userType == 'buyer') {
+        debugPrint("Routing to: main-app (buyer)");
+        setState(() => step = 'main-app');
+      } else {
+        // Land on scan prompt if phone is already provided
+        debugPrint("Routing to: scan-intro");
+        setState(() => step = 'scan-intro');
+      }
     }
     debugPrint("--------------------------");
   }
@@ -361,9 +401,27 @@ class _FintechAutoFlowState extends State<FintechAutoFlow> {
   Widget _buildCurrentStep() {
     switch (step) {
       case 'splash':
-        return SplashScreen(onNext: () => setStep('details'));
+        return SplashScreen(onNext: () => setStep('user-type'));
+      case 'user-type':
+        return UserTypeScreen(
+          onSelect: (type) {
+            setState(() {
+              userType = type;
+              if (type == 'buyer') {
+                activeTab = 'home';
+              }
+            });
+            _persistUserType(type);
+            if (type == 'owner') {
+              setStep('details');
+            } else {
+              setStep('auth-login');
+            }
+          },
+          onBack: () => setStep('splash'),
+        );
       case 'details':
-        return SoftEntryScreen(
+        return VehicleInfoScreen(
           onNext: (nextStep) => setStep(nextStep),
           onEstimateComplete: (value, details) {
             debugPrint(
@@ -384,7 +442,7 @@ class _FintechAutoFlowState extends State<FintechAutoFlow> {
           },
         );
       case 'teaser':
-        return teaser.TeaserScreen(
+        return teaser.TeaserEquityScreen(
           carDetails: teaser.CarDetails(
             year: carDetails['year']!,
             make: carDetails['make']!,
@@ -421,11 +479,17 @@ class _FintechAutoFlowState extends State<FintechAutoFlow> {
       case 'auth-login':
         return LoginScreen(
           setStep: (nextStep) => setStep(nextStep),
-          onBack: () => setStep('teaser'),
+          onBack: () => setStep(userType == 'buyer' ? 'user-type' : 'teaser'),
         );
       case 'auth-phone':
         return RegistrationScreen(
-          setStep: (nextStep) => setStep(nextStep),
+          setStep: (nextStep) {
+            if (nextStep == 'scan-intro' && userType == 'buyer') {
+              setStep('main-app');
+            } else {
+              setStep(nextStep);
+            }
+          },
           initialValue: tempPhone,
           onChanged: (val) => setState(() => tempPhone = val),
         );
@@ -474,12 +538,13 @@ class _FintechAutoFlowState extends State<FintechAutoFlow> {
             _buildMainAppContent(),
 
             // 2. Professional Sleek Bottom Nav
-            Positioned(
-              left: 48,
-              right: 48,
-              bottom: 24,
-              child: _buildBottomNavBar(),
-            ),
+            if (userType != 'buyer')
+              Positioned(
+                left: 48,
+                right: 48,
+                bottom: 24,
+                child: _buildBottomNavBar(),
+              ),
           ],
         );
       default:
@@ -488,6 +553,14 @@ class _FintechAutoFlowState extends State<FintechAutoFlow> {
   }
 
   Widget _buildMainAppContent() {
+    if (userType == 'buyer') {
+      return BuyerDashboardScreen(
+        onLeadSubmitted: () {
+          debugPrint("[BUYER] Preapproval lead submitted.");
+        },
+      );
+    }
+
     if (activeTab == 'shop') {
       return ShopScreen(
         financials: financials,
@@ -534,6 +607,8 @@ class _FintechAutoFlowState extends State<FintechAutoFlow> {
   }
 
   Widget _buildBottomNavBar() {
+    final bool isBuyer = userType == 'buyer';
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
@@ -550,11 +625,15 @@ class _FintechAutoFlowState extends State<FintechAutoFlow> {
         ],
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        mainAxisAlignment: isBuyer
+            ? MainAxisAlignment.center
+            : MainAxisAlignment.spaceBetween,
         children: [
           _buildNavItem('home', LucideIcons.home, "Home"),
-          _buildNavItem('shop', LucideIcons.car, "Shop"),
-          _buildNavItem('garage', LucideIcons.wrench, "Garage"),
+          if (!isBuyer) ...[
+            _buildNavItem('shop', LucideIcons.car, "Shop"),
+            _buildNavItem('garage', LucideIcons.wrench, "Garage"),
+          ],
         ],
       ),
     );

@@ -19,13 +19,13 @@ class Financials {
   Financials({required this.estimatedValue, required this.userEstimatedLoan});
 }
 
-class TeaserScreen extends StatefulWidget {
+class TeaserEquityScreen extends StatefulWidget {
   final CarDetails carDetails;
   final Financials financials;
   final VoidCallback onNext;
   final VoidCallback? onBack;
 
-  const TeaserScreen({
+  const TeaserEquityScreen({
     super.key,
     required this.carDetails,
     required this.financials,
@@ -34,10 +34,10 @@ class TeaserScreen extends StatefulWidget {
   });
 
   @override
-  State<TeaserScreen> createState() => _TeaserScreenState();
+  State<TeaserEquityScreen> createState() => _TeaserEquityScreenState();
 }
 
-class _TeaserScreenState extends State<TeaserScreen> {
+class _TeaserEquityScreenState extends State<TeaserEquityScreen> {
   late double sliderValue;
 
   @override
