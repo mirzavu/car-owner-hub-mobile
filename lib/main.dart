@@ -21,6 +21,7 @@ import 'screens/garage_screen.dart';
 import 'screens/success_screen.dart';
 import 'screens/user_type_screen.dart';
 import 'screens/buyer_dashboard_screen.dart';
+import 'screens/teaser_dashboard_screen.dart';
 
 import 'package:mobile_app/services/auth_service.dart'; // Import AuthService
 import 'package:mobile_app/services/push_token_service.dart';
@@ -576,6 +577,19 @@ class _FintechAutoFlowState extends State<FintechAutoFlow> {
         setActiveTab: (tab) => setActiveTab(tab),
       );
     }
+    // If owner but no loan details yet, show the Teaser Dashboard
+    if (userType == 'owner' && (loanId == null || loanId!.isEmpty)) {
+      return TeaserDashboardScreen(
+        carDetails: carDetails,
+        estimatedValue: (financials['estimatedValue'] as num).toDouble(),
+        onScanClick: () => setStep('scan-intro'),
+        onLogout: () {
+          AuthService().logout();
+          setStep('splash');
+        },
+      );
+    }
+
     // Default to Dashboard
     return DashboardScreen(
       carDetails: CarDetails(
