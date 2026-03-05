@@ -11,7 +11,15 @@ class ShopBudgetTarget {
 class ShopBudgetService {
   static const double defaultPaidOffBudget = 350;
   static const List<int> paidOffBudgetChips = [250, 350, 450, 550];
-  static const List<int> activeLoanStepOptions = [-50, 50, 100];
+  static const List<int> activeLoanStepOptions = [
+    -150,
+    -100,
+    -50,
+    0,
+    50,
+    100,
+    150,
+  ];
 
   static ShopBudgetTarget resolveTarget({
     required bool isPaidOff,

@@ -82,6 +82,7 @@ class _FintechAutoFlowState extends State<FintechAutoFlow> {
   // Flow State
   String step = 'loading'; // Default to loading while we check auth
   String activeTab = 'home'; // home, shop, garage
+  int? shopInitialStepDelta;
   String? overlayScreen; // null, 'cash-unlock', 'refinance'
   String userType = 'owner'; // 'owner' or 'buyer'
 
@@ -427,7 +428,15 @@ class _FintechAutoFlowState extends State<FintechAutoFlow> {
     }
   }
 
-  void setActiveTab(String tab) => setState(() => activeTab = tab);
+  void setActiveTab(String tab, {int? stepDelta}) {
+    setState(() {
+      activeTab = tab;
+      if (tab == 'shop') {
+        shopInitialStepDelta = stepDelta;
+      }
+    });
+  }
+
   void setOverlay(String? overlay) => setState(() => overlayScreen = overlay);
 
   @override
@@ -633,14 +642,17 @@ class _FintechAutoFlowState extends State<FintechAutoFlow> {
         financials: financials,
         carDetails: carDetails,
         setOverlayScreen: (screen) => setOverlay(screen),
-        setActiveTab: (tab) => setActiveTab(tab),
+        setActiveTab: (String tab, {int? stepDelta}) =>
+            setActiveTab(tab, stepDelta: stepDelta),
+        initialStepDelta: shopInitialStepDelta,
       );
     }
     if (activeTab == 'garage') {
       return GarageScreen(
         carDetails: carDetails,
         loanId: loanId,
-        setActiveTab: (tab) => setActiveTab(tab),
+        setActiveTab: (String tab, {int? stepDelta}) =>
+            setActiveTab(tab, stepDelta: stepDelta),
       );
     }
     // If owner but no loan details yet, show the Teaser Dashboard
@@ -665,7 +677,8 @@ class _FintechAutoFlowState extends State<FintechAutoFlow> {
       ),
       initialFinancials: financials,
       setOverlayScreen: (screen) => setOverlay(screen),
-      setActiveTab: (tab) => setActiveTab(tab),
+      setActiveTab: (String tab, {int? stepDelta}) =>
+          setActiveTab(tab, stepDelta: stepDelta),
       onLogout: () => setStep('auth-login'),
       onReverify: () => setStep('scan-intro'),
       onFinancialsUpdate: (data) {

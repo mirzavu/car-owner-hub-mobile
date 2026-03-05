@@ -22,7 +22,7 @@ class CarDetails {
 class DashboardScreen extends StatefulWidget {
   final CarDetails carDetails;
   final Function(String) setOverlayScreen;
-  final Function(String) setActiveTab;
+  final void Function(String, {int? stepDelta}) setActiveTab;
   final VoidCallback onLogout;
   final VoidCallback onReverify;
 
@@ -69,6 +69,12 @@ class _DashboardScreenState extends State<DashboardScreen>
   String _tradePreviewMake = '';
   String _tradePreviewModel = '';
   double _tradePreviewPayment = 0;
+
+  String _lowerPreviewYear = '';
+  String _lowerPreviewMake = '';
+  String _lowerPreviewModel = '';
+  double _lowerPreviewPayment = 0;
+
   int _unreadNotificationCount = 0;
   List<ActivityFeedItem> _recentActivities = [];
 
@@ -302,6 +308,8 @@ class _DashboardScreenState extends State<DashboardScreen>
       if (!mounted || requestId != _tradePreviewRequestId) return;
 
       final vehicleRaw = data['vehicle'];
+      final lowerVehicleRaw = data['lowerPaymentVehicle'];
+
       final vehicleLog = vehicleRaw is Map
           ? Map<String, dynamic>.from(vehicleRaw)
           : <String, dynamic>{};
@@ -315,16 +323,32 @@ class _DashboardScreenState extends State<DashboardScreen>
           _tradePreviewModel = '';
           _tradePreviewPayment = 0;
         });
-        return;
+      } else {
+        final vehicle = Map<String, dynamic>.from(vehicleRaw);
+        setState(() {
+          _tradePreviewYear = (vehicle['year'] ?? '').toString().trim();
+          _tradePreviewMake = (vehicle['make'] ?? '').toString().trim();
+          _tradePreviewModel = (vehicle['model'] ?? '').toString().trim();
+          _tradePreviewPayment = _asDouble(vehicle['monthlyPayment']);
+        });
       }
 
-      final vehicle = Map<String, dynamic>.from(vehicleRaw);
-      setState(() {
-        _tradePreviewYear = (vehicle['year'] ?? '').toString().trim();
-        _tradePreviewMake = (vehicle['make'] ?? '').toString().trim();
-        _tradePreviewModel = (vehicle['model'] ?? '').toString().trim();
-        _tradePreviewPayment = _asDouble(vehicle['monthlyPayment']);
-      });
+      if (lowerVehicleRaw is! Map) {
+        setState(() {
+          _lowerPreviewYear = '';
+          _lowerPreviewMake = '';
+          _lowerPreviewModel = '';
+          _lowerPreviewPayment = 0;
+        });
+      } else {
+        final lower = Map<String, dynamic>.from(lowerVehicleRaw);
+        setState(() {
+          _lowerPreviewYear = (lower['year'] ?? '').toString().trim();
+          _lowerPreviewMake = (lower['make'] ?? '').toString().trim();
+          _lowerPreviewModel = (lower['model'] ?? '').toString().trim();
+          _lowerPreviewPayment = _asDouble(lower['monthlyPayment']);
+        });
+      }
     } catch (e) {
       debugPrint('Error fetching trade-up preview: $e');
       if (!mounted || requestId != _tradePreviewRequestId) return;
@@ -333,6 +357,10 @@ class _DashboardScreenState extends State<DashboardScreen>
         _tradePreviewMake = '';
         _tradePreviewModel = '';
         _tradePreviewPayment = 0;
+        _lowerPreviewYear = '';
+        _lowerPreviewMake = '';
+        _lowerPreviewModel = '';
+        _lowerPreviewPayment = 0;
       });
     }
   }
@@ -343,6 +371,12 @@ class _DashboardScreenState extends State<DashboardScreen>
         _tradePreviewModel.isNotEmpty;
   }
 
+  bool _hasLowerPaymentPreview() {
+    return _lowerPreviewYear.isNotEmpty ||
+        _lowerPreviewMake.isNotEmpty ||
+        _lowerPreviewModel.isNotEmpty;
+  }
+
   String _tradePreviewVehicleLabel() {
     final parts = [
       _tradePreviewYear,
@@ -351,6 +385,17 @@ class _DashboardScreenState extends State<DashboardScreen>
     ].where((part) => part.trim().isNotEmpty).toList();
 
     if (parts.isEmpty) return 'upgrade options';
+    return parts.join(' ');
+  }
+
+  String _lowerPreviewVehicleLabel() {
+    final parts = [
+      _lowerPreviewYear,
+      _lowerPreviewMake,
+      _lowerPreviewModel,
+    ].where((part) => part.trim().isNotEmpty).toList();
+
+    if (parts.isEmpty) return 'more affordable options';
     return parts.join(' ');
   }
 
@@ -643,11 +688,11 @@ class _DashboardScreenState extends State<DashboardScreen>
     ];
     final orderedQuickActionWidgets = _orderedActionWidgets(quickActionItems);
 
-    final Widget tradeUpOpportunityCard = _OpportunityCard(
+    final Widget upgradeOpportunityCard = _OpportunityCard(
       icon: LucideIcons.car,
       iconColor: Colors.blue.shade600,
       iconBg: Colors.blue.shade50,
-      title: "Trade Up",
+      title: "Upgrade",
       body: _hasTradeUpPreview()
           ? RichText(
               text: TextSpan(
@@ -689,7 +734,63 @@ class _DashboardScreenState extends State<DashboardScreen>
       buttonColor: Colors.white,
       buttonBorderColor: Colors.blueGrey.shade200,
       buttonTextColor: colorSlate800,
-      onTap: () => widget.setActiveTab('shop'),
+      onTap: () => widget.setActiveTab(
+        'shop',
+      ), // Shop defaults to 0 delta (Upgrade mode)
+    );
+
+    final Widget lowerPaymentOpportunityCard = _OpportunityCard(
+      icon: LucideIcons.trendingDown,
+      iconColor: Colors.green.shade600,
+      iconBg: Colors.green.shade50,
+      title: "Lower Payment",
+      body: _hasLowerPaymentPreview()
+          ? RichText(
+              text: TextSpan(
+                style: GoogleFonts.outfit(
+                  fontSize: 12,
+                  color: Colors.blueGrey.shade400,
+                  height: 1.5,
+                ),
+                children: [
+                  const TextSpan(
+                    text: "Reduce your monthly spending by switching to a ",
+                  ),
+                  TextSpan(
+                    text: _lowerPreviewVehicleLabel(),
+                    style: TextStyle(
+                      color: colorSlate800,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const TextSpan(text: " for about "),
+                  TextSpan(
+                    text: "\$${_fmtNoSymbol(_lowerPreviewPayment)}/mo",
+                    style: TextStyle(
+                      color: colorSlate800,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const TextSpan(text: "."),
+                ],
+              ),
+            )
+          : Text(
+              "Find more affordable options to lower your payment.",
+              style: GoogleFonts.outfit(
+                fontSize: 12,
+                color: Colors.blueGrey.shade400,
+                height: 1.5,
+              ),
+            ),
+      buttonText: "See Options",
+      buttonColor: Colors.white,
+      buttonBorderColor: Colors.blueGrey.shade200,
+      buttonTextColor: colorSlate800,
+      onTap: () {
+        // Pass -$100 (2 points lower) to the shop screen
+        widget.setActiveTab('shop', stepDelta: -100);
+      },
     );
 
     final Widget getCashOpportunityCard = _OpportunityCard(
@@ -827,9 +928,16 @@ class _DashboardScreenState extends State<DashboardScreen>
 
     final opportunityItems = <_DashboardActionItem>[
       _DashboardActionItem(
-        kind: _DashboardActionKind.tradeUp,
+        kind: _DashboardActionKind
+            .tradeUp, // We'll keep the kind as tradeUp for Upgrade
         isTerminalAction: false,
-        widget: tradeUpOpportunityCard,
+        widget: upgradeOpportunityCard,
+      ),
+      _DashboardActionItem(
+        kind: _DashboardActionKind
+            .tradeUp, // Reusing tradeUp kind for lower payment as it's the same flow type
+        isTerminalAction: false,
+        widget: lowerPaymentOpportunityCard,
       ),
       _DashboardActionItem(
         kind: _DashboardActionKind.getCash,

@@ -12,7 +12,8 @@ class ShopScreen extends StatefulWidget {
   final Map<String, dynamic> financials;
   final Map<String, String> carDetails;
   final Function(String) setOverlayScreen;
-  final Function(String) setActiveTab;
+  final void Function(String, {int? stepDelta}) setActiveTab;
+  final int? initialStepDelta;
 
   const ShopScreen({
     super.key,
@@ -20,6 +21,7 @@ class ShopScreen extends StatefulWidget {
     required this.carDetails,
     required this.setOverlayScreen,
     required this.setActiveTab,
+    this.initialStepDelta,
   });
 
   @override
@@ -31,9 +33,8 @@ class _ShopScreenState extends State<ShopScreen> {
   int _requestId = 0;
   List<dynamic> _inventory = [];
 
-  bool _keepPaymentSame = true;
   double _paidOffBudget = ShopBudgetService.defaultPaidOffBudget;
-  int _activeStepDelta = 50;
+  int _activeStepDelta = 0;
   bool _financialFallbackChecked = false;
   double? _fallbackEquity;
   double? _fallbackMonthlyPayment;
@@ -41,6 +42,9 @@ class _ShopScreenState extends State<ShopScreen> {
   @override
   void initState() {
     super.initState();
+    if (widget.initialStepDelta != null) {
+      _activeStepDelta = widget.initialStepDelta!;
+    }
     _fetchInventory();
   }
 
@@ -53,7 +57,7 @@ class _ShopScreenState extends State<ShopScreen> {
   ShopBudgetTarget _resolveTarget(double userPayment, bool isPaidOff) {
     return ShopBudgetService.resolveTarget(
       isPaidOff: isPaidOff,
-      keepPaymentSame: _keepPaymentSame,
+      keepPaymentSame: _activeStepDelta == 0,
       currentPayment: userPayment,
       paidOffBudget: _paidOffBudget,
       activeStepDelta: _activeStepDelta,
@@ -123,6 +127,10 @@ class _ShopScreenState extends State<ShopScreen> {
     final bool isPaidOff = userPayment <= 0;
     final target = _resolveTarget(userPayment, isPaidOff);
     final currentYear = _parseCurrentYear();
+
+    debugPrint(
+      '[SHOP] _fetchInventory: userPayment=$userPayment, delta=$_activeStepDelta, target=${target.targetPayment}, mode=${target.targetMode}',
+    );
 
     final requestId = ++_requestId;
     setState(() => _isLoading = true);
@@ -452,105 +460,116 @@ class _ShopScreenState extends State<ShopScreen> {
     required Color colorGreen,
     required Color colorSlate800,
   }) {
-    return Column(
-      children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Row(
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Keep my payment same',
-                      style: GoogleFonts.outfit(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: colorSlate800,
-                      ),
-                    ),
-                    Text(
-                      'Current: ${_fmt(userPayment)}/mo',
-                      style: GoogleFonts.outfit(
-                        fontSize: 12,
-                        color: Colors.blueGrey,
-                      ),
-                    ),
-                  ],
+              Text(
+                'Adjust monthly payment',
+                style: GoogleFonts.outfit(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: colorSlate800,
                 ),
               ),
-              Switch(
-                value: _keepPaymentSame,
-                activeThumbColor: colorGreen,
-                onChanged: (val) {
-                  setState(() {
-                    _keepPaymentSame = val;
-                    if (!val && _activeStepDelta == 0) {
-                      _activeStepDelta = 50;
-                    }
-                  });
-                  _fetchInventory();
-                },
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: colorGreen.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  _activeStepDelta == 0
+                      ? 'No Change'
+                      : (_activeStepDelta > 0 ? '+' : '') +
+                            '\$$_activeStepDelta/mo',
+                  style: GoogleFonts.outfit(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: colorGreen,
+                  ),
+                ),
               ),
             ],
           ),
-        ),
-        if (!_keepPaymentSame) ...[
-          const SizedBox(height: 12),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
+          const SizedBox(height: 6),
+          Text(
+            'Target now: ${_fmt(targetPayment)}/mo',
+            style: GoogleFonts.outfit(fontSize: 12, color: Colors.blueGrey),
+          ),
+          const SizedBox(height: 16),
+          SliderTheme(
+            data: SliderTheme.of(context).copyWith(
+              trackHeight: 12,
+              activeTrackColor: colorGreen,
+              inactiveTrackColor: Colors.grey[100],
+              overlayColor: Colors.transparent,
+              trackShape: const CustomSliderTrackShape(),
+              thumbShape: CustomSliderThumbShape(
+                thumbRadius: 16,
+                borderWidth: 4,
+                borderColor: colorGreen,
+              ),
+              tickMarkShape: const RoundSliderTickMarkShape(
+                tickMarkRadius: 2.0,
+              ),
+              activeTickMarkColor: colorGreen,
+              inactiveTickMarkColor: Colors.grey[300],
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Slider(
+              min: -150,
+              max: 150,
+              divisions: 6,
+              value: _activeStepDelta.toDouble(),
+              onChanged: (value) {
+                setState(() {
+                  _activeStepDelta = value.round();
+                });
+              },
+              onChangeEnd: (_) => _fetchInventory(),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'Explore payment tiers',
+                  '-\$150',
                   style: GoogleFonts.outfit(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: colorSlate800,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  'Target now: ${_fmt(targetPayment)}/mo',
-                  style: GoogleFonts.outfit(
-                    fontSize: 12,
+                    fontSize: 10,
                     color: Colors.blueGrey,
                   ),
                 ),
-                const SizedBox(height: 10),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: ShopBudgetService.activeLoanStepOptions.map((step) {
-                    final selected = _activeStepDelta == step;
-                    final prefix = step > 0 ? '+' : '-';
-                    return ChoiceChip(
-                      selected: selected,
-                      label: Text('$prefix\$${step.abs()}'),
-                      onSelected: (_) {
-                        setState(() => _activeStepDelta = step);
-                        _fetchInventory();
-                      },
-                    );
-                  }).toList(),
+                Text(
+                  'Target',
+                  style: GoogleFonts.outfit(
+                    fontSize: 10,
+                    color: colorSlate800,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  '+\$150',
+                  style: GoogleFonts.outfit(
+                    fontSize: 10,
+                    color: Colors.blueGrey,
+                  ),
                 ),
               ],
             ),
           ),
         ],
-      ],
+      ),
     );
   }
 

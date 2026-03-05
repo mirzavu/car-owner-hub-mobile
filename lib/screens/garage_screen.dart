@@ -8,7 +8,7 @@ import '../services/api_service.dart';
 class GarageScreen extends StatefulWidget {
   final Map<String, String> carDetails;
   final String? loanId;
-  final Function(String) setActiveTab;
+  final void Function(String, {int? stepDelta}) setActiveTab;
 
   const GarageScreen({
     super.key,
