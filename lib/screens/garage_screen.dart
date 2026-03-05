@@ -124,6 +124,9 @@ class _GarageScreenState extends State<GarageScreen> {
     const colorNavy = Color(0xFF003366);
 
     final car = widget.carDetails;
+    final trim = (car['trim'] ?? '').trim();
+    final plate = (car['plate'] ?? '').trim();
+    final vin = (car['vin'] ?? '').trim();
 
     return Scaffold(
       backgroundColor: colorBg,
@@ -220,61 +223,66 @@ class _GarageScreenState extends State<GarageScreen> {
                                     color: colorSlate800,
                                   ),
                                 ),
-                                Text(
-                                  "${car['trim']} • ${car['plate']}",
-                                  style: GoogleFonts.outfit(
-                                    fontSize: 12,
-                                    color: Colors.blueGrey.shade400,
+                                if (trim.isNotEmpty || plate.isNotEmpty)
+                                  Text(
+                                    [trim, plate]
+                                        .where((value) => value.isNotEmpty)
+                                        .join(' • '),
+                                    style: GoogleFonts.outfit(
+                                      fontSize: 12,
+                                      color: Colors.blueGrey.shade400,
+                                    ),
                                   ),
-                                ),
                               ],
                             ),
                           ],
                         ),
-                        const SizedBox(height: 16),
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: colorBg,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    "VIN",
-                                    style: GoogleFonts.outfit(
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w600,
-                                      color: Colors.blueGrey.shade600,
+                        if (vin.isNotEmpty) ...[
+                          const SizedBox(height: 16),
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: colorBg,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      "VIN",
+                                      style: GoogleFonts.outfit(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.blueGrey.shade600,
+                                      ),
                                     ),
-                                  ),
-                                  Text(
-                                    car['vin'] ?? 'N/A',
-                                    style: GoogleFonts.robotoMono(
-                                      fontSize: 12,
-                                      color: colorSlate800,
+                                    Text(
+                                      vin,
+                                      style: GoogleFonts.robotoMono(
+                                        fontSize: 12,
+                                        color: colorSlate800,
+                                      ),
                                     ),
-                                  ),
-                                ],
-                              ),
-                              InkWell(
-                                onTap: () {},
-                                child: const Padding(
-                                  padding: EdgeInsets.all(8.0),
-                                  child: Icon(
-                                    LucideIcons.copy,
-                                    size: 16,
-                                    color: Colors.blueGrey,
+                                  ],
+                                ),
+                                InkWell(
+                                  onTap: () {},
+                                  child: const Padding(
+                                    padding: EdgeInsets.all(8.0),
+                                    child: Icon(
+                                      LucideIcons.copy,
+                                      size: 16,
+                                      color: Colors.blueGrey,
+                                    ),
                                   ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
-                        ),
+                        ],
                       ],
                     ),
                   ),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import '../components/custom_slider_components.dart';
 
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
@@ -326,6 +327,7 @@ class _ShopScreenState extends State<ShopScreen> {
   }
 
   Widget _buildPaidOffBudgetControls(double targetPayment) {
+    const colorGreen = Color(0xFF00CA50);
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -364,18 +366,32 @@ class _ShopScreenState extends State<ShopScreen> {
             }).toList(),
           ),
           const SizedBox(height: 10),
-          Slider(
-            min: 200,
-            max: 800,
-            divisions: 12,
-            label: '\$${_paidOffBudget.round()}/mo',
-            value: _paidOffBudget,
-            onChanged: (value) {
-              setState(() {
-                _paidOffBudget = (value / 50).round() * 50.0;
-              });
-            },
-            onChangeEnd: (_) => _fetchInventory(),
+          SliderTheme(
+            data: SliderTheme.of(context).copyWith(
+              trackHeight: 12,
+              activeTrackColor: colorGreen,
+              inactiveTrackColor: Colors.grey[100],
+              overlayColor: Colors.transparent,
+              trackShape: const CustomSliderTrackShape(),
+              thumbShape: CustomSliderThumbShape(
+                thumbRadius: 16,
+                borderWidth: 4,
+                borderColor: colorGreen,
+              ),
+            ),
+            child: Slider(
+              min: 200,
+              max: 800,
+              divisions: 12,
+              label: '\$${_paidOffBudget.round()}/mo',
+              value: _paidOffBudget,
+              onChanged: (value) {
+                setState(() {
+                  _paidOffBudget = (value / 50).round() * 50.0;
+                });
+              },
+              onChangeEnd: (_) => _fetchInventory(),
+            ),
           ),
         ],
       ),

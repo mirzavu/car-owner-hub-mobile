@@ -11,6 +11,7 @@ import 'buyer_dashboard_components/buyer_dashboard_constants.dart';
 import 'buyer_dashboard_components/buyer_dashboard_inventory_card.dart';
 import 'buyer_dashboard_components/buyer_dashboard_view_model.dart';
 import 'buyer_dashboard_components/wizard_step_content.dart';
+import '../components/custom_slider_components.dart';
 
 class BuyerDashboardScreen extends StatelessWidget {
   final VoidCallback? onLeadSubmitted;
@@ -545,13 +546,14 @@ class _BuyerDashboardContentState extends State<_BuyerDashboardContent>
                   padding: EdgeInsets.zero,
                   activeTrackColor: cNeon,
                   inactiveTrackColor: Colors.grey[100],
-                  trackHeight: 8,
-                  thumbColor: cDarkBg,
-                  thumbShape: const RoundSliderThumbShape(
-                    enabledThumbRadius: 16,
-                    elevation: 4,
+                  trackHeight: 12,
+                  overlayColor: Colors.transparent,
+                  trackShape: const CustomSliderTrackShape(),
+                  thumbShape: const CustomSliderThumbShape(
+                    thumbRadius: 16,
+                    borderWidth: 4,
+                    borderColor: cNeon,
                   ),
-                  overlayColor: cNeon.withValues(alpha: 0.2),
                 ),
                 child: Slider(
                   padding: EdgeInsets.zero,

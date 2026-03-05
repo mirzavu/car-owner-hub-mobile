@@ -231,6 +231,34 @@ class _FintechAutoFlowState extends State<FintechAutoFlow> {
     });
   }
 
+  String _sanitizeCarDetailValue(String? value) {
+    final raw = (value ?? '').trim();
+    if (raw.isEmpty) return '';
+
+    final normalized = raw.toLowerCase();
+    const placeholders = {
+      'n/a',
+      'na',
+      'not available',
+      'unknown',
+      'null',
+      '-',
+      '--',
+    };
+    if (placeholders.contains(normalized) ||
+        normalized.startsWith('fetching') ||
+        normalized.startsWith('pending')) {
+      return '';
+    }
+    return raw;
+  }
+
+  Map<String, String> _sanitizeCarDetailsPatch(Map<String, String> patch) {
+    return patch.map(
+      (key, value) => MapEntry(key, _sanitizeCarDetailValue(value)),
+    );
+  }
+
   // Helper for Currency Formatting
   String fmt(num n) {
     return NumberFormat.currency(
@@ -431,13 +459,17 @@ class _FintechAutoFlowState extends State<FintechAutoFlow> {
             setState(() {
               financials['estimatedValue'] = value;
               // Map details to carDetails
-              carDetails['year'] = details['year']!;
-              carDetails['make'] = details['make']!;
-              carDetails['model'] = details['model']!;
-              carDetails['trim'] = details['trim']!;
-              // Reset VIN/Plate as we don't have them yet from this flow
-              carDetails['vin'] = 'Fetching...';
-              carDetails['plate'] = 'Pending';
+              carDetails.addAll(
+                _sanitizeCarDetailsPatch({
+                  'year': details['year'] ?? '',
+                  'make': details['make'] ?? '',
+                  'model': details['model'] ?? '',
+                  'trim': details['trim'] ?? '',
+                  // We do not have VIN/plate from this flow.
+                  'vin': '',
+                  'plate': '',
+                }),
+              );
             });
             _calculateEquity();
           },
@@ -516,7 +548,7 @@ class _FintechAutoFlowState extends State<FintechAutoFlow> {
           estimatedValue: (financials['estimatedValue'] as num).toDouble(),
           onUpdateCarDetails: (updates) {
             setState(() {
-              carDetails.addAll(updates);
+              carDetails.addAll(_sanitizeCarDetailsPatch(updates));
             });
           },
           onBack: () {
@@ -611,8 +643,10 @@ class _FintechAutoFlowState extends State<FintechAutoFlow> {
       onCarDetailsUpdate: (data) {
         setState(() {
           carDetails.addAll(
-            Map<String, String>.from(
-              data.map((key, value) => MapEntry(key, value.toString())),
+            _sanitizeCarDetailsPatch(
+              Map<String, String>.from(
+                data.map((key, value) => MapEntry(key, value.toString())),
+              ),
             ),
           );
         });
@@ -624,7 +658,7 @@ class _FintechAutoFlowState extends State<FintechAutoFlow> {
     final bool isBuyer = userType == 'buyer';
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: const Color(0xFF003366), // Midnight Navy bg
         borderRadius: BorderRadius.circular(50),

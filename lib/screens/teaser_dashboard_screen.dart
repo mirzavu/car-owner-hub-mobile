@@ -94,139 +94,143 @@ class _TeaserDashboardScreenState extends State<TeaserDashboardScreen> {
         physics: const BouncingScrollPhysics(),
         slivers: [
           SliverToBoxAdapter(
-            child: Container(
-              width: double.infinity,
-              padding: EdgeInsets.fromLTRB(
-                24,
-                MediaQuery.of(context).padding.top + 24,
-                24,
-                110,
-              ),
-              decoration: const BoxDecoration(
-                color: cDarkBg,
-                borderRadius: BorderRadius.vertical(
-                  bottom: Radius.circular(48),
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    crossAxisAlignment: CrossAxisAlignment.center,
+            child: Column(
+              children: [
+                Container(
+                  width: double.infinity,
+                  padding: EdgeInsets.fromLTRB(
+                    24,
+                    MediaQuery.of(context).padding.top + 24,
+                    24,
+                    110,
+                  ),
+                  decoration: const BoxDecoration(
+                    color: cDarkBg,
+                    borderRadius: BorderRadius.vertical(
+                      bottom: Radius.circular(48),
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          Text(
-                            'Portfolio',
-                            style: GoogleFonts.outfit(
-                              fontSize: 26,
-                              fontWeight: FontWeight.w900,
-                              color: Colors.white,
-                              letterSpacing: -0.5,
-                              height: 1.0,
-                            ),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Portfolio',
+                                style: GoogleFonts.outfit(
+                                  fontSize: 26,
+                                  fontWeight: FontWeight.w900,
+                                  color: Colors.white,
+                                  letterSpacing: -0.5,
+                                  height: 1.0,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                'ASSET MANAGEMENT',
+                                style: GoogleFonts.outfit(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w800,
+                                  color: Colors.grey[400],
+                                  letterSpacing: 1.5,
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 6),
-                          Text(
-                            'ASSET MANAGEMENT',
-                            style: GoogleFonts.outfit(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w800,
-                              color: Colors.grey[400],
-                              letterSpacing: 1.5,
+                          GestureDetector(
+                            onTap: widget.onLogout,
+                            child: Container(
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.05),
+                                border: Border.all(
+                                  color: Colors.white.withValues(alpha: 0.1),
+                                ),
+                                borderRadius: BorderRadius.circular(999),
+                              ),
+                              child: const Icon(
+                                LucideIcons.logOut,
+                                size: 16,
+                                color: Colors.white,
+                              ),
                             ),
                           ),
                         ],
                       ),
-                      GestureDetector(
-                        onTap: widget.onLogout,
-                        child: Container(
-                          width: 40,
-                          height: 40,
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.05),
-                            border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.1),
+                      const SizedBox(height: 24),
+                      _buildAssetCard(),
+                      const SizedBox(height: 24),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Text.rich(
+                          TextSpan(
+                            style: GoogleFonts.outfit(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.grey[400],
+                              height: 1.5,
                             ),
-                            borderRadius: BorderRadius.circular(999),
+                            children: [
+                              const TextSpan(
+                                text: 'You hold a valuable asset. ',
+                              ),
+                              TextSpan(
+                                text: 'Scan your loan statement',
+                                style: GoogleFonts.outfit(
+                                  fontWeight: FontWeight.w800,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              const TextSpan(
+                                text: ' to unlock its full equity potential.',
+                              ),
+                            ],
                           ),
-                          child: const Icon(
-                            LucideIcons.logOut,
-                            size: 16,
-                            color: Colors.white,
-                          ),
+                          textAlign: TextAlign.center,
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 24),
-                  _buildAssetCard(),
-                  const SizedBox(height: 24),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Text.rich(
-                      TextSpan(
-                        style: GoogleFonts.outfit(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.grey[400],
-                          height: 1.5,
-                        ),
-                        children: [
-                          const TextSpan(text: 'You hold a valuable asset. '),
-                          TextSpan(
-                            text: 'Scan your loan statement',
-                            style: GoogleFonts.outfit(
-                              fontWeight: FontWeight.w800,
-                              color: Colors.white,
+                ),
+                Transform.translate(
+                  offset: const Offset(0, -48),
+                  child: Column(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 24),
+                        child: Column(
+                          children: [
+                            _buildLockedFeatureCard(
+                              title: 'Access Equity Cash',
+                              description:
+                                  'Discover exactly how much cash you can extract from your ${widget.carDetails['make']}.',
+                              iconType: 'car',
                             ),
-                          ),
-                          const TextSpan(
-                            text: ' to unlock its full equity potential.',
-                          ),
-                        ],
+                            const SizedBox(height: 16),
+                            _buildLockedFeatureCard(
+                              title: 'Trade-Up Options',
+                              description:
+                                  'Calculate precise trade-in power to shop new verified inventory.',
+                              iconType: 'car',
+                            ),
+                            const SizedBox(height: 28),
+                            _buildScanButton(),
+                          ],
+                        ),
                       ),
-                      textAlign: TextAlign.center,
-                    ),
+                      const SizedBox(height: 40),
+                      _buildInventoryTeaser(),
+                      const SizedBox(height: 40),
+                    ],
                   ),
-                ],
-              ),
-            ),
-          ),
-          SliverToBoxAdapter(
-            child: Transform.translate(
-              offset: const Offset(0, -48),
-              child: Column(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    child: Column(
-                      children: [
-                        _buildLockedFeatureCard(
-                          title: 'Access Equity Cash',
-                          description:
-                              'Discover exactly how much cash you can extract from your ${widget.carDetails['make']}.',
-                          iconType: 'cash',
-                        ),
-                        const SizedBox(height: 16),
-                        _buildLockedFeatureCard(
-                          title: 'Trade-Up Options',
-                          description:
-                              'Calculate precise trade-in power to shop new verified inventory.',
-                          iconType: 'car',
-                        ),
-                        const SizedBox(height: 28),
-                        _buildScanButton(),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 40),
-                  _buildInventoryTeaser(),
-                  const SizedBox(height: 40),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ],
