@@ -182,11 +182,13 @@ class _FintechAutoFlowState extends State<FintechAutoFlow> {
     debugPrint("Has Phone: ${auth.hasPhone} (${auth.userPhone})");
 
     // Determine where to land based on progress
-    if (auth.isOnboardingCompleted) {
-      debugPrint("[INIT] Routing to: main-app. Fetching initial data...");
+    LoanSnapshot? snapshot = await ApiService.getCurrentLoanSnapshot();
 
-      // Fetch current snapshot FIRST so we don't show 0s
-      final snapshot = await ApiService.getCurrentLoanSnapshot();
+    if (auth.isOnboardingCompleted || snapshot != null) {
+      debugPrint(
+        "[INIT] Routing to: main-app. ${snapshot != null ? 'Loan found.' : 'Onboarding marked completed.'}",
+      );
+
       if (snapshot != null) {
         setState(() {
           loanId = snapshot.loanId;
@@ -194,19 +196,13 @@ class _FintechAutoFlowState extends State<FintechAutoFlow> {
           financials['actualRate'] = snapshot.interestRate;
           financials['monthlyPayment'] = snapshot.monthlyPayment;
           financials['estimatedValue'] = snapshot.estimatedValue;
-          // Note: we'll recalculate the "live" balance in a moment
         });
       }
 
       setState(() => step = 'main-app');
 
-      // Trigger auto-recalculation on restart from DB data
       if (snapshot != null) {
         _runTimeTravel(snapshot: snapshot);
-      } else {
-        debugPrint(
-          "[INIT] Could not fetch loan snapshot for auto-recalculation.",
-        );
       }
     } else if (!auth.hasPhone) {
       debugPrint("Routing to: auth-phone");
@@ -274,6 +270,14 @@ class _FintechAutoFlowState extends State<FintechAutoFlow> {
     if (data != null) {
       debugPrint("[STEP] Incoming Data: $data");
     }
+
+    // Trigger draft sync if we have car data and just logged in/registered
+    if (AuthService().isAuthenticated &&
+        carDetails['year'] != null &&
+        carDetails['year']!.isNotEmpty) {
+      _syncDraftVehicle();
+    }
+
     setState(() {
       step = newStep;
       if (data != null) {
@@ -293,17 +297,44 @@ class _FintechAutoFlowState extends State<FintechAutoFlow> {
         } else if (data['current_balance'] != null) {
           financials['userEstimatedLoan'] = data['current_balance'];
         }
-        if (data['documentId'] != null) {
-          // If we have a documentId from OCR, we can't easily get loanId yet
-          // as it's created in syncOnboardingData later.
-        }
         _calculateEquity();
       }
     });
+
+    // Clear temp registration data if we reached the main app
+    if (newStep == 'main-app') {
+      setState(() {
+        tempPhone = '';
+        lastScanData = null;
+      });
+    }
+  }
+
+  Future<void> _syncDraftVehicle() async {
+    if (!AuthService().isAuthenticated) return;
+    if (carDetails['year'] == null || carDetails['year']!.isEmpty) return;
+
+    try {
+      debugPrint("[SYNC] Triggering background draft sync...");
+      await ApiService.syncVehicleData(
+        carDetails: carDetails,
+        estimatedValue: (financials['estimatedValue'] as num).toDouble(),
+      );
+      debugPrint("[SYNC] Draft vehicle synced successfully.");
+    } catch (e) {
+      debugPrint("[SYNC] Draft sync failed: $e");
+    }
   }
 
   Future<void> _runTimeTravel({LoanSnapshot? snapshot}) async {
     debugPrint("[TIME-TRAVEL] Function called.");
+
+    // If no snapshot provided, try to fetch the latest from DB
+    // This is crucial after verification to get the newly created loan ID.
+    if (snapshot == null) {
+      debugPrint("[TIME-TRAVEL] No snapshot provided. Fetching from DB...");
+      snapshot = await ApiService.getCurrentLoanSnapshot();
+    }
 
     double originalBalance;
     double interestRate;
@@ -313,6 +344,9 @@ class _FintechAutoFlowState extends State<FintechAutoFlow> {
 
     if (snapshot != null) {
       debugPrint("[TIME-TRAVEL] Using database snapshot data.");
+      setState(() {
+        loanId = snapshot!.loanId;
+      });
       originalBalance = snapshot.originalBalance;
       interestRate = snapshot.interestRate;
       termMonths = snapshot.termMonths;

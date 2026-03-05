@@ -184,6 +184,26 @@ class _VerifyScanScreenState extends State<VerifyScanScreen>
       _isVinLookupInProgress = false;
       if (details.isEmpty) {
         _vinLookupError = 'Unable to decode VIN';
+      } else {
+        // Automatically sync the decoded VIN details to the carDetails
+        final updates = <String, String>{};
+        if ((details['year'] ?? '').isNotEmpty)
+          updates['year'] = details['year']!;
+        if ((details['make'] ?? '').isNotEmpty)
+          updates['make'] = details['make']!;
+        if ((details['model'] ?? '').isNotEmpty) {
+          updates['model'] = details['model']!;
+        }
+        if (updates.isNotEmpty) {
+          widget.onUpdateCarDetails(updates);
+          // Also update the controller if not current focus or if just loaded
+          final formatted = _formatVehicle(
+            details['year'],
+            details['make'],
+            details['model'],
+          );
+          _vehicleController.text = formatted;
+        }
       }
     });
   }
@@ -715,7 +735,9 @@ class _VerifyScanScreenState extends State<VerifyScanScreen>
                                         children: [
                                           _DetailRow(
                                             label: "Vehicle",
-                                            value: userVehicle,
+                                            value: docVehicle != "Unavailable"
+                                                ? docVehicle
+                                                : userVehicle,
                                             isEditing: _isEditing,
                                             controller: _vehicleController,
                                             colorSlate100: colorSlate100,

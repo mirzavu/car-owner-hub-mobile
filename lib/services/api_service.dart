@@ -382,6 +382,57 @@ class ApiService {
     }
   }
 
+  static Future<String> syncVehicleData({
+    required Map<String, String> carDetails,
+    double? estimatedValue,
+  }) async {
+    final auth = AuthService();
+    if (!auth.isAuthenticated) throw Exception("User not authenticated");
+
+    final userId = auth.userId;
+    if (userId.isEmpty) throw Exception("User ID not found");
+
+    debugPrint("[SYNC] Syncing Vehicle Data (Draft)...");
+
+    try {
+      final vehicles = await auth.pb
+          .collection('vehicles')
+          .getList(page: 1, perPage: 1, filter: 'user_id = "$userId"');
+
+      final vehicleBody = {
+        'user_id': userId,
+        'year': int.tryParse(carDetails['year'] ?? '') ?? 0,
+        'make': carDetails['make'] ?? '',
+        'model': carDetails['model'] ?? '',
+        'trim': carDetails['trim'] ?? '',
+        'vin': carDetails['vin'] ?? '',
+        'status': 'active',
+      };
+
+      if (estimatedValue != null) {
+        vehicleBody['current_market_value'] = estimatedValue;
+      }
+
+      if (vehicles.items.isEmpty) {
+        final record = await auth.pb
+            .collection('vehicles')
+            .create(body: vehicleBody);
+        debugPrint("[SYNC] Created draft vehicle: ${record.id}");
+        return record.id;
+      } else {
+        final vehicleId = vehicles.items.first.id;
+        await auth.pb
+            .collection('vehicles')
+            .update(vehicleId, body: vehicleBody);
+        debugPrint("[SYNC] Updated draft vehicle: $vehicleId");
+        return vehicleId;
+      }
+    } catch (e) {
+      debugPrint("[SYNC] Vehicle Sync Error: $e");
+      rethrow;
+    }
+  }
+
   // 1e. Simple vehicle detail update
   static Future<void> updateVehicleDetails(Map<String, String> updates) async {
     final auth = AuthService();
@@ -597,6 +648,7 @@ class ApiService {
     final vehicles = await auth.pb
         .collection('vehicles')
         .getList(page: 1, perPage: 1, filter: 'user_id = "$userId"');
+    if (vehicles.items.isEmpty) return null;
     final vehicle = vehicles.items.first;
     final vehicleId = vehicle.id;
     final estimatedValue = _toDouble(vehicle.data['current_market_value']);

@@ -785,7 +785,12 @@ class _BuyerDashboardContentState extends State<_BuyerDashboardContent>
                         width: 120,
                         height: 120,
                         decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.18),
+                          gradient: RadialGradient(
+                            colors: [
+                              Colors.white.withValues(alpha: 0.18),
+                              Colors.white.withValues(alpha: 0.0),
+                            ],
+                          ),
                           shape: BoxShape.circle,
                         ),
                       ),
@@ -797,7 +802,12 @@ class _BuyerDashboardContentState extends State<_BuyerDashboardContent>
                         width: 110,
                         height: 110,
                         decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.10),
+                          gradient: RadialGradient(
+                            colors: [
+                              Colors.black.withValues(alpha: 0.10),
+                              Colors.black.withValues(alpha: 0.0),
+                            ],
+                          ),
                           shape: BoxShape.circle,
                         ),
                       ),
