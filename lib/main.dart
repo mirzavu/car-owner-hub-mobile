@@ -9,6 +9,8 @@ import 'screens/vehicle_info_screen.dart';
 import 'screens/teaser_equity_screen.dart' as teaser;
 import 'screens/login_screen.dart';
 import 'screens/registration_screen.dart';
+import 'screens/auth_email_screen.dart';
+import 'screens/auth_otp_screen.dart';
 import 'screens/scan_prompt_screen.dart';
 import 'screens/scanner_screen.dart';
 import 'screens/verify_scan_screen.dart';
@@ -25,10 +27,26 @@ import 'screens/teaser_dashboard_screen.dart';
 
 import 'package:mobile_app/services/auth_service.dart'; // Import AuthService
 import 'package:mobile_app/services/push_token_service.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+
+@pragma('vm:entry-point')
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp();
+  debugPrint("Handling a background message: ${message.messageId}");
+}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   HttpOverrides.global = MyHttpOverrides(); // Bypass SSL errors for dev
+
+  try {
+    await Firebase.initializeApp();
+    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+  } catch (e) {
+    debugPrint("Firebase init failed in main: $e");
+  }
+
   await AuthService().init();
   runApp(const FintechApp());
 }
@@ -176,6 +194,25 @@ class _FintechAutoFlowState extends State<FintechAutoFlow> {
     final fcmToken = await PushTokenService().initAndSyncToken();
     if (fcmToken != null && fcmToken.isNotEmpty) {
       debugPrint('[PUSH] FCM Token: $fcmToken');
+
+      // Listen to foreground messages
+      FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+        debugPrint('Got a message whilst in the foreground!');
+        debugPrint('Message data: ${message.data}');
+
+        if (message.notification != null) {
+          debugPrint(
+            'Message also contained a notification: ${message.notification}',
+          );
+          // Note: Typically you'd show a local notification here if you want it visible while in-app
+        }
+      });
+
+      // Handle tap on notification when app is in background but opened
+      FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+        debugPrint('A new onMessageOpenedApp event was published!');
+        // We could extract actionRoute here and navigate: e.g. message.data['route']
+      });
     }
 
     debugPrint("Onboarding Status: ${auth.onboardingStatus}");
@@ -556,6 +593,17 @@ class _FintechAutoFlowState extends State<FintechAutoFlow> {
         return LoginScreen(
           setStep: (nextStep) => setStep(nextStep),
           onBack: () => setStep(userType == 'buyer' ? 'user-type' : 'teaser'),
+        );
+      case 'auth-email':
+        return AuthEmailScreen(
+          setStep: (nextStep, [data]) => setStep(nextStep, data),
+          onBack: () => setStep('auth-login'),
+        );
+      case 'auth-otp':
+        return AuthOtpScreen(
+          email: lastScanData?['email'] ?? '',
+          setStep: (nextStep) => setStep(nextStep),
+          onBack: () => setStep('auth-email'),
         );
       case 'auth-phone':
         return RegistrationScreen(

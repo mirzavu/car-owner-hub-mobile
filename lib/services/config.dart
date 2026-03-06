@@ -58,4 +58,9 @@ class Config {
   static String get notificationsMarkRead =>
       '$baseUrl/api/notifications/mark-read';
   static String get activity => '$baseUrl/api/activity';
+  static String get uploadGarageDoc => '$baseUrl/api/upload-garage-doc';
+
+  // OTP Endpoints
+  static String get requestOtp => '$baseUrl/api/auth/request-otp';
+  static String get verifyOtp => '$baseUrl/api/auth/verify-otp';
 }

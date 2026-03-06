@@ -935,26 +935,27 @@ class ApiService {
     final auth = AuthService();
     if (!auth.isAuthenticated) throw Exception('Not authenticated');
 
-    try {
-      final body = {
-        'user_id': auth.userId,
-        'doc_type': docType,
-        'status': 'verified', // Skip processing since it's just for storage
-      };
+    var request = http.MultipartRequest(
+      'POST',
+      Uri.parse(Config.uploadGarageDoc),
+    );
+    request.files.add(await http.MultipartFile.fromPath('file_blob', filePath));
+    request.fields['user_id'] = auth.userId;
+    request.fields['doc_type'] = docType;
+    if (loanId != null) {
+      request.fields['loan_id'] = loanId;
+    }
 
-      if (loanId != null) {
-        body['loan_id'] = loanId;
-      }
+    debugPrint("[GARAGE] Uploading document: $docType ($filePath)");
 
-      await auth.pb
-          .collection('documents')
-          .create(
-            body: body,
-            files: [await http.MultipartFile.fromPath('file_blob', filePath)],
-          );
-    } catch (e) {
-      debugPrint("Error uploading garage document: $e");
-      rethrow;
+    var streamedResponse = await request.send();
+    var response = await http.Response.fromStream(streamedResponse);
+
+    debugPrint("[GARAGE] Upload Response Code: ${response.statusCode}");
+
+    if (response.statusCode != 200) {
+      debugPrint("[GARAGE] Failed: ${response.body}");
+      throw Exception('Upload Failed: ${response.body}');
     }
   }
 }

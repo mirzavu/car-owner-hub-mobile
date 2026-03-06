@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/foundation.dart'; // For debugPrint
 import 'package:pocketbase/pocketbase.dart';
 import 'package:flutter_web_auth_2/flutter_web_auth_2.dart';
@@ -140,6 +141,56 @@ class AuthService extends ChangeNotifier {
     }
   }
 
+  // 3. Request Custom Email OTP
+  Future<void> requestCustomOtp(String email) async {
+    debugPrint("[AUTH] Requesting custom OTP for: $email");
+    try {
+      final response = await http.post(
+        Uri.parse(Config.requestOtp),
+        headers: {'Content-Type': 'application/json'},
+        body: '{"email": "$email"}',
+      );
+      if (response.statusCode != 200) {
+        throw Exception("Failed to request OTP: ${response.body}");
+      }
+      debugPrint("[AUTH] OTP requested successfully.");
+    } catch (e) {
+      debugPrint("[AUTH] OTP Request Error: $e");
+      rethrow;
+    }
+  }
+
+  // 4. Verify Custom Email OTP
+  Future<void> verifyCustomOtp(String email, String otpCode) async {
+    debugPrint("[AUTH] Verifying custom OTP for: $email");
+    try {
+      final response = await http.post(
+        Uri.parse(Config.verifyOtp),
+        headers: {'Content-Type': 'application/json'},
+        body: '{"email": "$email", "otp_code": "$otpCode"}',
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception("Failed to verify OTP: ${response.body}");
+      }
+
+      final data = jsonDecode(response.body);
+
+      if (data['success'] != true || data['credentials'] == null) {
+        throw Exception("Invalid OTP response format.");
+      }
+
+      final tempPassword = data['credentials']['password'];
+
+      // Now authenticate directly with PocketBase using the generated temp password
+      await login(email, tempPassword);
+      debugPrint("[AUTH] Custom OTP verification and login complete.");
+    } catch (e) {
+      debugPrint("[AUTH] OTP Verification Error: $e");
+      rethrow;
+    }
+  }
+
   // 3. Update Profile (Name & Phone step)
   Future<void> updateProfile(String name, String phone) async {
     if (!isAuthenticated) return;
@@ -216,4 +267,4 @@ class AuthService extends ChangeNotifier {
       return true;
     }
   }
-}
+} // End of class

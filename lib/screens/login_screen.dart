@@ -183,7 +183,7 @@ class LoginScreen extends StatelessWidget {
                               const SizedBox(height: 16), // space-y-4
                               // Email Fallback Button
                               _LoginButton(
-                                onTap: () => setStep('auth-phone'),
+                                onTap: () => setStep('auth-email'),
                                 backgroundColor: colorVibrantGreen,
                                 shadowColor: colorVibrantGreen.withValues(
                                   alpha: 0.3,
