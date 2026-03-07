@@ -20,11 +20,11 @@ class Config {
 
     // Development URLs
     if (Platform.isAndroid) {
-      return 'http://$androidLanHost:3007';
+      return 'http://$androidLanHost:3077';
     } else if (Platform.isIOS) {
-      return 'http://127.0.0.1:3007';
+      return 'http://127.0.0.1:3077';
     } else {
-      return 'http://localhost:3007';
+      return 'http://localhost:3077';
     }
   }
 
@@ -38,11 +38,11 @@ class Config {
     }
 
     if (Platform.isAndroid) {
-      return 'http://$androidLanHost:8097';
+      return 'http://$androidLanHost:8077';
     } else if (Platform.isIOS) {
-      return 'http://127.0.0.1:8097';
+      return 'http://127.0.0.1:8077';
     } else {
-      return 'http://localhost:8097';
+      return 'http://localhost:8077';
     }
   }
 

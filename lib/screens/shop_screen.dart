@@ -484,14 +484,13 @@ class _ShopScreenState extends State<ShopScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: colorGreen.withOpacity(0.1),
+                  color: colorGreen.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
                   _activeStepDelta == 0
                       ? 'No Change'
-                      : (_activeStepDelta > 0 ? '+' : '') +
-                            '\$$_activeStepDelta/mo',
+                      : '${_activeStepDelta > 0 ? '+' : ''}\$$_activeStepDelta/mo',
                   style: GoogleFonts.outfit(
                     fontSize: 12,
                     fontWeight: FontWeight.bold,

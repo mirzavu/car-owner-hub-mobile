@@ -187,10 +187,12 @@ class _VerifyScanScreenState extends State<VerifyScanScreen>
       } else {
         // Automatically sync the decoded VIN details to the carDetails
         final updates = <String, String>{};
-        if ((details['year'] ?? '').isNotEmpty)
+        if ((details['year'] ?? '').isNotEmpty) {
           updates['year'] = details['year']!;
-        if ((details['make'] ?? '').isNotEmpty)
+        }
+        if ((details['make'] ?? '').isNotEmpty) {
           updates['make'] = details['make']!;
+        }
         if ((details['model'] ?? '').isNotEmpty) {
           updates['model'] = details['model']!;
         }
