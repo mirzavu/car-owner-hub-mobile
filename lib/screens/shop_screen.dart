@@ -269,8 +269,10 @@ class _ShopScreenState extends State<ShopScreen> {
                     return const Center(
                       child: Padding(
                         padding: EdgeInsets.symmetric(vertical: 40),
-                        child: CircularProgressIndicator(
-                          color: Color(0xFF003366),
+                        child: SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(strokeWidth: 2),
                         ),
                       ),
                     );

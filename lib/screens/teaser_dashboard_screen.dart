@@ -516,12 +516,11 @@ class _TeaserDashboardScreenState extends State<TeaserDashboardScreen> {
             children: _isScanning
                 ? [
                     const SizedBox(
-                      width: 24,
-                      height: 24,
+                      width: 20,
+                      height: 20,
                       child: CircularProgressIndicator(
-                        strokeWidth: 3,
+                        strokeWidth: 2,
                         color: cDarkBg,
-                        backgroundColor: Colors.white30,
                       ),
                     ),
                   ]

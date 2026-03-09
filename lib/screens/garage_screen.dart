@@ -99,7 +99,11 @@ class _GarageScreenState extends State<GarageScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const CircularProgressIndicator(color: Color(0xFF003366)),
+              const SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
               const SizedBox(height: 16),
               Text(
                 message,

@@ -195,7 +195,13 @@ class _ActivityHistoryScreenState extends State<ActivityHistoryScreen> {
             ),
             Expanded(
               child: _isLoading
-                  ? const Center(child: CircularProgressIndicator())
+                  ? const Center(
+                      child: SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    )
                   : _error != null
                   ? Center(
                       child: Padding(
@@ -240,11 +246,13 @@ class _ActivityHistoryScreenState extends State<ActivityHistoryScreen> {
                           }
 
                           if (index >= _items.length) {
-                            return const Padding(
-                              padding: EdgeInsets.symmetric(vertical: 20),
-                              child: Center(
+                            return Center(
+                              child: SizedBox(
+                                width: 20,
+                                height: 20,
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2,
+                                  color: Theme.of(context).primaryColor,
                                 ),
                               ),
                             );

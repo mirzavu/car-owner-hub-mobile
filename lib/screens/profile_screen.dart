@@ -268,9 +268,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                       shape: BoxShape.circle,
                                     ),
                                     child: const Center(
-                                      child: CircularProgressIndicator(
-                                        color: Colors.white,
-                                        strokeWidth: 3,
+                                      child: SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Colors.white,
+                                        ),
                                       ),
                                     ),
                                   )
@@ -350,10 +354,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           children: [
                             if (_isPushUpdating)
                               const SizedBox(
-                                width: 14,
-                                height: 14,
+                                width: 16,
+                                height: 16,
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2,
+                                  color: colorNavy,
                                 ),
                               ),
                             if (_isPushUpdating) const SizedBox(width: 8),

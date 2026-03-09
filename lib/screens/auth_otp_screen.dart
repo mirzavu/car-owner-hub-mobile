@@ -94,166 +94,175 @@ class _AuthOtpScreenState extends State<AuthOtpScreen> {
         ),
       ),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(32.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Icon
-              Container(
-                width: 60,
-                height: 60,
-                margin: const EdgeInsets.only(bottom: 24),
-                decoration: BoxDecoration(
-                  color: colorSlate50,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: colorSlate100),
-                ),
-                child: const Center(
-                  child: Icon(LucideIcons.key, size: 28, color: colorSlate900),
-                ),
-              ),
-
-              // Headings
-              Text(
-                "Enter code",
-                style: GoogleFonts.outfit(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  color: colorSlate900,
-                ),
-              ),
-              const SizedBox(height: 12),
-              RichText(
-                text: TextSpan(
-                  style: GoogleFonts.outfit(
-                    fontSize: 16,
-                    color: colorSlate500,
-                    height: 1.5,
-                  ),
-                  children: [
-                    const TextSpan(
-                      text: "We sent a 6-digit verification code to\n",
+        child: Center(
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.all(32.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Icon
+                  Container(
+                    width: 60,
+                    height: 60,
+                    margin: const EdgeInsets.only(bottom: 24),
+                    decoration: BoxDecoration(
+                      color: colorSlate50,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: colorSlate100),
                     ),
-                    TextSpan(
-                      text: widget.email,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: colorSlate700,
+                    child: const Center(
+                      child: Icon(
+                        LucideIcons.key,
+                        size: 28,
+                        color: colorSlate900,
                       ),
                     ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 32),
+                  ),
 
-              // OTP Input
-              Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color:
-                        _errorMessage != null &&
-                            _errorMessage!.contains("Invalid")
-                        ? Colors.red
-                        : colorSlate300,
+                  // Headings
+                  Text(
+                    "Enter code",
+                    style: GoogleFonts.outfit(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      color: colorSlate900,
+                    ),
                   ),
-                ),
-                child: TextField(
-                  controller: _otpController,
-                  keyboardType: TextInputType.number,
-                  maxLength: 6,
-                  autofocus: true,
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.outfit(
-                    fontSize: 32,
-                    letterSpacing: 8,
-                    fontWeight: FontWeight.bold,
-                    color: colorSlate900,
-                  ),
-                  decoration: const InputDecoration(
-                    counterText: "",
-                    border: InputBorder.none,
-                    contentPadding: EdgeInsets.symmetric(vertical: 16),
-                  ),
-                  onChanged: (val) {
-                    if (val.length == 6) {
-                      _handleVerify();
-                    }
-                  },
-                ),
-              ),
-
-              if (_errorMessage != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 8.0),
-                  child: Center(
-                    child: Text(
-                      _errorMessage!,
+                  const SizedBox(height: 12),
+                  RichText(
+                    text: TextSpan(
                       style: GoogleFonts.outfit(
-                        color: _errorMessage!.contains("sent")
-                            ? colorVibrantGreen
-                            : Colors.red,
-                        fontSize: 14,
+                        fontSize: 16,
+                        color: colorSlate500,
+                        height: 1.5,
                       ),
-                    ),
-                  ),
-                ),
-
-              const SizedBox(height: 32),
-
-              // Verify Button
-              SizedBox(
-                width: double.infinity,
-                height: 56,
-                child: ElevatedButton(
-                  onPressed: _isLoading ? null : _handleVerify,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: colorVibrantGreen,
-                    disabledBackgroundColor: colorSlate300,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    elevation: 0,
-                  ),
-                  child: _isLoading
-                      ? const SizedBox(
-                          width: 24,
-                          height: 24,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2,
-                          ),
-                        )
-                      : Text(
-                          "Verify and Sign In",
-                          style: GoogleFonts.outfit(
-                            fontSize: 18,
+                      children: [
+                        const TextSpan(
+                          text: "We sent a 6-digit verification code to\n",
+                        ),
+                        TextSpan(
+                          text: widget.email,
+                          style: const TextStyle(
                             fontWeight: FontWeight.bold,
-                            color: Colors.white,
+                            color: colorSlate700,
                           ),
                         ),
-                ),
-              ),
-
-              const SizedBox(height: 24),
-
-              // Resend Text Link
-              Center(
-                child: TextButton(
-                  onPressed: _isLoading ? null : _handleResend,
-                  child: Text(
-                    "Didn't receive a code?",
-                    style: GoogleFonts.outfit(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: colorSlate500,
-                      decoration: TextDecoration.underline,
+                      ],
                     ),
                   ),
-                ),
+                  const SizedBox(height: 32),
+
+                  // OTP Input
+                  Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color:
+                            _errorMessage != null &&
+                                _errorMessage!.contains("Invalid")
+                            ? Colors.red
+                            : colorSlate300,
+                      ),
+                    ),
+                    child: TextField(
+                      controller: _otpController,
+                      keyboardType: TextInputType.number,
+                      maxLength: 6,
+                      autofocus: true,
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.outfit(
+                        fontSize: 32,
+                        letterSpacing: 8,
+                        fontWeight: FontWeight.bold,
+                        color: colorSlate900,
+                      ),
+                      decoration: const InputDecoration(
+                        counterText: "",
+                        border: InputBorder.none,
+                        contentPadding: EdgeInsets.symmetric(vertical: 16),
+                      ),
+                      onChanged: (val) {
+                        if (val.length == 6) {
+                          _handleVerify();
+                        }
+                      },
+                    ),
+                  ),
+
+                  if (_errorMessage != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8.0),
+                      child: Center(
+                        child: Text(
+                          _errorMessage!,
+                          style: GoogleFonts.outfit(
+                            color: _errorMessage!.contains("sent")
+                                ? colorVibrantGreen
+                                : Colors.red,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                    ),
+
+                  const SizedBox(height: 32),
+
+                  // Verify Button
+                  SizedBox(
+                    width: double.infinity,
+                    height: 56,
+                    child: ElevatedButton(
+                      onPressed: _isLoading ? null : _handleVerify,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: colorVibrantGreen,
+                        disabledBackgroundColor: colorSlate300,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 0,
+                      ),
+                      child: _isLoading
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : Text(
+                              "Verify and Sign In",
+                              style: GoogleFonts.outfit(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // Resend Text Link
+                  Center(
+                    child: TextButton(
+                      onPressed: _isLoading ? null : _handleResend,
+                      child: Text(
+                        "Didn't receive a code?",
+                        style: GoogleFonts.outfit(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: colorSlate500,
+                          decoration: TextDecoration.underline,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       ),

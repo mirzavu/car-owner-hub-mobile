@@ -398,17 +398,12 @@ class _VehicleInfoScreenState extends State<VehicleInfoScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            SizedBox(
-              width: 64,
-              height: 64,
-              child: CircularProgressIndicator(
-                strokeWidth: 4,
-                valueColor: const AlwaysStoppedAnimation<Color>(
-                  Color(0xFF003366),
-                ),
-                backgroundColor: const Color(0xFFE6F0FA),
-              ),
+            const SizedBox(
+              width: 32,
+              height: 32,
+              child: CircularProgressIndicator(strokeWidth: 3),
             ),
+            const SizedBox(height: 24),
             const SizedBox(height: 24),
             Text(
               loadingText,
@@ -442,64 +437,78 @@ class _VehicleInfoScreenState extends State<VehicleInfoScreen> {
         SafeArea(
           bottom: false,
           child: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  width: 80,
-                  height: 80,
-                  margin: const EdgeInsets.only(bottom: 24),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(32),
-                    color: Colors.white.withValues(alpha: 0.05),
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(32),
-                    child: BackdropFilter(
-                      filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-                      child: const Center(
-                        child: CarIcon(size: 40, color: Colors.white),
+            child: SingleChildScrollView(
+              physics: const NeverScrollableScrollPhysics(),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 80,
+                    height: 80,
+                    margin: const EdgeInsets.only(bottom: 24),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(32),
+                      color: Colors.white.withValues(alpha: 0.05),
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(32),
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                        child: const Center(
+                          child: CarIcon(size: 40, color: Colors.white),
+                        ),
                       ),
                     ),
                   ),
-                ),
-                Text(
-                  "Value your vehicle",
-                  style: GoogleFonts.outfit(
-                    color: Colors.white,
-                    fontSize: 36,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                Text(
-                  "instantly.",
-                  style: GoogleFonts.outfit(
-                    color: const Color(0xFFE6F0FA).withValues(alpha: 0.9),
-                    fontSize: 32,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: Text(
-                    "NO VIN REQUIRED",
-                    style: GoogleFonts.outfit(
-                      color: const Color(0xFFE6F0FA),
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 2.4,
+                  FittedBox(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: Column(
+                        children: [
+                          Text(
+                            "Value your vehicle",
+                            style: GoogleFonts.outfit(
+                              color: Colors.white,
+                              fontSize: 36,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          Text(
+                            "instantly.",
+                            style: GoogleFonts.outfit(
+                              color: const Color(
+                                0xFFE6F0FA,
+                              ).withValues(alpha: 0.9),
+                              fontSize: 32,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                ),
-              ],
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      "NO VIN REQUIRED",
+                      style: GoogleFonts.outfit(
+                        color: const Color(0xFFE6F0FA),
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 2.4,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -600,8 +609,8 @@ class _VehicleInfoScreenState extends State<VehicleInfoScreen> {
                   ? const Align(
                       alignment: Alignment.centerLeft,
                       child: SizedBox(
-                        width: 20,
-                        height: 20,
+                        width: 16,
+                        height: 16,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       ),
                     )

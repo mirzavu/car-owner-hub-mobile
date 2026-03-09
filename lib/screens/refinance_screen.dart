@@ -590,19 +590,26 @@ class _RefinanceScreenState extends State<RefinanceScreen> {
                         borderRadius: BorderRadius.circular(16),
                       ),
                     ),
-                    child: Text(
-                      _paidOff
-                          ? "Loan Paid Off"
-                          : _submitting
-                          ? "Submitting..."
-                          : _quote!.qualifies
-                          ? "Submit Application"
-                          : "Rate Shield Active",
-                      style: GoogleFonts.outfit(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+                    child: _submitting
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : Text(
+                            _paidOff
+                                ? "Loan Paid Off"
+                                : _quote!.qualifies
+                                ? "Submit Application"
+                                : "Rate Shield Active",
+                            style: GoogleFonts.outfit(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                   ),
                 ),
               ),

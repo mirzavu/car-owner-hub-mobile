@@ -403,7 +403,14 @@ class _ScanPromptScreenState extends State<ScanPromptScreen>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const CircularProgressIndicator(color: colorVibrantGreen),
+              const SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: colorSlate900,
+                ),
+              ),
               const SizedBox(height: 16),
               Text(
                 "Fetching details...",

@@ -9,13 +9,17 @@ class Config {
 
   // 1. Determine the Base URL based on the platform
   static String get baseUrl {
-    // Check if provided via build-args (e.g. flutter run --dart-define=BACKEND_URL=...)
+    // Check if provided via build-args
     const String fromEnv = String.fromEnvironment('BACKEND_URL');
     if (fromEnv.isNotEmpty) return fromEnv;
 
+    // Easy toggle for production
+    const String appEnv = String.fromEnvironment('APP_ENV');
+    if (appEnv == 'prod') return 'https://api.carownershub.app';
+
     if (kReleaseMode) {
-      // Production URL placeholder (Should be set via --define in CI/CD)
-      return 'https://api.carownershub.com';
+      // Production URL fallback
+      return 'https://api.carownershub.app';
     }
 
     // Development URLs
@@ -33,8 +37,12 @@ class Config {
     const String fromEnv = String.fromEnvironment('POCKETBASE_URL');
     if (fromEnv.isNotEmpty) return fromEnv;
 
+    // Easy toggle for production
+    const String appEnv = String.fromEnvironment('APP_ENV');
+    if (appEnv == 'prod') return 'https://pb.carownershub.app';
+
     if (kReleaseMode) {
-      return 'https://pb.carownershub.com';
+      return 'https://pb.carownershub.app';
     }
 
     if (Platform.isAndroid) {

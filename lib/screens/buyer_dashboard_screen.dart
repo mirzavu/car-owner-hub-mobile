@@ -316,11 +316,12 @@ class _BuyerDashboardContentState extends State<_BuyerDashboardContent>
               child: Stack(
                 alignment: Alignment.center,
                 children: [
-                  CircularProgressIndicator(
-                    value: 1,
-                    strokeWidth: 3,
-                    valueColor: AlwaysStoppedAnimation<Color>(
-                      Colors.white.withValues(alpha: 0.1),
+                  const SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white24,
                     ),
                   ),
                   TweenAnimationBuilder<double>(
@@ -677,7 +678,13 @@ class _BuyerDashboardContentState extends State<_BuyerDashboardContent>
         if (vm.inventoryLoading && vm.inventory.isEmpty)
           const SizedBox(
             height: 280,
-            child: Center(child: CircularProgressIndicator(color: cNeon)),
+            child: Center(
+              child: SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(strokeWidth: 2, color: cNeon),
+              ),
+            ),
           )
         else if (vm.inventoryError != null && vm.inventory.isEmpty)
           Padding(
