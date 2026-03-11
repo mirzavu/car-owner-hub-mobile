@@ -77,6 +77,19 @@ class _VerifyScanScreenState extends State<VerifyScanScreen>
 
     _initControllers();
 
+    // Check if scanData already contains vehicle info (from OCR)
+    final scanYear = widget.scanData['year']?.toString();
+    final scanMake = widget.scanData['make']?.toString();
+    final scanModel = widget.scanData['model']?.toString();
+
+    if (scanYear != null || scanMake != null || scanModel != null) {
+      _vinDetails = {
+        'year': scanYear ?? '',
+        'make': scanMake ?? '',
+        'model': scanModel ?? '',
+      };
+    }
+
     // Only lookup VIN if we actually scanned one
     /*
     if (!_isManualEntry) {
