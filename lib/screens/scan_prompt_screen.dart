@@ -414,7 +414,7 @@ class _ScanPromptScreenState extends State<ScanPromptScreen>
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
-              "Low quality document. Please try again or enter manually.",
+              "Scan failed. Please try again or enter details manually.",
             ),
             backgroundColor: Colors.redAccent,
           ),
@@ -429,9 +429,16 @@ class _ScanPromptScreenState extends State<ScanPromptScreen>
       setState(() => _isProcessing = false);
       // Close bottom sheet if it's still open
       if (Navigator.canPop(context)) Navigator.pop(context);
+      
+      // Improve the error message for OCR/Network failures
+      String errorMsg = "Upload failed. Please try again or enter manually.";
+      if (e.toString().contains("OCR Failed")) {
+        errorMsg = "Scan failed. Please ensure the document is clear, or enter details manually.";
+      }
+      
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text("Error picking file: $e"),
+          content: Text(errorMsg),
           backgroundColor: Colors.redAccent,
         ),
       );

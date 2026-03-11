@@ -53,6 +53,8 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
 
     if (widget.initialValue.isNotEmpty) {
       _phoneController.text = widget.initialValue;
+    } else if (AuthService().userPhone.isNotEmpty) {
+      _phoneController.text = AuthService().userPhone;
     }
 
     _validate();

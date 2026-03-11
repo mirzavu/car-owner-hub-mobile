@@ -78,9 +78,11 @@ class _VerifyScanScreenState extends State<VerifyScanScreen>
     _initControllers();
 
     // Only lookup VIN if we actually scanned one
+    /*
     if (!_isManualEntry) {
       _loadVinDetails();
     }
+    */
   }
 
   void _initControllers() {
@@ -338,14 +340,45 @@ class _VerifyScanScreenState extends State<VerifyScanScreen>
     });
 
     try {
+      // 1. Update carDetails with the verified scanned details
+      if (_vinDetails != null) {
+        widget.onUpdateCarDetails({
+          'year': _vinDetails!['year'] ?? '',
+          'make': _vinDetails!['make'] ?? '',
+          'model': _vinDetails!['model'] ?? '',
+          'trim': _vinDetails!['trim'] ?? '',
+          'vin': _normalizeVin(widget.scanData['vin']?.toString()),
+        });
+      }
+
+      // 2. Fetch the correct estimate for the new vehicle
+      double finalEstimate = widget.estimatedValue;
+      if (_vinDetails != null) {
+        try {
+          final estimateResult = await ApiService.getEstimate(
+            year: int.tryParse(_vinDetails!['year'] ?? '') ?? 0,
+            make: _vinDetails!['make'] ?? '',
+            model: _vinDetails!['model'] ?? '',
+            trim: _vinDetails!['trim'] ?? '',
+          );
+          if (estimateResult.containsKey('estimated_value') || estimateResult.containsKey('value')) {
+             final val = estimateResult['estimated_value'] ?? estimateResult['value'];
+            finalEstimate = (val as num).toDouble();
+            debugPrint("[VERIFY] New Estimate based on scanned data: $finalEstimate");
+          }
+        } catch (e) {
+          debugPrint("[VERIFY] Fetch estimate for scanned data failed: $e. Using fallback.");
+        }
+      }
+
       debugPrint(
-        "[VERIFY] HandleUseDocDetails. EstimatedValue: ${widget.estimatedValue}, CarDetails: ${widget.carDetails}, ScanData: ${widget.scanData}",
+        "[VERIFY] HandleUseDocDetails. New EstimatedValue: $finalEstimate, New CarDetails: $_vinDetails, ScanData: ${widget.scanData}",
       );
 
       await ApiService.syncOnboardingData(
-        carDetails: widget.carDetails,
+        carDetails: _vinDetails != null ? Map<String, String>.from(_vinDetails!) : widget.carDetails,
         scanData: widget.scanData,
-        estimatedValue: widget.estimatedValue,
+        estimatedValue: finalEstimate,
         isVerified: true,
         documentId: widget.scanData['documentId']?.toString(),
       );

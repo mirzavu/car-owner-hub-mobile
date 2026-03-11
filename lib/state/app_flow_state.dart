@@ -116,6 +116,25 @@ class AppFlowNotifier extends StateNotifier<AppFlowState> {
     debugPrint('Has Phone: ${auth.hasPhone} (${auth.userPhone})');
 
     LoanSnapshot? snapshot = await ApiService.getCurrentLoanSnapshot();
+    Map<String, dynamic>? userVehicle = await ApiService.getUserVehicle();
+
+    if (userVehicle != null) {
+      ref.read(vehicleProvider.notifier).updateCarDetails({
+        'year': userVehicle['year'],
+        'make': userVehicle['make'],
+        'model': userVehicle['model'],
+        'trim': userVehicle['trim'],
+        'vin': userVehicle['vin'],
+        'mileage': userVehicle['mileage'],
+      });
+      
+      final estimatedValue = userVehicle['current_market_value'] as double;
+      if (estimatedValue > 0) {
+        ref.read(financialsProvider.notifier).update({
+          'estimatedValue': estimatedValue,
+        });
+      }
+    }
 
     if (auth.isOnboardingCompleted || snapshot != null) {
       debugPrint(
@@ -149,6 +168,8 @@ class AppFlowNotifier extends StateNotifier<AppFlowState> {
   }
 
   void setStep(String newStep, [Map<String, dynamic>? data]) {
+    if (state.step == newStep && data == null) return;
+    
     debugPrint('[STEP] Transition: ${state.step} -> $newStep');
     if (data != null) {
       debugPrint('[STEP] Incoming Data: $data');

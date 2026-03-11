@@ -267,6 +267,7 @@ class ApiService {
         'make': carDetails['make'] ?? '',
         'model': carDetails['model'] ?? '',
         'trim': carDetails['trim'] ?? '',
+        'mileage': int.tryParse(carDetails['mileage']?.replaceAll(RegExp(r'[^0-9]'), '') ?? '') ?? 0,
         'vin': carDetails['vin'] ?? scanData['vin'] ?? '',
         'current_market_value': estimatedValue,
         'status': 'active',
@@ -402,20 +403,21 @@ class ApiService {
       final vehicles = await auth.pb
           .collection('vehicles')
           .getList(page: 1, perPage: 1, filter: 'user_id = "$userId"');
+final vehicleBody = {
+  'user_id': userId,
+  'year': int.tryParse(carDetails['year'] ?? '') ?? 0,
+  'make': carDetails['make'] ?? '',
+  'model': carDetails['model'] ?? '',
+  'trim': carDetails['trim'] ?? '',
+  'mileage': int.tryParse(carDetails['mileage']?.replaceAll(RegExp(r'[^0-9]'), '') ?? '') ?? 0,
+  'vin': carDetails['vin'] ?? '',
+  'plate': carDetails['plate'] ?? '',
+  'is_verified': false,
+};
 
-      final vehicleBody = {
-        'user_id': userId,
-        'year': int.tryParse(carDetails['year'] ?? '') ?? 0,
-        'make': carDetails['make'] ?? '',
-        'model': carDetails['model'] ?? '',
-        'trim': carDetails['trim'] ?? '',
-        'vin': carDetails['vin'] ?? '',
-        'status': 'active',
-      };
-
-      if (estimatedValue != null) {
-        vehicleBody['current_market_value'] = estimatedValue;
-      }
+if (estimatedValue != null) {
+  vehicleBody['current_market_value'] = estimatedValue;
+}
 
       if (vehicles.items.isEmpty) {
         final record = await auth.pb
@@ -642,6 +644,36 @@ class ApiService {
     throw Exception('Market rate setting not found');
   }
 
+  static Future<Map<String, dynamic>?> getUserVehicle() async {
+    final auth = AuthService();
+    if (!auth.isAuthenticated) return null;
+
+    final userId = auth.userId;
+    if (userId.isEmpty) return null;
+
+    try {
+      final vehicles = await auth.pb
+          .collection('vehicles')
+          .getList(page: 1, perPage: 1, filter: 'user_id = "$userId"');
+      if (vehicles.items.isEmpty) return null;
+      final vehicle = vehicles.items.first;
+      
+      return {
+        'id': vehicle.id,
+        'year': vehicle.data['year']?.toString() ?? '',
+        'make': vehicle.data['make']?.toString() ?? '',
+        'model': vehicle.data['model']?.toString() ?? '',
+        'trim': vehicle.data['trim']?.toString() ?? '',
+        'vin': vehicle.data['vin']?.toString() ?? '',
+        'mileage': vehicle.data['mileage']?.toString() ?? '',
+        'current_market_value': _toDouble(vehicle.data['current_market_value']),
+      };
+    } catch (e) {
+      debugPrint("Error fetching user vehicle: $e");
+      return null;
+    }
+  }
+
   static Future<LoanSnapshot?> getCurrentLoanSnapshot() async {
     final auth = AuthService();
     if (!auth.isAuthenticated) return null;
@@ -797,20 +829,26 @@ class ApiService {
     if (make != null) url += '&make=$make';
     if (model != null) url += '&model=$model';
 
+    debugPrint("[API] getVehicleOptions calling: $url");
+
     try {
       final response = await http
           .get(Uri.parse(url))
           .timeout(const Duration(seconds: 5));
 
+      debugPrint("[API] getVehicleOptions response code: ${response.statusCode}");
+      
       if (response.statusCode == 200) {
         // Convert [2023, 2022] to ["2023", "2022"]
         final List<dynamic> data = jsonDecode(response.body);
+        debugPrint("[API] getVehicleOptions data length: ${data.length}");
         return data.map((e) => e.toString()).toList();
       } else {
+        debugPrint("[API] getVehicleOptions failed: ${response.body}");
         return [];
       }
     } catch (e) {
-      debugPrint("Error fetching vehicle options: $e");
+      debugPrint("[API] Error fetching vehicle options: $e");
       rethrow;
     }
   }

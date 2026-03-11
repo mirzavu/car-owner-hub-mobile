@@ -23,7 +23,30 @@ class TeaserDashboardScreen extends StatefulWidget {
   State<TeaserDashboardScreen> createState() => _TeaserDashboardScreenState();
 }
 
-class _TeaserDashboardScreenState extends State<TeaserDashboardScreen> {
+class _TeaserDashboardScreenState extends State<TeaserDashboardScreen> with SingleTickerProviderStateMixin {
+  final GlobalKey _scanButtonKey = GlobalKey();
+  late AnimationController _highlightController;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _highlightController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 400),
+    );
+    _scaleAnimation = TweenSequence<double>([
+      TweenSequenceItem(tween: Tween(begin: 1.0, end: 1.02).chain(CurveTween(curve: Curves.easeOutCubic)), weight: 50),
+      TweenSequenceItem(tween: Tween(begin: 1.02, end: 1.0).chain(CurveTween(curve: Curves.easeInCubic)), weight: 50),
+    ]).animate(_highlightController);
+  }
+
+  @override
+  void dispose() {
+    _highlightController.dispose();
+    super.dispose();
+  }
+
   final List<Map<String, dynamic>> _mockInventory = [
     {
       'id': '1',
@@ -211,6 +234,7 @@ class _TeaserDashboardScreenState extends State<TeaserDashboardScreen> {
                               description:
                                   'Discover exactly how much cash you can extract from your ${widget.carDetails['make']}.',
                               iconType: 'car',
+                              onTap: _scrollToAndHighlightCTA,
                             ),
                             const SizedBox(height: 16),
                             _buildLockedFeatureCard(
@@ -218,6 +242,7 @@ class _TeaserDashboardScreenState extends State<TeaserDashboardScreen> {
                               description:
                                   'Calculate precise trade-in power to shop new verified inventory.',
                               iconType: 'car',
+                              onTap: _scrollToAndHighlightCTA,
                             ),
                             const SizedBox(height: 28),
                             _buildScanButton(),
@@ -366,13 +391,29 @@ class _TeaserDashboardScreenState extends State<TeaserDashboardScreen> {
     );
   }
 
+  void _scrollToAndHighlightCTA() {
+    if (_scanButtonKey.currentContext != null) {
+      Scrollable.ensureVisible(
+        _scanButtonKey.currentContext!,
+        duration: const Duration(milliseconds: 600),
+        curve: Curves.easeInOut,
+        alignment: 0.5,
+      ).then((_) {
+        _highlightController.forward(from: 0);
+      });
+    }
+  }
+
   Widget _buildLockedFeatureCard({
     required String title,
     required String description,
     required String iconType,
+    required VoidCallback onTap,
   }) {
-    return Container(
-      padding: const EdgeInsets.all(20),
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(28),
@@ -492,14 +533,28 @@ class _TeaserDashboardScreenState extends State<TeaserDashboardScreen> {
           ),
         ],
       ),
+      ),
     );
   }
 
   Widget _buildScanButton() {
     return Column(
+      key: _scanButtonKey,
       children: [
-        ElevatedButton(
-          onPressed: _isScanning ? null : _handleScanClick,
+        ScaleTransition(
+          scale: _scaleAnimation,
+          child: AnimatedBuilder(
+            animation: _highlightController,
+            builder: (context, child) {
+              return Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(24),
+                ),
+                child: child,
+              );
+            },
+            child: ElevatedButton(
+              onPressed: _isScanning ? null : _handleScanClick,
           style: ElevatedButton.styleFrom(
             backgroundColor: cNeon,
             foregroundColor: cDarkBg,
@@ -542,6 +597,8 @@ class _TeaserDashboardScreenState extends State<TeaserDashboardScreen> {
                     const SizedBox(width: 12),
                     const Icon(LucideIcons.arrowRight, size: 20),
                   ],
+              ),
+            ),
           ),
         ),
         const SizedBox(height: 16),

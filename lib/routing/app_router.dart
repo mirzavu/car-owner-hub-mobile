@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter/material.dart';
+import '../services/auth_service.dart';
 import '../screens/auth_email_screen.dart';
 import '../screens/auth_otp_screen.dart';
 import '../screens/login_screen.dart';
@@ -102,6 +103,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                     'make': details['make'] ?? '',
                     'model': details['model'] ?? '',
                     'trim': details['trim'] ?? '',
+                    'mileage': details['mileage'] ?? '',
                     'vin': '',
                     'plate': '',
                   });
@@ -198,7 +200,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               builder: (context, ref, _) => ScanPromptScreen(
                 setStep: (nextStep, [data]) =>
                     ref.read(appFlowProvider.notifier).setStep(nextStep, data),
-                onBack: () => ref.read(appFlowProvider.notifier).setStep('auth-phone'),
+                onBack: () {
+                  if (AuthService().hasPhone) {
+                    ref.read(appFlowProvider.notifier).setStep('main-app');
+                  } else {
+                    ref.read(appFlowProvider.notifier).setStep('auth-phone');
+                  }
+                },
               ),
             ),
           ),

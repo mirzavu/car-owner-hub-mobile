@@ -175,7 +175,7 @@ class _ScannerScreenState extends State<ScannerScreen>
       debugPrint("OCR error: $e");
       if (!mounted) return;
       setState(() {
-        _statusText = "Connection error. Please try again.";
+        _statusText = "Scan failed. Please try again or enter manually.";
         _scanPhase = ScanPhase.error;
         _laserController.stop();
       });

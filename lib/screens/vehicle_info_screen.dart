@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../components/car_icon.dart';
+import '../components/custom_slider_components.dart';
 import '../services/api_service.dart'; // Import API Service
 
 class VehicleInfoScreen extends StatefulWidget {
@@ -26,65 +27,53 @@ class _VehicleInfoScreenState extends State<VehicleInfoScreen> {
   String loadingText = '';
 
   // --- SELECTION STATE ---
-  String? selectedYear;
+  double selectedYear = 2020; // Default value for slider
   String? selectedMake;
   String? selectedModel;
-  String? selectedTrim;
+  double selectedMileage = 80000; // Default value for slider
 
   // --- DATA LISTS (From API) ---
-  List<String> years = [];
   List<String> makes = [];
   List<String> models = [];
 
   // --- LOADING STATES FOR DROPDOWNS ---
-  bool isLoadingYears = true;
-  bool isLoadingMakes = false;
+  bool isLoadingMakes = true;
   bool isLoadingModels = false;
 
   @override
   void initState() {
     super.initState();
-    _loadYears();
+    _loadMakes();
   }
 
   // --- API CALLS ---
-  Future<void> _loadYears() async {
-    setState(() {
-      isLoadingYears = true;
-    });
-    try {
-      final data = await ApiService.getVehicleOptions(type: 'years');
-      if (mounted) {
-        setState(() {
-          years = data;
-          isLoadingYears = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          isLoadingYears = false;
-        });
-      }
-    }
-  }
-
-  Future<void> _loadMakes(String year) async {
+  Future<void> _loadMakes() async {
     setState(() {
       isLoadingMakes = true;
       makes = [];
       selectedMake = null;
       models = [];
       selectedModel = null;
-      selectedTrim = null;
     });
 
-    final data = await ApiService.getVehicleOptions(type: 'makes', year: year);
-    if (mounted) {
-      setState(() {
-        makes = data;
-        isLoadingMakes = false;
-      });
+    try {
+      final data = await ApiService.getVehicleOptions(
+        type: 'makes',
+      );
+      debugPrint("[VEHICLE-INFO] API returned makes: $data");
+      if (mounted) {
+        setState(() {
+          makes = data;
+          isLoadingMakes = false;
+        });
+      }
+    } catch (e) {
+      debugPrint("[VEHICLE-INFO] Error loading makes: $e");
+      if (mounted) {
+        setState(() {
+          isLoadingMakes = false;
+        });
+      }
     }
   }
 
@@ -93,34 +82,42 @@ class _VehicleInfoScreenState extends State<VehicleInfoScreen> {
       isLoadingModels = true;
       models = [];
       selectedModel = null;
-      selectedTrim = null; // Reset trim on model change
     });
 
-    final data = await ApiService.getVehicleOptions(
-      type: 'models',
-      make: make,
-      year: selectedYear,
-    );
-    if (mounted) {
-      setState(() {
-        models = data;
-        isLoadingModels = false;
-      });
+    try {
+      final data = await ApiService.getVehicleOptions(
+        type: 'models',
+        make: make,
+      );
+      debugPrint("[VEHICLE-INFO] API returned models for $make: $data");
+      if (mounted) {
+        setState(() {
+          models = data;
+          isLoadingModels = false;
+        });
+      }
+    } catch (e) {
+      debugPrint("[VEHICLE-INFO] Error loading models for $make: $e");
+      if (mounted) {
+        setState(() {
+          isLoadingModels = false;
+        });
+      }
     }
   }
 
   // --- HANDLERS ---
   void handleNext() {
     // Basic Validation
-    if (selectedYear == null || selectedMake == null || selectedModel == null) {
+    if (selectedMake == null || selectedModel == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please select your vehicle details")),
+        const SnackBar(content: Text("Please select your Make and Model")),
       );
       return;
     }
 
     debugPrint(
-      "[VEHICLE-INFO] Getting estimate for: $selectedYear $selectedMake $selectedModel (Trim: $selectedTrim)",
+      "[VEHICLE-INFO] Getting estimate for: ${selectedYear.toInt()} $selectedMake $selectedModel (Mileage: ${selectedMileage.toInt()})",
     );
 
     setState(() {
@@ -130,10 +127,10 @@ class _VehicleInfoScreenState extends State<VehicleInfoScreen> {
 
     // Real API Call
     ApiService.getEstimate(
-          year: int.parse(selectedYear!),
+          year: selectedYear.toInt(),
           make: selectedMake!,
           model: selectedModel!,
-          trim: selectedTrim,
+          mileage: selectedMileage.toInt(),
         )
         .then((data) {
           if (!mounted) return;
@@ -145,10 +142,10 @@ class _VehicleInfoScreenState extends State<VehicleInfoScreen> {
           // Pass data back
           if (widget.onEstimateComplete != null) {
             widget.onEstimateComplete!(val, {
-              'year': selectedYear!,
+              'year': selectedYear.toInt().toString(),
               'make': selectedMake!,
               'model': selectedModel!,
-              'trim': selectedTrim ?? '',
+              'mileage': selectedMileage.toInt().toString(),
             });
           }
 
@@ -163,6 +160,14 @@ class _VehicleInfoScreenState extends State<VehicleInfoScreen> {
             context,
           ).showSnackBar(SnackBar(content: Text("Error getting estimate: $e")));
         });
+  }
+
+  // --- FORMATTERS ---
+  String _formatMileage(double value) {
+    if (value >= 1000) {
+      return '${(value / 1000).toStringAsFixed(0)}k';
+    }
+    return value.toStringAsFixed(0);
   }
 
   @override
@@ -217,61 +222,65 @@ class _VehicleInfoScreenState extends State<VehicleInfoScreen> {
                   child: SingleChildScrollView(
                     child: Column(
                       children: [
-                        // ROW 1: YEAR
-                        _buildTile(
-                          label: "YEAR",
-                          value: selectedYear,
-                          items: years,
-                          isLoading: isLoadingYears,
-                          onChanged: (v) {
-                            setState(() => selectedYear = v);
-                            if (v != null) _loadMakes(v);
-                          },
-                        ),
-                        const SizedBox(height: 20),
-
-                        // ROW 2: MAKE
-                        _buildTile(
-                          label: "MAKE",
-                          value: selectedMake,
-                          items: makes,
-                          isLoading: isLoadingMakes,
-                          onChanged: (v) {
-                            setState(() => selectedMake = v);
-                            if (v != null) _loadModels(v);
-                          },
-                        ),
-                        const SizedBox(height: 20),
-
-                        // ROW 3: MODEL & TRIM
+                        // ROW 1: MAKE & MODEL
                         Row(
                           children: [
+                            Expanded(
+                              child: _buildTile(
+                                label: "MAKE",
+                                value: selectedMake,
+                                items: makes,
+                                fontSize: 16,
+                                chevronRight: 12,
+                                isLoading: isLoadingMakes,
+                                onChanged: (v) {
+                                  setState(() => selectedMake = v);
+                                  if (v != null) _loadModels(v);
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 16),
                             Expanded(
                               child: _buildTile(
                                 label: "MODEL",
                                 value: selectedModel,
                                 items: models,
-                                fontSize: 20,
+                                fontSize: 16,
+                                chevronRight: 12,
                                 isLoading: isLoadingModels,
-                                chevronRight: 16,
                                 onChanged: (v) {
                                   setState(() => selectedModel = v);
                                 },
                               ),
                             ),
-                            const SizedBox(width: 20),
-                            Expanded(
-                              child: _buildTextTile(
-                                label: "TRIM (OPTIONAL)",
-                                value: selectedTrim,
-                                onChanged: (v) =>
-                                    setState(() => selectedTrim = v),
-                              ),
-                            ),
                           ],
                         ),
+                        const SizedBox(height: 12),
 
-                        const SizedBox(height: 20),
+                        // ROW 2: YEAR SLIDER
+                        _buildSliderTile(
+                          label: "YEAR",
+                          value: selectedYear,
+                          min: 2000,
+                          max: 2026,
+                          divisions: 26,
+                          displayValue: selectedYear.toInt().toString(),
+                          onChanged: (v) => setState(() => selectedYear = v),
+                        ),
+                        const SizedBox(height: 12),
+
+                        // ROW 3: MILEAGE SLIDER
+                        _buildSliderTile(
+                          label: "MILEAGE (KM)",
+                          value: selectedMileage,
+                          min: 0,
+                          max: 300000,
+                          divisions: 300,
+                          displayValue: _formatMileage(selectedMileage),
+                          onChanged: (v) => setState(() => selectedMileage = v),
+                        ),
+
+                        const SizedBox(height: 24),
 
                         // ACTION BUTTON
                         _buildSubmitButton(),
@@ -291,68 +300,84 @@ class _VehicleInfoScreenState extends State<VehicleInfoScreen> {
 
   // --- WIDGET HELPERS ---
 
-  Widget _buildTextTile({
+  Widget _buildSliderTile({
     required String label,
-    required String? value,
-    required ValueChanged<String> onChanged,
+    required double value,
+    required double min,
+    required double max,
+    required int divisions,
+    required String displayValue,
+    required ValueChanged<double> onChanged,
+    ValueChanged<double>? onChangeEnd,
   }) {
-    return SizedBox(
-      height: 80,
-      child: Stack(
+    const colorGreen = Color(0xFF00CA50);
+    return Container(
+      height: 96,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: const Color(0xFFF1F5F9)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 2,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: const Color(0xFFF1F5F9)),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.02),
-                  blurRadius: 2,
-                  offset: const Offset(0, 1),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  label,
+                  style: GoogleFonts.outfit(
+                    color: const Color(0xFF94A3B8),
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 1.0,
+                  ),
+                ),
+                Text(
+                  displayValue,
+                  style: GoogleFonts.outfit(
+                    color: const Color(0xFF1E293B),
+                    fontSize: 18,
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
               ],
             ),
           ),
-          Positioned(
-            top: 12,
-            left: 20,
-            child: Text(
-              label,
-              style: GoogleFonts.outfit(
-                color: const Color(0xFF94A3B8),
-                fontSize: 10,
-                fontWeight: FontWeight.w900,
-                letterSpacing: 1.0,
-              ),
-            ),
-          ),
-          Positioned.fill(
-            child: Padding(
-              padding: const EdgeInsets.only(left: 20, right: 20, bottom: 8),
-              child: Center(
-                child: TextField(
-                  controller: TextEditingController(text: value)
-                    ..selection = TextSelection.fromPosition(
-                      TextPosition(offset: value?.length ?? 0),
-                    ),
-                  onChanged: onChanged,
-                  style: GoogleFonts.outfit(
-                    color: const Color(0xFF1E293B),
-                    fontSize: 20,
-                    fontWeight: FontWeight.w900,
-                  ),
-                  decoration: InputDecoration(
-                    hintText: "SE / SEL",
-                    hintStyle: GoogleFonts.outfit(
-                      color: Colors.grey.shade300,
-                      fontSize: 20,
-                      fontWeight: FontWeight.w900,
-                    ),
-                    border: InputBorder.none,
-                    contentPadding: const EdgeInsets.only(top: 24),
-                  ),
+          const SizedBox(height: 2),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: SliderTheme(
+              data: SliderTheme.of(context).copyWith(
+                trackHeight: 12,
+                activeTrackColor: colorGreen,
+                inactiveTrackColor: const Color(0xFFF1F5F9),
+                overlayColor: Colors.transparent,
+                trackShape: const CustomSliderTrackShape(),
+                thumbShape: const CustomSliderThumbShape(
+                  thumbRadius: 16,
+                  borderWidth: 4,
+                  borderColor: colorGreen,
                 ),
+                tickMarkShape: SliderTickMarkShape.noTickMark,
+              ),
+              child: Slider(
+                value: value,
+                min: min,
+                max: max,
+                divisions: divisions,
+                onChanged: onChanged,
+                onChangeEnd: onChangeEnd,
               ),
             ),
           ),
@@ -415,15 +440,26 @@ class _VehicleInfoScreenState extends State<VehicleInfoScreen> {
                   Container(
                     width: 80,
                     height: 80,
-                    margin: const EdgeInsets.only(bottom: 24),
+                    margin: const EdgeInsets.only(bottom: 12),
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(32),
-                      color: Colors.white.withValues(alpha: 0.05),
+                      color: Colors.white.withValues(alpha: 0.12),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.25),
+                        width: 1.5,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.1),
+                          blurRadius: 20,
+                          offset: const Offset(0, 8),
+                        ),
+                      ],
                     ),
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(32),
                       child: BackdropFilter(
-                        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                        filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
                         child: const Center(
                           child: CarIcon(size: 40, color: Colors.white),
                         ),
@@ -488,7 +524,7 @@ class _VehicleInfoScreenState extends State<VehicleInfoScreen> {
 
   Widget _buildSubmitButton() {
     return SizedBox(
-      height: 80,
+      height: 72,
       width: double.infinity,
       child: ElevatedButton(
         onPressed: handleNext,
@@ -537,26 +573,25 @@ class _VehicleInfoScreenState extends State<VehicleInfoScreen> {
     double fontSize = 24,
     double chevronRight = 24,
   }) {
-    return SizedBox(
-      height: 80,
+    return Container(
+      height: 72,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: const Color(0xFFF1F5F9)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 2,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
+      clipBehavior: Clip.antiAlias,
       child: Stack(
         children: [
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: const Color(0xFFF1F5F9)),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.02),
-                  blurRadius: 2,
-                  offset: const Offset(0, 1),
-                ),
-              ],
-            ),
-          ),
           Positioned(
-            top: 12,
+            top: 8,
             left: chevronRight == 24 ? 24 : 20,
             child: Text(
               label,
@@ -570,47 +605,72 @@ class _VehicleInfoScreenState extends State<VehicleInfoScreen> {
           ),
           Positioned.fill(
             child: Padding(
-              padding: EdgeInsets.only(
-                left: chevronRight == 24 ? 24 : 20,
-                right: chevronRight + 12,
-                top: 20,
-              ),
+              padding: const EdgeInsets.only(top: 14),
               child: isLoading
-                  ? const Align(
+                  ? Align(
                       alignment: Alignment.centerLeft,
-                      child: SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
+                      child: Padding(
+                        padding: EdgeInsets.only(left: chevronRight == 24 ? 24 : 20),
+                        child: const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
                       ),
                     )
                   : DropdownButtonHideUnderline(
                       child: DropdownButton<String>(
                         value: value,
-                        hint: Text(
-                          "Select",
-                          style: GoogleFonts.outfit(
-                            color: Colors.grey.shade300,
-                            fontSize: fontSize,
-                            fontWeight: FontWeight.w900,
+                        isExpanded: true,
+                        icon: const SizedBox.shrink(),
+                        dropdownColor: Colors.white,
+                        borderRadius: BorderRadius.circular(24),
+                        hint: Padding(
+                          padding: EdgeInsets.only(left: chevronRight == 24 ? 24 : 20, right: chevronRight + 12),
+                          child: Text(
+                            "Select",
+                            style: GoogleFonts.outfit(
+                              color: Colors.grey.shade400,
+                              fontSize: fontSize,
+                              fontWeight: FontWeight.w900,
+                            ),
                           ),
                         ),
-                        icon: const SizedBox.shrink(),
-                        style: GoogleFonts.outfit(
-                          color: const Color(0xFF1E293B),
-                          fontSize: fontSize,
-                          fontWeight: FontWeight.w900,
-                        ),
-                        dropdownColor: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
+                        selectedItemBuilder: (BuildContext context) {
+                          return items.map<Widget>((String item) {
+                            return Padding(
+                              padding: EdgeInsets.only(left: chevronRight == 24 ? 24 : 20, right: chevronRight + 12),
+                              child: Align(
+                                alignment: Alignment.centerLeft,
+                                child: Text(
+                                  item,
+                                  style: GoogleFonts.outfit(
+                                    color: const Color(0xFF1E293B),
+                                    fontSize: fontSize,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                              ),
+                            );
+                          }).toList();
+                        },
                         items: items.map((String item) {
                           return DropdownMenuItem<String>(
                             value: item,
-                            child: Text(item),
+                            child: Padding(
+                              padding: EdgeInsets.only(left: chevronRight == 24 ? 8 : 4),
+                              child: Text(
+                                item,
+                                style: GoogleFonts.outfit(
+                                  color: const Color(0xFF1E293B),
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
                           );
                         }).toList(),
                         onChanged: onChanged,
-                        isExpanded: true,
                         menuMaxHeight: 300,
                       ),
                     ),
@@ -623,10 +683,10 @@ class _VehicleInfoScreenState extends State<VehicleInfoScreen> {
             child: IgnorePointer(
               child: Transform.rotate(
                 angle: 1.5708,
-                child: Icon(
+                child: const Icon(
                   LucideIcons.chevronRight,
                   size: 22,
-                  color: const Color(0xFFCBD5E1),
+                  color: Color(0xFFCBD5E1),
                 ),
               ),
             ),
