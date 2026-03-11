@@ -226,11 +226,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 final vehicle = ref.read(vehicleProvider);
                 final financials = ref.read(financialsProvider).data;
                 return VerifyScanScreen(
-                  setStep: (nextStep) async {
+                  setStep: (nextStep, [data]) async {
+                    ref.read(appFlowProvider.notifier).setStep(nextStep, data);
                     if (nextStep == 'main-app') {
                       await ref.read(appFlowProvider.notifier).runTimeTravel();
                     }
-                    ref.read(appFlowProvider.notifier).setStep(nextStep);
                   },
                   scanData: vehicle.lastScanData ?? {},
                   carDetails: vehicle.carDetails,

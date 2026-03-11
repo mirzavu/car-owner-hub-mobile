@@ -392,7 +392,6 @@ class _ShopScreenState extends State<ShopScreen> {
             child: Slider(
               min: 200,
               max: 800,
-              divisions: 12,
               label: '\$${_paidOffBudget.round()}/mo',
               value: _paidOffBudget,
               onChanged: (value) {
@@ -520,16 +519,10 @@ class _ShopScreenState extends State<ShopScreen> {
                 borderWidth: 4,
                 borderColor: colorGreen,
               ),
-              tickMarkShape: const RoundSliderTickMarkShape(
-                tickMarkRadius: 2.0,
-              ),
-              activeTickMarkColor: colorGreen,
-              inactiveTickMarkColor: Colors.grey[300],
             ),
             child: Slider(
               min: -150,
               max: 150,
-              divisions: 6,
               value: _activeStepDelta.toDouble(),
               onChanged: (value) {
                 setState(() {

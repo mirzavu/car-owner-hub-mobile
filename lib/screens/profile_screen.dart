@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../services/auth_service.dart';
 import '../services/push_token_service.dart';
 
@@ -385,6 +386,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           LucideIcons.externalLink,
                           size: 16,
                         ),
+                        onTap: () {
+                          launchUrl(Uri.parse('https://carownershub.app/privacy'));
+                        },
                       ),
                       _buildListTile(
                         icon: LucideIcons.fileText,
@@ -393,12 +397,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           LucideIcons.externalLink,
                           size: 16,
                         ),
+                        onTap: () {
+                          launchUrl(Uri.parse('https://carownershub.app/terms/'));
+                        },
                       ),
                       _buildListTile(
                         icon: LucideIcons.trash2,
                         title: "Delete Account",
                         titleColor: Colors.red.shade600,
                         iconColor: Colors.red.shade600,
+                        onTap: () {
+                          // Placeholder for delete account logic
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text("Contact support to delete account")),
+                          );
+                        },
                       ),
                     ]),
 
@@ -492,52 +505,56 @@ class _ProfileScreenState extends State<ProfileScreen> {
     Widget? trailing,
     Color? titleColor,
     Color? iconColor,
+    VoidCallback? onTap,
   }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Row(
-        children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: (iconColor ?? const Color(0xFF003366)).withValues(
-                alpha: 0.1,
-              ),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(
-              icon,
-              size: 18,
-              color: iconColor ?? const Color(0xFF003366),
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: GoogleFonts.outfit(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: titleColor ?? const Color(0xFF1E293B),
-                  ),
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Row(
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: (iconColor ?? const Color(0xFF003366)).withValues(
+                  alpha: 0.1,
                 ),
-                if (subtitle != null)
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(
+                icon,
+                size: 18,
+                color: iconColor ?? const Color(0xFF003366),
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                   Text(
-                    subtitle,
+                    title,
                     style: GoogleFonts.outfit(
-                      fontSize: 12,
-                      color: Colors.blueGrey.shade300,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: titleColor ?? const Color(0xFF1E293B),
                     ),
                   ),
-              ],
+                  if (subtitle != null)
+                    Text(
+                      subtitle,
+                      style: GoogleFonts.outfit(
+                        fontSize: 12,
+                        color: Colors.blueGrey.shade300,
+                      ),
+                    ),
+                ],
+              ),
             ),
-          ),
-          if (trailing != null) trailing,
-        ],
+            if (trailing != null) trailing,
+          ],
+        ),
       ),
     );
   }

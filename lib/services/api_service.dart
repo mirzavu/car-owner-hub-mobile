@@ -136,7 +136,9 @@ class ApiService {
     String? userId,
     String? loanId,
   }) async {
-    var request = http.MultipartRequest('POST', Uri.parse(Config.scanDoc));
+    final url = Config.scanDoc;
+    debugPrint("[API] Calling: $url");
+    var request = http.MultipartRequest('POST', Uri.parse(url));
 
     // Attach the file
     request.files.add(await http.MultipartFile.fromPath('file', filePath));

@@ -175,16 +175,16 @@ class AppFlowNotifier extends StateNotifier<AppFlowState> {
       debugPrint('[STEP] Incoming Data: $data');
     }
 
+    if (data != null) {
+      ref.read(vehicleProvider.notifier).setLastScanData(data);
+      ref.read(financialsProvider.notifier).updateFromScanData(data);
+    }
+
     if (AuthService().isAuthenticated) {
       final carDetails = ref.read(vehicleProvider).carDetails;
       if (carDetails['year'] != null && carDetails['year']!.isNotEmpty) {
         _syncDraftVehicle();
       }
-    }
-
-    if (data != null) {
-      ref.read(vehicleProvider.notifier).setLastScanData(data);
-      ref.read(financialsProvider.notifier).updateFromScanData(data);
     }
 
     state = state.copyWith(step: newStep);

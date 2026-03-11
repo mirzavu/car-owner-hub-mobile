@@ -79,6 +79,9 @@ class FinancialsNotifier extends StateNotifier<FinancialsState> {
     if (data['interest_rate'] != null) {
       update({'actualRate': data['interest_rate']});
     }
+    if (data['estimatedValue'] != null) {
+      update({'estimatedValue': data['estimatedValue']});
+    }
     if (data['lender_name'] != null) {
       update({'lender': data['lender_name']});
     }

@@ -6,7 +6,7 @@ import '../services/api_service.dart';
 import '../services/auth_service.dart';
 
 class VerifyScanScreen extends StatefulWidget {
-  final Function(String) setStep;
+  final Function(String, [Map<String, dynamic>?]) setStep;
   final Map<String, dynamic> scanData;
   final Map<String, String> carDetails;
   final double estimatedValue;
@@ -46,6 +46,7 @@ class _VerifyScanScreenState extends State<VerifyScanScreen>
   late TextEditingController _aprController;
   late TextEditingController _paymentController;
   late TextEditingController _balanceController;
+  double? _refreshedEstimate;
 
   bool get _isManualEntry => widget.scanData.isEmpty;
 
@@ -75,6 +76,11 @@ class _VerifyScanScreenState extends State<VerifyScanScreen>
 
     _controller.forward();
 
+    debugPrint("[VERIFY] initState - carDetails: ${widget.carDetails}");
+    // Log scanData without raw_ocr
+    final logScanData = Map<String, dynamic>.from(widget.scanData);
+    logScanData['raw_ocr'] = '[TRUNCATED]';
+    debugPrint("[VERIFY] initState - scanData: $logScanData");
     _initControllers();
 
     // Check if scanData already contains vehicle info (from OCR)
@@ -83,11 +89,18 @@ class _VerifyScanScreenState extends State<VerifyScanScreen>
     final scanModel = widget.scanData['model']?.toString();
 
     if (scanYear != null || scanMake != null || scanModel != null) {
+      debugPrint("[VERIFY] Found vehicle data in scanData: year=$scanYear, make=$scanMake, model=$scanModel");
       _vinDetails = {
         'year': scanYear ?? '',
         'make': scanMake ?? '',
         'model': scanModel ?? '',
       };
+      debugPrint("[VERIFY] _vinDetails initialized: $_vinDetails");
+      
+      // Immediately refresh estimate if we have scanned details
+      _refreshEstimate();
+    } else {
+      debugPrint("[VERIFY] No vehicle data found in scanData.");
     }
 
     // Only lookup VIN if we actually scanned one
@@ -181,50 +194,39 @@ class _VerifyScanScreenState extends State<VerifyScanScreen>
     return parts.isEmpty ? 'Unknown' : parts.join(' ');
   }
 
-  Future<void> _loadVinDetails() async {
-    final normalizedVin = _normalizeVin(widget.scanData['vin']?.toString());
-    if (normalizedVin.length != 17) {
+  Future<void> _refreshEstimate() async {
+    final year = int.tryParse(_vinDetails?['year'] ?? '') ?? 
+                 int.tryParse(widget.carDetails['year'] ?? '') ?? 0;
+    final make = _vinDetails?['make'] ?? widget.carDetails['make'] ?? '';
+    final model = _vinDetails?['model'] ?? widget.carDetails['model'] ?? '';
+    final trim = _vinDetails?['trim'] ?? widget.carDetails['trim'] ?? '';
+
+    if (year == 0 || make.isEmpty || model.isEmpty) {
+      debugPrint("[VERIFY] Skipping estimate refresh: Incomplete data (Year: $year, Make: $make, Model: $model)");
       return;
     }
 
-    setState(() {
-      _isVinLookupInProgress = true;
-      _vinLookupError = null;
-    });
-
-    final details = await ApiService.decodeVin(normalizedVin);
-    if (!mounted) return;
-
-    setState(() {
-      _vinDetails = details.isEmpty ? null : details;
-      _isVinLookupInProgress = false;
-      if (details.isEmpty) {
-        _vinLookupError = 'Unable to decode VIN';
+    debugPrint("[VERIFY] Requesting Market Value for: $year $make $model ($trim)");
+    try {
+      final res = await ApiService.getEstimate(
+        year: year,
+        make: make,
+        model: model,
+        trim: trim,
+      );
+      if (mounted && (res.containsKey('value') || res.containsKey('estimated_value'))) {
+        setState(() {
+          _refreshedEstimate = (res['value'] ?? res['estimated_value'] as num).toDouble();
+        });
+        debugPrint("[VERIFY] Fresh Market Value Received: \$$_refreshedEstimate");
       } else {
-        // Automatically sync the decoded VIN details to the carDetails
-        final updates = <String, String>{};
-        if ((details['year'] ?? '').isNotEmpty) {
-          updates['year'] = details['year']!;
-        }
-        if ((details['make'] ?? '').isNotEmpty) {
-          updates['make'] = details['make']!;
-        }
-        if ((details['model'] ?? '').isNotEmpty) {
-          updates['model'] = details['model']!;
-        }
-        if (updates.isNotEmpty) {
-          widget.onUpdateCarDetails(updates);
-          // Also update the controller if not current focus or if just loaded
-          final formatted = _formatVehicle(
-            details['year'],
-            details['make'],
-            details['model'],
-          );
-          _vehicleController.text = formatted;
-        }
+         debugPrint("[VERIFY] Estimate response missing keys: $res");
       }
-    });
+    } catch (e) {
+      debugPrint("[VERIFY] Refresh Estimate Error: $e");
+    }
   }
+
 
   bool _matchesIfPresent(String? a, String? b) {
     if ((a ?? '').trim().isEmpty || (b ?? '').trim().isEmpty) return true;
@@ -237,12 +239,20 @@ class _VerifyScanScreenState extends State<VerifyScanScreen>
   }
 
   bool get _hasConflict {
-    if (_vinDetails == null) return false;
+    if (_vinDetails == null) {
+      debugPrint("[VERIFY] _hasConflict: false (vinDetails is null)");
+      return false;
+    }
     final user = widget.carDetails;
     final yearOk = _matchesIfPresent(user['year'], _vinDetails!['year']);
     final makeOk = _matchesIfPresent(user['make'], _vinDetails!['make']);
     final modelOk = _matchesIfPresent(user['model'], _vinDetails!['model']);
-    return !(yearOk && makeOk && modelOk);
+    
+    final conflict = !(yearOk && makeOk && modelOk);
+    debugPrint("[VERIFY] _hasConflict check: conflict=$conflict (yearOk=$yearOk, makeOk=$makeOk, modelOk=$modelOk)");
+    debugPrint("[VERIFY] Comparing user: $user vs scanned: $_vinDetails");
+    
+    return conflict;
   }
 
   void _handleVerify() async {
@@ -294,31 +304,12 @@ class _VerifyScanScreenState extends State<VerifyScanScreen>
         }
       }
 
-      double finalEstimate = widget.estimatedValue;
+      double finalEstimate = _refreshedEstimate ?? widget.estimatedValue;
 
-      debugPrint(
-        "[VERIFY] Starting Sync. EstimatedValue: $finalEstimate, CarDetails: ${widget.carDetails}, ScanData: ${widget.scanData}",
-      );
-
-      // If VIN was changed via text field, let's refresh the estimate
-      if (_vinController.text != (widget.scanData['vin'] ?? '')) {
-        debugPrint("[VERIFY] VIN changed, refreshing estimate...");
-        try {
-          final estimateResult = await ApiService.getEstimate(
-            year: int.tryParse(widget.carDetails['year'] ?? '') ?? 0,
-            make: widget.carDetails['make'] ?? '',
-            model: widget.carDetails['model'] ?? '',
-            trim: widget.carDetails['trim'] ?? '',
-          );
-          if (estimateResult.containsKey('estimated_value') || estimateResult.containsKey('value')) {
-             final val = estimateResult['estimated_value'] ?? estimateResult['value'];
-            finalEstimate = (val as num).toDouble();
-            debugPrint("[VERIFY] New Estimate: $finalEstimate");
-          }
-        } catch (e) {
-          debugPrint("[VERIFY] Refresh estimate failed: $e. Using fallback.");
-        }
-      }
+      final logScanData = Map<String, dynamic>.from(widget.scanData);
+      logScanData['raw_ocr'] = '[TRUNCATED]';
+      debugPrint("[VERIFY] Starting Sync. Final Market Value: $finalEstimate (Refreshed: $_refreshedEstimate, Inherited: ${widget.estimatedValue})");
+      debugPrint("[VERIFY] CarDetails: ${widget.carDetails}, ScanData: $logScanData");
 
       await ApiService.syncOnboardingData(
         carDetails: widget.carDetails,
@@ -330,7 +321,12 @@ class _VerifyScanScreenState extends State<VerifyScanScreen>
 
       debugPrint("[VERIFY] Sync Complete. Updating status and navigating...");
       await AuthService().updateOnboardingStatus('completed');
-      widget.setStep('main-app');
+      
+      // Pass the final estimate to the global state to prevent background sync overwriting it with old data
+      widget.setStep('main-app', {
+        ...widget.scanData,
+        'estimatedValue': finalEstimate,
+      });
     } catch (e) {
       debugPrint("[VERIFY] Sync Error: $e");
       if (mounted) {
@@ -365,28 +361,12 @@ class _VerifyScanScreenState extends State<VerifyScanScreen>
       }
 
       // 2. Fetch the correct estimate for the new vehicle
-      double finalEstimate = widget.estimatedValue;
-      if (_vinDetails != null) {
-        try {
-          final estimateResult = await ApiService.getEstimate(
-            year: int.tryParse(_vinDetails!['year'] ?? '') ?? 0,
-            make: _vinDetails!['make'] ?? '',
-            model: _vinDetails!['model'] ?? '',
-            trim: _vinDetails!['trim'] ?? '',
-          );
-          if (estimateResult.containsKey('estimated_value') || estimateResult.containsKey('value')) {
-             final val = estimateResult['estimated_value'] ?? estimateResult['value'];
-            finalEstimate = (val as num).toDouble();
-            debugPrint("[VERIFY] New Estimate based on scanned data: $finalEstimate");
-          }
-        } catch (e) {
-          debugPrint("[VERIFY] Fetch estimate for scanned data failed: $e. Using fallback.");
-        }
-      }
-
+      double finalEstimate = _refreshedEstimate ?? widget.estimatedValue;
+      
       debugPrint(
-        "[VERIFY] HandleUseDocDetails. New EstimatedValue: $finalEstimate, New CarDetails: $_vinDetails, ScanData: ${widget.scanData}",
+        "[VERIFY] HandleUseDocDetails. Final Market Value: $finalEstimate (Refreshed: $_refreshedEstimate, Inherited: ${widget.estimatedValue})",
       );
+      debugPrint("[VERIFY] Scanned CarDetails: $_vinDetails, ScanData: ${widget.scanData}");
 
       await ApiService.syncOnboardingData(
         carDetails: _vinDetails != null ? Map<String, String>.from(_vinDetails!) : widget.carDetails,
@@ -398,7 +378,12 @@ class _VerifyScanScreenState extends State<VerifyScanScreen>
 
       debugPrint("[VERIFY] Sync Complete. Updating status and navigating...");
       await AuthService().updateOnboardingStatus('completed');
-      widget.setStep('main-app');
+
+      // Pass the final estimate to the global state to prevent background sync overwriting it with old data
+      widget.setStep('main-app', {
+        ...widget.scanData,
+        'estimatedValue': finalEstimate,
+      });
     } catch (e) {
       debugPrint("[VERIFY] Sync Error: $e");
       if (mounted) {
@@ -412,112 +397,6 @@ class _VerifyScanScreenState extends State<VerifyScanScreen>
     }
   }
 
-  // The original _handleVerify logic is now replaced by the new _handleVerify and _handleUseDocumentDetails.
-  // The following block is removed as per the instruction's new _handleVerify.
-  /*
-  void _handleVerify() async {
-    debugPrint("[VERIFY] User chose: Save & Verify (Final)");
-    if (_isEditing) {
-      debugPrint("[VERIFY] Editing was active. Capturing manual input.");
-      // 1. Update Scan Data from controllers
-      final balanceText = _balanceController.text.replaceAll(
-        RegExp(r'[^0-9.]'),
-        '',
-      );
-      final paymentText = _paymentController.text.replaceAll(
-        RegExp(r'[^0-9.]'),
-        '',
-      );
-      final aprText = _aprController.text.replaceAll(RegExp(r'[^0-9.]'), '');
-      final termText = _termController.text.replaceAll(RegExp(r'[^0-9]'), '');
-
-      widget.scanData['vin'] = _vinController.text.trim();
-      widget.scanData['contract_date'] = _dateController.text.trim();
-      widget.scanData['term_months'] = int.tryParse(termText);
-      widget.scanData['lender_name'] = _lenderController.text.trim();
-      widget.scanData['interest_rate'] = double.tryParse(aprText);
-
-      if (widget.scanData['bi_weekly_payment'] != null) {
-        widget.scanData['bi_weekly_payment'] = double.tryParse(paymentText);
-      } else {
-        widget.scanData['monthly_payment'] = double.tryParse(paymentText);
-      }
-      widget.scanData['original_amount_financed'] = double.tryParse(
-        balanceText,
-      );
-      widget.scanData['current_balance'] = double.tryParse(balanceText);
-
-      // 2. Update Car Details if vehicle string was changed
-      final vehicleText = _vehicleController.text.trim();
-      final vehicleParts = vehicleText.split(' ');
-      if (vehicleParts.length >= 3) {
-        final updates = {
-          'year': vehicleParts[0],
-          'make': vehicleParts[1],
-          'model': vehicleParts.sublist(2).join(' '),
-        };
-        debugPrint("[VERIFY] Manual vehicle updates: $updates");
-        widget.onUpdateCarDetails(updates);
-      }
-      debugPrint(
-        "[VERIFY] Final Scan Data (Manually Edited): ${widget.scanData}",
-      );
-    } else {
-      debugPrint(
-        "[VERIFY] User confirmed data as correct without manual edits.",
-      );
-      debugPrint("[VERIFY] Final Scan Data: ${widget.scanData}");
-    }
-
-    final normalizedVin = _normalizeVin(widget.scanData['vin']?.toString());
-    if (normalizedVin.isNotEmpty) {
-      widget.onUpdateCarDetails({'vin': normalizedVin});
-    }
-
-    debugPrint("[VERIFY] Final sync start...");
-
-    double finalEstimate = widget.estimatedValue;
-
-    // Check if Year, Make, or Model changed from initial estimate
-    final currentYear = widget.carDetails['year'] ?? '';
-    final currentMake = widget.carDetails['make'] ?? '';
-    final currentModel = widget.carDetails['model'] ?? '';
-
-    /*
-    if (currentYear != _initialYear ||
-        currentMake != _initialMake ||
-        currentModel != _initialModel) {
-    */
-      debugPrint(
-        "[VERIFY] Vehicle changed. Re-fetching estimate.",
-      );
-      try {
-        final newEstimateResult = await ApiService.getEstimate(
-          year: int.tryParse(currentYear) ?? 0,
-          make: currentMake,
-          model: currentModel,
-        );
-        finalEstimate = (newEstimateResult['value'] as num).toDouble();
-        debugPrint("[VERIFY] New estimate fetched: $finalEstimate");
-      } catch (e) {
-        debugPrint(
-          "[VERIFY] Error re-fetching estimate: $e. Falling back to original.",
-        );
-      }
-    }
-
-    await ApiService.syncOnboardingData(
-      carDetails: widget.carDetails,
-      scanData: widget.scanData,
-      estimatedValue: finalEstimate,
-      isVerified: true,
-      documentId: widget.scanData['documentId']?.toString(),
-    );
-
-    await AuthService().updateOnboardingStatus('completed');
-    widget.setStep('main-app');
-  }
-  */
 
   @override
   Widget build(BuildContext context) {
