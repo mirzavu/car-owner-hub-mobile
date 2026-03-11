@@ -19,6 +19,7 @@ class _ScanPromptScreenState extends State<ScanPromptScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _offsetAnimation;
+  bool _isProcessing = false;
 
   // Tailwind Color Palette
   static const colorSlate50 = Color(0xFFF8FAFC);
@@ -102,7 +103,7 @@ class _ScanPromptScreenState extends State<ScanPromptScreen>
                               ),
                               // Heading
                               Text(
-                                "Let's make this official.",
+                                "Verify your loan to unlock offers",
                                 textAlign: TextAlign.center,
                                 style: GoogleFonts.outfit(
                                   fontSize: 30,
@@ -115,7 +116,7 @@ class _ScanPromptScreenState extends State<ScanPromptScreen>
                               Text.rich(
                                 TextSpan(
                                   text:
-                                      "Scan your Bill of Sale or Loan Agreement to verify your interest rate and unlock ",
+                                      "Scan your Loan Agreement to verify your interest rate and unlock ",
                                   style: GoogleFonts.outfit(
                                     fontSize: 18,
                                     color: colorSlate600,
@@ -310,6 +311,51 @@ class _ScanPromptScreenState extends State<ScanPromptScreen>
                 ),
               ],
             ),
+            // Loading Overlay
+            if (_isProcessing)
+              Positioned.fill(
+                child: Container(
+                  color: Colors.white.withValues(alpha: 0.8),
+                  child: Center(
+                    child: Container(
+                      padding: const EdgeInsets.all(24.0),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.1),
+                            blurRadius: 20,
+                            offset: const Offset(0, 10),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: colorSlate900,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            "Fetching details...",
+                            style: GoogleFonts.outfit(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: colorSlate900,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             // Back Button
             if (widget.onBack != null)
               Positioned(
@@ -352,8 +398,8 @@ class _ScanPromptScreenState extends State<ScanPromptScreen>
       // 2. Close the bottom sheet
       if (mounted) Navigator.pop(context);
 
-      // 3. Show a loading dialog so the user knows OCR is running
-      _showLoadingDialog();
+      // 3. Show a loading overlay so the user knows OCR is running
+      setState(() => _isProcessing = true);
 
       // 4. Send to OCR API
       final scanResult = await ApiService.scanDocument(
@@ -362,7 +408,7 @@ class _ScanPromptScreenState extends State<ScanPromptScreen>
       );
 
       if (!mounted) return;
-      Navigator.pop(context); // Hide loading dialog
+      setState(() => _isProcessing = false);
 
       if (scanResult.containsKey('error')) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -380,6 +426,7 @@ class _ScanPromptScreenState extends State<ScanPromptScreen>
     } catch (e) {
       debugPrint("[SCAN-PROMPT] File Upload Error: $e");
       if (!mounted) return;
+      setState(() => _isProcessing = false);
       // Close bottom sheet if it's still open
       if (Navigator.canPop(context)) Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
@@ -389,42 +436,6 @@ class _ScanPromptScreenState extends State<ScanPromptScreen>
         ),
       );
     }
-  }
-
-  void _showLoadingDialog() {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => Dialog(
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const SizedBox(
-                width: 24,
-                height: 24,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: colorSlate900,
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                "Fetching details...",
-                style: GoogleFonts.outfit(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: colorSlate900,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
   }
 
   void _showDocumentOptionsSheet() {

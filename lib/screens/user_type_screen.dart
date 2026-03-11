@@ -59,7 +59,7 @@ class UserTypeScreen extends StatelessWidget {
                   children: [
                     const SizedBox(height: 24),
                     Text(
-                      "What brings you here today?",
+                      "Are you an owner or a buyer?",
                       style: GoogleFonts.outfit(
                         fontSize: 32,
                         fontWeight: FontWeight.bold,
@@ -70,7 +70,7 @@ class UserTypeScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 12),
                     Text(
-                      "We'll customize your experience based on your current situation.",
+                      "Select your path to access tools for managing your current vehicle or finding your next one.",
                       style: GoogleFonts.outfit(
                         fontSize: 16,
                         color: colorSlate500,

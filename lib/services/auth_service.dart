@@ -176,15 +176,21 @@ class AuthService extends ChangeNotifier {
 
       final data = jsonDecode(response.body);
 
-      if (data['success'] != true || data['credentials'] == null) {
+      if (data['success'] != true || data['auth'] == null) {
         throw Exception("Invalid OTP response format.");
       }
 
-      final tempPassword = data['credentials']['password'];
+      final auth = data['auth'] as Map<String, dynamic>;
+      final token = (auth['token'] ?? '').toString();
+      final record = auth['record'];
 
-      // Now authenticate directly with PocketBase using the generated temp password
-      await login(email, tempPassword);
+      if (token.isEmpty || record is! Map<String, dynamic>) {
+        throw Exception("Invalid OTP auth payload.");
+      }
+
+      pb.authStore.save(token, RecordModel(record));
       debugPrint("[AUTH] Custom OTP verification and login complete.");
+      notifyListeners();
     } catch (e) {
       debugPrint("[AUTH] OTP Verification Error: $e");
       rethrow;

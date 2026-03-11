@@ -4,7 +4,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../components/car_icon.dart';
 import '../services/api_service.dart'; // Import API Service
-import '../services/config.dart' as app_config;
 
 class VehicleInfoScreen extends StatefulWidget {
   final ValueChanged<String> onNext;
@@ -41,7 +40,6 @@ class _VehicleInfoScreenState extends State<VehicleInfoScreen> {
   bool isLoadingYears = true;
   bool isLoadingMakes = false;
   bool isLoadingModels = false;
-  String debugInfo = ''; // Added for debugging
 
   @override
   void initState() {
@@ -52,8 +50,7 @@ class _VehicleInfoScreenState extends State<VehicleInfoScreen> {
   // --- API CALLS ---
   Future<void> _loadYears() async {
     setState(() {
-      debugInfo =
-          'Fetching years from: ${app_config.Config.baseUrl}/api/vehicle-options?type=years';
+      isLoadingYears = true;
     });
     try {
       final data = await ApiService.getVehicleOptions(type: 'years');
@@ -61,18 +58,12 @@ class _VehicleInfoScreenState extends State<VehicleInfoScreen> {
         setState(() {
           years = data;
           isLoadingYears = false;
-          if (data.isEmpty) {
-            debugInfo = 'No years returned from API. Status: Success, Count: 0';
-          } else {
-            debugInfo = 'Loaded ${data.length} years successfully.';
-          }
         });
       }
     } catch (e) {
       if (mounted) {
         setState(() {
           isLoadingYears = false;
-          debugInfo = 'Error loading years: $e';
         });
       }
     }
@@ -134,7 +125,7 @@ class _VehicleInfoScreenState extends State<VehicleInfoScreen> {
 
     setState(() {
       loading = true;
-      loadingText = 'Connecting to Canadian Black Book...';
+      loadingText = 'Estimating market value...';
     });
 
     // Real API Call
@@ -147,27 +138,21 @@ class _VehicleInfoScreenState extends State<VehicleInfoScreen> {
         .then((data) {
           if (!mounted) return;
 
-          setState(() => loadingText = 'Analyzing local market trends...');
+          setState(() => loading = false);
 
-          // Artificial delay for UX (optional, kept for consistency)
-          Future.delayed(const Duration(milliseconds: 1000), () {
-            if (!mounted) return;
-            setState(() => loading = false);
+          final double val = (data['value'] as num).toDouble();
 
-            final double val = (data['value'] as num).toDouble();
+          // Pass data back
+          if (widget.onEstimateComplete != null) {
+            widget.onEstimateComplete!(val, {
+              'year': selectedYear!,
+              'make': selectedMake!,
+              'model': selectedModel!,
+              'trim': selectedTrim ?? '',
+            });
+          }
 
-            // Pass data back
-            if (widget.onEstimateComplete != null) {
-              widget.onEstimateComplete!(val, {
-                'year': selectedYear!,
-                'make': selectedMake!,
-                'model': selectedModel!,
-                'trim': selectedTrim ?? '',
-              });
-            }
-
-            widget.onNext('teaser');
-          });
+          widget.onNext('teaser');
         })
         .catchError((e) {
           if (!mounted) return;
@@ -292,21 +277,6 @@ class _VehicleInfoScreenState extends State<VehicleInfoScreen> {
                         _buildSubmitButton(),
 
                         const SizedBox(height: 20),
-                        // DEBUG INFO
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.05),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: SelectableText(
-                            debugInfo,
-                            style: GoogleFonts.outfit(
-                              fontSize: 10,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                        ),
                       ],
                     ),
                   ),
@@ -498,7 +468,7 @@ class _VehicleInfoScreenState extends State<VehicleInfoScreen> {
                       borderRadius: BorderRadius.circular(999),
                     ),
                     child: Text(
-                      "NO VIN REQUIRED",
+                      "INSTANT ESTIMATE",
                       style: GoogleFonts.outfit(
                         color: const Color(0xFFE6F0FA),
                         fontSize: 12,

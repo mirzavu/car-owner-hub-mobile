@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mobile_app/services/shop_budget_service.dart';
+import 'package:car_owners_hub/services/shop_budget_service.dart';
 
 void main() {
   group('ShopBudgetService.resolveTarget', () {

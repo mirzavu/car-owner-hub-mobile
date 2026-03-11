@@ -177,7 +177,6 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
               ),
               child: Column(
                 children: [
-                  // Icon Circle
                   Container(
                     width: 52,
                     height: 52,
@@ -220,7 +219,6 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                       ),
                     ),
                   ),
-                  // Extra padding at bottom to account for the overlap safe area
                   const SizedBox(height: 24),
                 ],
               ),
@@ -229,227 +227,228 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
 
           // --- 2. Input & Footer (Foreground) ---
           Positioned.fill(
-            child: Column(
-              children: [
-                Expanded(
-                  child: ListView(
-                    padding: EdgeInsets.zero,
-                    children: [
-                      // Spacer to push content down - adjusted to overlap header
-                      const SizedBox(height: 240),
+            child: CustomScrollView(
+              slivers: [
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        const SizedBox(height: 240),
+                        // 1. Name Input
+                        _buildInputContainer(
+                          label: "FULL NAME",
+                          icon: LucideIcons.user,
+                          child: TextField(
+                            controller: _nameController,
+                            autofocus: true,
+                            textCapitalization: TextCapitalization.words,
+                            onChanged: (_) => _validate(),
+                            style: GoogleFonts.outfit(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w700,
+                              color: colorSlate900,
+                            ),
+                            decoration: InputDecoration(
+                              isDense: true,
+                              contentPadding: EdgeInsets.zero,
+                              hintText: "Enter your name",
+                              hintStyle: GoogleFonts.outfit(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w700,
+                                color: colorSlate200,
+                              ),
+                              border: InputBorder.none,
+                            ),
+                            cursorColor: colorSlate900,
+                          ),
+                        ),
 
-                      // Input Section
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 24),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            // 1. Name Input
-                            _buildInputContainer(
-                              label: "FULL NAME",
-                              icon: LucideIcons.user,
-                              child: TextField(
-                                controller: _nameController,
-                                autofocus: true,
-                                textCapitalization: TextCapitalization.words,
-                                onChanged: (_) => _validate(),
-                                style: GoogleFonts.outfit(
+                        const SizedBox(height: 16),
+
+                        // 2. Phone Input
+                        _buildInputContainer(
+                          label: "MOBILE NUMBER",
+                          icon: LucideIcons.smartphone,
+                          child: Row(
+                            children: [
+                              Text(
+                                "+1 ",
+                                style: GoogleFonts.jetBrainsMono(
                                   fontSize: 18,
                                   fontWeight: FontWeight.w700,
-                                  color: colorSlate900,
+                                  color: colorSlate400,
                                 ),
-                                decoration: InputDecoration(
-                                  isDense: true,
-                                  contentPadding: EdgeInsets.zero,
-                                  hintText: "Enter your name",
-                                  hintStyle: GoogleFonts.outfit(
+                              ),
+                              Expanded(
+                                child: TextField(
+                                  controller: _phoneController,
+                                  keyboardType: TextInputType.phone,
+                                  onChanged: _handlePhoneChange,
+                                  style: GoogleFonts.outfit(
                                     fontSize: 18,
                                     fontWeight: FontWeight.w700,
-                                    color: colorSlate200,
+                                    color: colorSlate900,
                                   ),
-                                  border: InputBorder.none,
-                                ),
-                                cursorColor: colorSlate900,
-                              ),
-                            ),
-
-                            const SizedBox(height: 16),
-
-                            // 2. Phone Input
-                            _buildInputContainer(
-                              label: "MOBILE NUMBER",
-                              icon: LucideIcons.smartphone,
-                              child: Row(
-                                children: [
-                                  Text(
-                                    "+1 ",
-                                    style: GoogleFonts.jetBrainsMono(
+                                  decoration: InputDecoration(
+                                    isDense: true,
+                                    contentPadding: EdgeInsets.zero,
+                                    hintText: "(555) 000-0000",
+                                    hintStyle: GoogleFonts.outfit(
                                       fontSize: 18,
                                       fontWeight: FontWeight.w700,
-                                      color: colorSlate400,
+                                      color: colorSlate200,
                                     ),
+                                    border: InputBorder.none,
                                   ),
+                                  cursorColor: colorSlate900,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        // Error Message
+                        if (_error.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 16),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 12,
+                              ),
+                              decoration: BoxDecoration(
+                                color: colorRed50,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(
+                                    LucideIcons.alertCircle,
+                                    size: 16,
+                                    color: colorRed500,
+                                  ),
+                                  const SizedBox(width: 8),
                                   Expanded(
-                                    child: TextField(
-                                      controller: _phoneController,
-                                      keyboardType: TextInputType.phone,
-                                      onChanged: _handlePhoneChange,
+                                    child: Text(
+                                      _error,
                                       style: GoogleFonts.outfit(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.w700,
-                                        color: colorSlate900,
+                                        color: colorRed500,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w500,
                                       ),
-                                      decoration: InputDecoration(
-                                        isDense: true,
-                                        contentPadding: EdgeInsets.zero,
-                                        hintText: "(555) 000-0000",
-                                        hintStyle: GoogleFonts.outfit(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.w700,
-                                          color: colorSlate200,
-                                        ),
-                                        border: InputBorder.none,
-                                      ),
-                                      cursorColor: colorSlate900,
                                     ),
                                   ),
                                 ],
                               ),
                             ),
-
-                            // Error Message
-                            if (_error.isNotEmpty)
-                              Padding(
-                                padding: const EdgeInsets.only(top: 16),
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                    vertical: 12,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: colorRed50,
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      const Icon(
-                                        LucideIcons.alertCircle,
-                                        size: 16,
-                                        color: colorRed500,
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Expanded(
-                                        child: Text(
-                                          _error,
-                                          style: GoogleFonts.outfit(
-                                            color: colorRed500,
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                    ],
+                          ),
+                        const SizedBox(height: 24),
+                      ],
+                    ),
                   ),
                 ),
 
-                // Footer Action
-                Container(
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.5),
-                  ),
-                  child: SafeArea(
-                    top: false,
-                    child: Column(
-                      children: [
-                        AnimatedContainer(
-                          duration: const Duration(milliseconds: 300),
-                          width: double.infinity,
-                          height: 56,
-                          decoration: BoxDecoration(
-                            color: _isValid
-                                ? const Color(0xFF00CA50)
-                                : colorSlate100,
-                            borderRadius: BorderRadius.circular(16),
-                            boxShadow: _isValid
-                                ? [
-                                    BoxShadow(
-                                      color: const Color(
-                                        0xFF00CA50,
-                                      ).withValues(alpha: 0.3),
-                                      blurRadius: 25,
-                                      spreadRadius: -5,
-                                      offset: const Offset(0, 20),
+                // Footer automatically pushes to the bottom or scrolls
+                SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(24),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.5),
+                        ),
+                        child: SafeArea(
+                          top: false,
+                          child: Column(
+                            children: [
+                              AnimatedContainer(
+                                duration: const Duration(milliseconds: 300),
+                                width: double.infinity,
+                                height: 56,
+                                decoration: BoxDecoration(
+                                  color: _isValid
+                                      ? const Color(0xFF00CA50)
+                                      : colorSlate100,
+                                  borderRadius: BorderRadius.circular(16),
+                                  boxShadow: _isValid
+                                      ? [
+                                          BoxShadow(
+                                            color: const Color(
+                                              0xFF00CA50,
+                                            ).withValues(alpha: 0.3),
+                                            blurRadius: 25,
+                                            spreadRadius: -5,
+                                            offset: const Offset(0, 20),
+                                          ),
+                                        ]
+                                      : [],
+                                ),
+                                child: Material(
+                                  color: Colors.transparent,
+                                  child: InkWell(
+                                    onTap: _isUpdating ? null : _handleContinue,
+                                    borderRadius: BorderRadius.circular(16),
+                                    child: Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        if (_isUpdating)
+                                          const SizedBox(
+                                            width: 20,
+                                            height: 20,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                              color: Colors.white,
+                                            ),
+                                          )
+                                        else ...[
+                                          Text(
+                                            "Continue",
+                                            style: GoogleFonts.outfit(
+                                              color: _isValid
+                                                  ? Colors.white
+                                                  : colorSlate300,
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Icon(
+                                            LucideIcons.chevronRight,
+                                            size: 18,
+                                            color: _isValid
+                                                ? Colors.white
+                                                : colorSlate300,
+                                          ),
+                                        ],
+                                      ],
                                     ),
-                                  ]
-                                : [],
-                          ),
-                          child: Material(
-                            color: Colors.transparent,
-                            child: InkWell(
-                              onTap: (_isValid && !_isUpdating)
-                                  ? _handleContinue
-                                  : null,
-                              borderRadius: BorderRadius.circular(16),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  if (_isUpdating)
-                                    const SizedBox(
-                                      width: 20,
-                                      height: 20,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        color: Colors.white,
-                                      ),
-                                    )
-                                  else ...[
-                                    Text(
-                                      "Continue",
-                                      style: GoogleFonts.outfit(
-                                        color: _isValid
-                                            ? Colors.white
-                                            : colorSlate300,
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Icon(
-                                      LucideIcons.chevronRight,
-                                      size: 18,
-                                      color: _isValid
-                                          ? Colors.white
-                                          : colorSlate300,
-                                    ),
-                                  ],
-                                ],
+                                  ),
+                                ),
                               ),
-                            ),
+                              const SizedBox(height: 16),
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 32,
+                                ),
+                                child: Text(
+                                  "By clicking Continue, you agree to receive SMS notifications. Message rates may apply.",
+                                  textAlign: TextAlign.center,
+                                  style: GoogleFonts.outfit(
+                                    color: colorSlate400,
+                                    fontSize: 10,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                        const SizedBox(height: 16),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 32),
-                          child: Text(
-                            "By clicking Continue, you agree to receive SMS notifications. Message rates may apply.",
-                            textAlign: TextAlign.center,
-                            style: GoogleFonts.outfit(
-                              color: colorSlate400,
-                              fontSize: 10,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
               ],

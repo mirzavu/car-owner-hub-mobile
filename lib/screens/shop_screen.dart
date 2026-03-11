@@ -811,7 +811,7 @@ class _ShopScreenState extends State<ShopScreen> {
                         widget.setOverlayScreen('success');
                       },
                       child: Text(
-                        (car['city'] ?? 'See Deal').toString(),
+                        _fmtMileage(car['mileage'] as num? ?? 0),
                         style: GoogleFonts.outfit(
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
@@ -835,5 +835,11 @@ class _ShopScreenState extends State<ShopScreen> {
       symbol: '\$',
       decimalDigits: 0,
     ).format(n);
+  }
+
+  String _fmtMileage(num n) {
+    if (n <= 0) return 'Low mileage';
+    final val = NumberFormat.decimalPattern('en_CA').format(n);
+    return '$val km';
   }
 }

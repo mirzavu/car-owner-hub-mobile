@@ -251,6 +251,8 @@ class ApiService {
     debugPrint("[SYNC] Starting Onboarding Data Sync...");
     debugPrint("[SYNC] Car Details: $carDetails");
     debugPrint("[SYNC] Scan Data: $scanData");
+    debugPrint("[SYNC] Estimated Value Input: $estimatedValue");
+    debugPrint("[SYNC] Document ID: $documentId");
 
     try {
       // 1. Check/Create Vehicle
@@ -303,6 +305,7 @@ class ApiService {
           scanData['term_months'] != null &&
           scanData['contract_date'] != null) {
         try {
+          debugPrint("[SYNC] Calling calculateLoanEquity with: balance=$originalBalance, rate=${scanData['interest_rate']}, term=${scanData['term_months']}, date=${scanData['contract_date']}, payment=${scanData['monthly_payment'] ?? (scanData['bi_weekly_payment'] ?? 0.0) * 2.16}");
           final calculation = await calculateLoanEquity(
             originalBalance: originalBalance,
             interestRate: (scanData['interest_rate'] ?? 0.0).toDouble(),
@@ -342,6 +345,7 @@ class ApiService {
       };
 
       debugPrint("[SYNC] Loan Body for DB: ${jsonEncode(loanBody)}");
+      debugPrint("[SYNC] Calculated Final currentBalance: $currentBalance");
 
       String loanId;
       if (loans.items.isEmpty) {
@@ -710,7 +714,7 @@ class ApiService {
 
     await submitLead('buyer_preapproval', {
       'user_id': userId,
-      'source': 'mobile_app_buyer_dashboard',
+      'source': 'car_owners_hub_buyer_dashboard',
       'name': name,
       'phone': phone,
       'monthly_budget_target': monthlyBudgetTarget,
