@@ -20,91 +20,98 @@ class UserTypeScreen extends StatelessWidget {
     const colorNavy = Color(0xFF003366);
     const colorVibrantGreen = Color(0xFF00CA50);
 
-    return Scaffold(
-      backgroundColor: colorSlate50,
-      body: SafeArea(
-        child: Column(
-          children: [
-            // Header with Back Button
-            Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: Row(
-                children: [
-                  GestureDetector(
-                    onTap: onBack,
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.05),
-                            blurRadius: 10,
-                          ),
-                        ],
-                      ),
-                      child: const Icon(LucideIcons.chevronLeft, size: 24),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        onBack();
+      },
+      child: Scaffold(
+        backgroundColor: colorSlate50,
+        body: SafeArea(
+          child: Column(
+            children: [
+              // Header with Back Button
+              Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Row(
                   children: [
-                    const SizedBox(height: 24),
-                    Text(
-                      "Are you an owner or a buyer?",
-                      style: GoogleFonts.outfit(
-                        fontSize: 32,
-                        fontWeight: FontWeight.bold,
-                        color: colorSlate800,
-                        height: 1.2,
-                        letterSpacing: -0.5,
+                    GestureDetector(
+                      onTap: onBack,
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.05),
+                              blurRadius: 10,
+                            ),
+                          ],
+                        ),
+                        child: const Icon(LucideIcons.chevronLeft, size: 24),
                       ),
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      "Select your path to access tools for managing your current vehicle or finding your next one.",
-                      style: GoogleFonts.outfit(
-                        fontSize: 16,
-                        color: colorSlate500,
-                        height: 1.5,
-                      ),
-                    ),
-                    const SizedBox(height: 40),
-
-                    // Option 1: Car Owner
-                    _buildOptionCard(
-                      icon: LucideIcons.car,
-                      iconColor: colorNavy,
-                      title: "I own a vehicle",
-                      subtitle:
-                          "Track my equity, lower my loan payments, or unlock cash back.",
-                      onTap: () => onSelect('owner'),
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    // Option 2: Buyer / Non-Owner
-                    _buildOptionCard(
-                      icon: LucideIcons.shoppingBag,
-                      iconColor: colorVibrantGreen,
-                      title: "I'm looking to buy",
-                      subtitle:
-                          "Shop vehicles that match my budget and explore financing options.",
-                      onTap: () => onSelect('buyer'),
                     ),
                   ],
                 ),
               ),
-            ),
-          ],
+
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const SizedBox(height: 24),
+                      Text(
+                        "Are you an owner or a buyer?",
+                        style: GoogleFonts.outfit(
+                          fontSize: 32,
+                          fontWeight: FontWeight.bold,
+                          color: colorSlate800,
+                          height: 1.2,
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        "Select your path to access tools for managing your current vehicle or finding your next one.",
+                        style: GoogleFonts.outfit(
+                          fontSize: 16,
+                          color: colorSlate500,
+                          height: 1.5,
+                        ),
+                      ),
+                      const SizedBox(height: 40),
+
+                      // Option 1: Car Owner
+                      _buildOptionCard(
+                        icon: LucideIcons.car,
+                        iconColor: colorNavy,
+                        title: "I own a vehicle",
+                        subtitle:
+                            "Track my equity, lower my loan payments, or unlock cash back.",
+                        onTap: () => onSelect('owner'),
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      // Option 2: Buyer / Non-Owner
+                      _buildOptionCard(
+                        icon: LucideIcons.shoppingBag,
+                        iconColor: colorVibrantGreen,
+                        title: "I'm looking to buy",
+                        subtitle:
+                            "Shop vehicles that match my budget and explore financing options.",
+                        onTap: () => onSelect('buyer'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

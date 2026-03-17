@@ -237,6 +237,52 @@ class AppFlowNotifier extends StateNotifier<AppFlowState> {
     state = state.copyWith(overlayScreen: overlay, keepOverlay: false);
   }
 
+  void handleBackFromRoot() {
+    final step = state.step;
+    debugPrint('[BACK] Root back handling for step: $step');
+
+    switch (step) {
+      case 'user-type':
+        setStep('splash');
+        return;
+      case 'details':
+        setStep('user-type');
+        return;
+      case 'teaser':
+        setStep('details');
+        return;
+      case 'auth-login':
+        final userType = ref.read(userProvider).userType;
+        setStep(userType == 'buyer' ? 'user-type' : 'teaser');
+        return;
+      case 'auth-email':
+        setStep('auth-login');
+        return;
+      case 'auth-otp':
+        setStep('auth-email');
+        return;
+      case 'auth-phone':
+        setStep('auth-login');
+        return;
+      case 'scan-intro':
+        if (AuthService().hasPhone) {
+          setStep('main-app');
+        } else {
+          setStep('auth-phone');
+        }
+        return;
+      case 'scanner':
+      case 'verify':
+        setStep('scan-intro');
+        return;
+      case 'loading':
+      case 'splash':
+      case 'main-app':
+      default:
+        return;
+    }
+  }
+
   Future<void> _syncDraftVehicle() async {
     if (!AuthService().isAuthenticated) return;
     final carDetails = ref.read(vehicleProvider).carDetails;

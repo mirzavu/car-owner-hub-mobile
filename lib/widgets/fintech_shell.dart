@@ -17,26 +17,47 @@ class FintechShell extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final appFlow = ref.watch(appFlowProvider);
+    final appFlowNotifier = ref.read(appFlowProvider.notifier);
 
-    return Scaffold(
-      body: Center(
-        child: Container(
-          constraints: const BoxConstraints(maxWidth: 480),
-          decoration: BoxDecoration(
-            color: const Color(0xFFF8FAFC),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.1),
-                blurRadius: 20,
-                offset: const Offset(0, 10),
-              ),
-            ],
-          ),
-          child: Stack(
-            children: [
-              child,
-              if (appFlow.overlayScreen != null) _buildOverlay(ref),
-            ],
+    return BackButtonListener(
+      onBackButtonPressed: () async {
+        final navigator = Navigator.of(context);
+        if (navigator.canPop()) {
+          return false;
+        }
+
+        if (appFlow.overlayScreen != null) {
+          appFlowNotifier.setOverlay(null);
+          return true;
+        }
+
+        if (appFlow.step == 'main-app') {
+          return false;
+        }
+
+        appFlowNotifier.handleBackFromRoot();
+        return true;
+      },
+      child: Scaffold(
+        body: Center(
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 480),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8FAFC),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.1),
+                  blurRadius: 20,
+                  offset: const Offset(0, 10),
+                ),
+              ],
+            ),
+            child: Stack(
+              children: [
+                child,
+                if (appFlow.overlayScreen != null) _buildOverlay(ref),
+              ],
+            ),
           ),
         ),
       ),

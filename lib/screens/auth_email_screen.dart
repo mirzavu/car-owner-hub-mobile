@@ -61,141 +61,148 @@ class _AuthEmailScreenState extends State<AuthEmailScreen> {
     const colorSlate900 = Color(0xFF0F172A);
     const colorVibrantGreen = Color(0xFF00CA50);
 
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        widget.onBack();
+      },
+      child: Scaffold(
         backgroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(LucideIcons.arrowLeft, color: colorSlate900),
-          onPressed: widget.onBack,
+        appBar: AppBar(
+          backgroundColor: Colors.white,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(LucideIcons.arrowLeft, color: colorSlate900),
+            onPressed: widget.onBack,
+          ),
         ),
-      ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
-          child: Padding(
-            padding: const EdgeInsets.all(32.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Icon
-                Container(
-                  width: 60,
-                  height: 60,
-                  margin: const EdgeInsets.only(bottom: 24),
-                  decoration: BoxDecoration(
-                    color: colorSlate50,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: colorSlate100),
+        body: SafeArea(
+          child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
+            child: Padding(
+              padding: const EdgeInsets.all(32.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Icon
+                  Container(
+                    width: 60,
+                    height: 60,
+                    margin: const EdgeInsets.only(bottom: 24),
+                    decoration: BoxDecoration(
+                      color: colorSlate50,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: colorSlate100),
+                    ),
+                    child: const Center(
+                      child: Icon(
+                        LucideIcons.mail,
+                        size: 28,
+                        color: colorSlate900,
+                      ),
+                    ),
                   ),
-                  child: const Center(
-                    child: Icon(
-                      LucideIcons.mail,
-                      size: 28,
+
+                  // Headings
+                  Text(
+                    "What's your email?",
+                    style: GoogleFonts.outfit(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
                       color: colorSlate900,
                     ),
                   ),
-                ),
-
-                // Headings
-                Text(
-                  "What's your email?",
-                  style: GoogleFonts.outfit(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                    color: colorSlate900,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  "We'll send you a secure verification code to sign in.",
-                  style: GoogleFonts.outfit(
-                    fontSize: 16,
-                    color: colorSlate500,
-                    height: 1.5,
-                  ),
-                ),
-                const SizedBox(height: 32),
-
-                // Email Input
-                Container(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: _errorMessage != null ? Colors.red : colorSlate300,
-                    ),
-                  ),
-                  child: TextField(
-                    controller: _emailController,
-                    keyboardType: TextInputType.emailAddress,
-                    autofocus: true,
+                  const SizedBox(height: 12),
+                  Text(
+                    "We'll send you a secure verification code to sign in.",
                     style: GoogleFonts.outfit(
-                      fontSize: 18,
-                      color: colorSlate700,
+                      fontSize: 16,
+                      color: colorSlate500,
+                      height: 1.5,
                     ),
-                    decoration: InputDecoration(
-                      hintText: "Enter your email address",
-                      hintStyle: GoogleFonts.outfit(color: colorSlate400),
-                      prefixIcon: const Icon(
-                        LucideIcons.atSign,
-                        color: colorSlate400,
-                      ),
-                      border: InputBorder.none,
-                      contentPadding: const EdgeInsets.all(16),
-                    ),
-                    onSubmitted: (_) => _handleContinue(),
                   ),
-                ),
+                  const SizedBox(height: 32),
 
-                if (_errorMessage != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8.0, left: 4.0),
-                    child: Text(
-                      _errorMessage!,
+                  // Email Input
+                  Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: _errorMessage != null ? Colors.red : colorSlate300,
+                      ),
+                    ),
+                    child: TextField(
+                      controller: _emailController,
+                      keyboardType: TextInputType.emailAddress,
+                      autofocus: true,
                       style: GoogleFonts.outfit(
-                        color: Colors.red,
-                        fontSize: 14,
+                        fontSize: 18,
+                        color: colorSlate700,
                       ),
+                      decoration: InputDecoration(
+                        hintText: "Enter your email address",
+                        hintStyle: GoogleFonts.outfit(color: colorSlate400),
+                        prefixIcon: const Icon(
+                          LucideIcons.atSign,
+                          color: colorSlate400,
+                        ),
+                        border: InputBorder.none,
+                        contentPadding: const EdgeInsets.all(16),
+                      ),
+                      onSubmitted: (_) => _handleContinue(),
                     ),
                   ),
 
-                const SizedBox(height: 32),
-
-                // Continue Button
-                SizedBox(
-                  width: double.infinity,
-                  height: 56,
-                  child: ElevatedButton(
-                    onPressed: _isLoading ? null : _handleContinue,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: colorVibrantGreen,
-                      disabledBackgroundColor: colorSlate300,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                  if (_errorMessage != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8.0, left: 4.0),
+                      child: Text(
+                        _errorMessage!,
+                        style: GoogleFonts.outfit(
+                          color: Colors.red,
+                          fontSize: 14,
+                        ),
                       ),
-                      elevation: 0,
                     ),
-                    child: _isLoading
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
+
+                  const SizedBox(height: 32),
+
+                  // Continue Button
+                  SizedBox(
+                    width: double.infinity,
+                    height: 56,
+                    child: ElevatedButton(
+                      onPressed: _isLoading ? null : _handleContinue,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: colorVibrantGreen,
+                        disabledBackgroundColor: colorSlate300,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 0,
+                      ),
+                      child: _isLoading
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : Text(
+                              "Continue",
+                              style: GoogleFonts.outfit(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
                             ),
-                          )
-                        : Text(
-                            "Continue",
-                            style: GoogleFonts.outfit(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                          ),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
