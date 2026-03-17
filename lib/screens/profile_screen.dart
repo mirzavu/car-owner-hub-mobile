@@ -23,6 +23,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _isPushSettingLoading = true;
   bool _isPushUpdating = false;
   bool _isAvatarUpdating = false;
+  bool _isDeletingAccount = false;
 
   @override
   void initState() {
@@ -132,6 +133,91 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   String? _getAvatarUrl() {
     return _auth.getAvatarUrl(thumb: '100x100');
+  }
+
+  Future<bool> _showDeleteAccountDialog({
+    required String title,
+    required String message,
+    required String confirmText,
+  }) async {
+    final result = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: Text(
+          title,
+          style: GoogleFonts.outfit(fontWeight: FontWeight.bold),
+        ),
+        content: Text(
+          message,
+          style: GoogleFonts.outfit(),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(
+              'Cancel',
+              style: GoogleFonts.outfit(color: Colors.grey.shade700),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(
+              confirmText,
+              style: GoogleFonts.outfit(color: Colors.red.shade600),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    return result ?? false;
+  }
+
+  Future<void> _confirmAndDeleteAccount() async {
+    if (_isDeletingAccount) return;
+
+    final firstConfirm = await _showDeleteAccountDialog(
+      title: 'Delete Account?',
+      message:
+          'This will permanently remove your account and related data. This action cannot be undone.',
+      confirmText: 'Continue',
+    );
+    if (!firstConfirm) return;
+
+    final secondConfirm = await _showDeleteAccountDialog(
+      title: 'Final Confirmation',
+      message: 'Are you absolutely sure you want to delete your account?',
+      confirmText: 'Delete Account',
+    );
+    if (!secondConfirm) return;
+
+    setState(() => _isDeletingAccount = true);
+    try {
+      await _auth.deleteAccount();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Your account has been deleted.'),
+          backgroundColor: Color(0xFF00CA50),
+        ),
+      );
+      _auth.logout();
+      widget.onLogout();
+    } catch (error) {
+      debugPrint('[PROFILE] Delete account failed: $error');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to delete account: $error'),
+          backgroundColor: Colors.red.shade600,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isDeletingAccount = false);
+      }
+    }
   }
 
   @override
@@ -406,12 +492,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         title: "Delete Account",
                         titleColor: Colors.red.shade600,
                         iconColor: Colors.red.shade600,
-                        onTap: () {
-                          // Placeholder for delete account logic
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text("Contact support to delete account")),
-                          );
-                        },
+                        trailing: _isDeletingAccount
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.red,
+                                ),
+                              )
+                            : null,
+                        onTap:
+                            _isDeletingAccount ? null : _confirmAndDeleteAccount,
                       ),
                     ]),
 

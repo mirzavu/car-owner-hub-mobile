@@ -248,6 +248,34 @@ class AuthService extends ChangeNotifier {
     notifyListeners();
   }
 
+  // Delete Account (server-side)
+  Future<void> deleteAccount() async {
+    if (!isAuthenticated || userId.isEmpty) {
+      throw Exception('User not logged in');
+    }
+
+    final token = pb.authStore.token;
+    if (token.isEmpty) {
+      throw Exception('Missing auth token');
+    }
+
+    final response = await http.post(
+      Uri.parse(Config.deleteAccount),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({'userId': userId}),
+    );
+
+    if (response.statusCode != 200) {
+      debugPrint(
+        "[AUTH] Delete account failed: ${response.statusCode} - ${response.body}",
+      );
+      throw Exception('Failed to delete account');
+    }
+  }
+
   // Verify Session with Server
   Future<bool> verifySession() async {
     if (!isAuthenticated) {
