@@ -199,20 +199,22 @@ class _VerifyScanScreenState extends State<VerifyScanScreen>
                  int.tryParse(widget.carDetails['year'] ?? '') ?? 0;
     final make = _vinDetails?['make'] ?? widget.carDetails['make'] ?? '';
     final model = _vinDetails?['model'] ?? widget.carDetails['model'] ?? '';
-    final trim = _vinDetails?['trim'] ?? widget.carDetails['trim'] ?? '';
+    
+    final mileageStr = widget.carDetails['mileage']?.replaceAll(RegExp(r'[^0-9]'), '') ?? '';
+    final mileage = int.tryParse(mileageStr);
 
     if (year == 0 || make.isEmpty || model.isEmpty) {
       debugPrint("[VERIFY] Skipping estimate refresh: Incomplete data (Year: $year, Make: $make, Model: $model)");
       return;
     }
 
-    debugPrint("[VERIFY] Requesting Market Value for: $year $make $model ($trim)");
+    debugPrint("[VERIFY] Requesting Market Value for: $year $make $model, Mileage: $mileage");
     try {
       final res = await ApiService.getEstimate(
         year: year,
         make: make,
         model: model,
-        trim: trim,
+        mileage: mileage,
       );
       if (mounted && (res.containsKey('value') || res.containsKey('estimated_value'))) {
         setState(() {
