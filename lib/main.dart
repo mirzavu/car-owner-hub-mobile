@@ -25,6 +25,7 @@ void main() async {
   }
 
   await AuthService().init();
+  await AuthService().verifySession();
   runApp(const ProviderScope(child: CarOwnersHub()));
 }
 
