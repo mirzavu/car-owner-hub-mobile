@@ -8,8 +8,14 @@ import '../services/auth_service.dart';
 class ScanPromptScreen extends StatefulWidget {
   final void Function(String, [Map<String, dynamic>?]) setStep;
   final VoidCallback? onBack;
+  final Future<void> Function()? onSkip;
 
-  const ScanPromptScreen({super.key, required this.setStep, this.onBack});
+  const ScanPromptScreen({
+    super.key,
+    required this.setStep,
+    this.onBack,
+    this.onSkip,
+  });
 
   @override
   State<ScanPromptScreen> createState() => _ScanPromptScreenState();
@@ -204,10 +210,14 @@ class _ScanPromptScreenState extends State<ScanPromptScreen>
                                     onTap: _showDocumentOptionsSheet,
                                     borderRadius: BorderRadius.circular(12),
                                     child: Row(
-                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
                                       children: [
-                                        const Icon(LucideIcons.filePlus,
-                                            size: 22, color: Colors.white),
+                                        const Icon(
+                                          LucideIcons.filePlus,
+                                          size: 22,
+                                          color: Colors.white,
+                                        ),
                                         const SizedBox(width: 12),
                                         Text(
                                           "Add Document",
@@ -230,9 +240,12 @@ class _ScanPromptScreenState extends State<ScanPromptScreen>
                                   onPressed: () => widget.setStep('verify', {}),
                                   style: OutlinedButton.styleFrom(
                                     side: const BorderSide(
-                                        color: colorSlate100, width: 2),
+                                      color: colorSlate100,
+                                      width: 2,
+                                    ),
                                     shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(12)),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
                                   ),
                                   child: Text(
                                     "Enter details manually",
@@ -246,7 +259,11 @@ class _ScanPromptScreenState extends State<ScanPromptScreen>
                               ),
                               const SizedBox(height: 8),
                               TextButton(
-                                onPressed: () => widget.setStep('main-app'),
+                                onPressed: widget.onSkip == null
+                                    ? () => widget.setStep('main-app')
+                                    : () async {
+                                        await widget.onSkip!();
+                                      },
                                 child: Text(
                                   "Skip for now",
                                   style: GoogleFonts.outfit(
@@ -300,13 +317,18 @@ class _ScanPromptScreenState extends State<ScanPromptScreen>
       String filePath = result.files.single.path!;
       if (mounted) Navigator.pop(context);
       setState(() => _isProcessing = true);
-      final scanResult = await ApiService.scanDocument(filePath,
-          userId: AuthService().userId);
+      final scanResult = await ApiService.scanDocument(
+        filePath,
+        userId: AuthService().userId,
+      );
       if (!mounted) return;
       setState(() => _isProcessing = false);
       if (scanResult.containsKey('error')) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content: Text("Scan failed. Please try again or enter manually.")));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Scan failed. Please try again or enter manually."),
+          ),
+        );
       } else {
         widget.setStep('verify', scanResult);
       }
@@ -322,7 +344,8 @@ class _ScanPromptScreenState extends State<ScanPromptScreen>
       context: context,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (context) {
         return SafeArea(
           child: Padding(
@@ -330,9 +353,13 @@ class _ScanPromptScreenState extends State<ScanPromptScreen>
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text("Add Document",
-                    style: GoogleFonts.outfit(
-                        fontSize: 20, fontWeight: FontWeight.bold)),
+                Text(
+                  "Add Document",
+                  style: GoogleFonts.outfit(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
                 const SizedBox(height: 24),
                 ListTile(
                   leading: const Icon(LucideIcons.camera),

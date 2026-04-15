@@ -10,6 +10,7 @@ class TeaserDashboardScreen extends StatefulWidget {
   final double estimatedValue;
   final VoidCallback onScanClick;
   final VoidCallback onLogout;
+  final bool isGuest;
 
   const TeaserDashboardScreen({
     super.key,
@@ -17,13 +18,15 @@ class TeaserDashboardScreen extends StatefulWidget {
     required this.estimatedValue,
     required this.onScanClick,
     required this.onLogout,
+    this.isGuest = false,
   });
 
   @override
   State<TeaserDashboardScreen> createState() => _TeaserDashboardScreenState();
 }
 
-class _TeaserDashboardScreenState extends State<TeaserDashboardScreen> with SingleTickerProviderStateMixin {
+class _TeaserDashboardScreenState extends State<TeaserDashboardScreen>
+    with SingleTickerProviderStateMixin {
   final GlobalKey _scanButtonKey = GlobalKey();
   late AnimationController _highlightController;
   late Animation<double> _scaleAnimation;
@@ -36,8 +39,20 @@ class _TeaserDashboardScreenState extends State<TeaserDashboardScreen> with Sing
       duration: const Duration(milliseconds: 400),
     );
     _scaleAnimation = TweenSequence<double>([
-      TweenSequenceItem(tween: Tween(begin: 1.0, end: 1.02).chain(CurveTween(curve: Curves.easeOutCubic)), weight: 50),
-      TweenSequenceItem(tween: Tween(begin: 1.02, end: 1.0).chain(CurveTween(curve: Curves.easeInCubic)), weight: 50),
+      TweenSequenceItem(
+        tween: Tween(
+          begin: 1.0,
+          end: 1.02,
+        ).chain(CurveTween(curve: Curves.easeOutCubic)),
+        weight: 50,
+      ),
+      TweenSequenceItem(
+        tween: Tween(
+          begin: 1.02,
+          end: 1.0,
+        ).chain(CurveTween(curve: Curves.easeInCubic)),
+        weight: 50,
+      ),
     ]).animate(_highlightController);
   }
 
@@ -177,8 +192,10 @@ class _TeaserDashboardScreenState extends State<TeaserDashboardScreen> with Sing
                                 ),
                                 borderRadius: BorderRadius.circular(999),
                               ),
-                              child: const Icon(
-                                LucideIcons.logOut,
+                              child: Icon(
+                                widget.isGuest
+                                    ? LucideIcons.user
+                                    : LucideIcons.logOut,
                                 size: 16,
                                 color: Colors.white,
                               ),
@@ -414,125 +431,125 @@ class _TeaserDashboardScreenState extends State<TeaserDashboardScreen> with Sing
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: Colors.grey[200]!.withValues(alpha: 0.8)),
-        boxShadow: [
-          BoxShadow(
-            color: cDarkBg.withValues(alpha: 0.08),
-            blurRadius: 35,
-            offset: const Offset(0, 15),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.only(right: 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: GoogleFonts.outfit(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w900,
-                      color: cDarkBg,
-                      height: 1.2,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(28),
+          border: Border.all(color: Colors.grey[200]!.withValues(alpha: 0.8)),
+          boxShadow: [
+            BoxShadow(
+              color: cDarkBg.withValues(alpha: 0.08),
+              blurRadius: 35,
+              offset: const Offset(0, 15),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.only(right: 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: GoogleFonts.outfit(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w900,
+                        color: cDarkBg,
+                        height: 1.2,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    description,
-                    style: GoogleFonts.outfit(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                      color: Colors.grey[500],
-                      height: 1.5,
+                    const SizedBox(height: 6),
+                    Text(
+                      description,
+                      style: GoogleFonts.outfit(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.grey[500],
+                        height: 1.5,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
-          ),
-          Container(
-            width: 80,
-            height: 80,
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [Color(0xFFF8FAFC), Color(0xFFF1F5F9)],
+            Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [Color(0xFFF8FAFC), Color(0xFFF1F5F9)],
+                ),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: Colors.grey[200]!.withValues(alpha: 0.8),
+                ),
               ),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: Colors.grey[200]!.withValues(alpha: 0.8),
-              ),
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(20),
-              child: Stack(
-                fit: StackFit.expand,
-                alignment: Alignment.center,
-                children: [
-                  Center(
-                    child: Opacity(
-                      opacity: 0.3,
-                      child: ImageFiltered(
-                        imageFilter: ImageFilter.blur(sigmaX: 3, sigmaY: 3),
-                        child: iconType == 'cash'
-                            ? Text(
-                                '\$\$\$',
-                                style: GoogleFonts.outfit(
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.w900,
-                                  color: cNeon,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(20),
+                child: Stack(
+                  fit: StackFit.expand,
+                  alignment: Alignment.center,
+                  children: [
+                    Center(
+                      child: Opacity(
+                        opacity: 0.3,
+                        child: ImageFiltered(
+                          imageFilter: ImageFilter.blur(sigmaX: 3, sigmaY: 3),
+                          child: iconType == 'cash'
+                              ? Text(
+                                  '\$\$\$',
+                                  style: GoogleFonts.outfit(
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.w900,
+                                    color: cNeon,
+                                  ),
+                                )
+                              : const Icon(
+                                  LucideIcons.car,
+                                  size: 40,
+                                  color: cDarkBg,
                                 ),
-                              )
-                            : const Icon(
-                                LucideIcons.car,
-                                size: 40,
-                                color: cDarkBg,
-                              ),
+                        ),
                       ),
                     ),
-                  ),
-                  BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 4, sigmaY: 4),
-                    child: Container(
-                      color: Colors.white.withValues(alpha: 0.3),
-                      alignment: Alignment.center,
+                    BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 4, sigmaY: 4),
                       child: Container(
-                        width: 36,
-                        height: 36,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.grey[100]!),
-                          boxShadow: const [
-                            BoxShadow(
-                              color: Colors.black12,
-                              blurRadius: 6,
-                              offset: Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: const Icon(
-                          LucideIcons.lock,
-                          size: 16,
-                          color: Color(0xFF1E293B),
+                        color: Colors.white.withValues(alpha: 0.3),
+                        alignment: Alignment.center,
+                        child: Container(
+                          width: 36,
+                          height: 36,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.grey[100]!),
+                            boxShadow: const [
+                              BoxShadow(
+                                color: Colors.black12,
+                                blurRadius: 6,
+                                offset: Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: const Icon(
+                            LucideIcons.lock,
+                            size: 16,
+                            color: Color(0xFF1E293B),
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
-          ),
-        ],
-      ),
+          ],
+        ),
       ),
     );
   }
@@ -555,48 +572,48 @@ class _TeaserDashboardScreenState extends State<TeaserDashboardScreen> with Sing
             },
             child: ElevatedButton(
               onPressed: _isScanning ? null : _handleScanClick,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: cNeon,
-            foregroundColor: cDarkBg,
-            disabledBackgroundColor: cNeon.withValues(alpha: 0.8),
-            padding: const EdgeInsets.symmetric(vertical: 20),
-            elevation: 8,
-            shadowColor: cNeon.withValues(alpha: 0.4),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(24),
-            ),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: _isScanning
-                ? [
-                    const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: cDarkBg,
-                      ),
-                    ),
-                  ]
-                : [
-                    Icon(
-                      LucideIcons.fileText,
-                      size: 20,
-                      color: cDarkBg.withValues(alpha: 0.5),
-                    ),
-                    const SizedBox(width: 12),
-                    Text(
-                      'SCAN LOAN TO UNLOCK',
-                      style: GoogleFonts.outfit(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 1.0,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    const Icon(LucideIcons.arrowRight, size: 20),
-                  ],
+              style: ElevatedButton.styleFrom(
+                backgroundColor: cNeon,
+                foregroundColor: cDarkBg,
+                disabledBackgroundColor: cNeon.withValues(alpha: 0.8),
+                padding: const EdgeInsets.symmetric(vertical: 20),
+                elevation: 8,
+                shadowColor: cNeon.withValues(alpha: 0.4),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(24),
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: _isScanning
+                    ? [
+                        const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: cDarkBg,
+                          ),
+                        ),
+                      ]
+                    : [
+                        Icon(
+                          LucideIcons.fileText,
+                          size: 20,
+                          color: cDarkBg.withValues(alpha: 0.5),
+                        ),
+                        const SizedBox(width: 12),
+                        Text(
+                          'SCAN LOAN TO UNLOCK',
+                          style: GoogleFonts.outfit(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 1.0,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        const Icon(LucideIcons.arrowRight, size: 20),
+                      ],
               ),
             ),
           ),

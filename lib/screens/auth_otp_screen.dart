@@ -7,12 +7,14 @@ class AuthOtpScreen extends StatefulWidget {
   final Function(String) setStep;
   final VoidCallback onBack;
   final String email;
+  final Future<void> Function()? onAuthSuccess;
 
   const AuthOtpScreen({
     super.key,
     required this.setStep,
     required this.onBack,
     required this.email,
+    this.onAuthSuccess,
   });
 
   @override
@@ -38,6 +40,10 @@ class _AuthOtpScreenState extends State<AuthOtpScreen> {
 
     try {
       await AuthService().verifyCustomOtp(widget.email, otp);
+      if (widget.onAuthSuccess != null) {
+        await widget.onAuthSuccess!();
+        return;
+      }
 
       // On success, progress through onboarding (similar to Google login flow)
       if (AuthService().userPhone.isNotEmpty) {
@@ -165,7 +171,8 @@ class _AuthOtpScreenState extends State<AuthOtpScreen> {
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                          color: _errorMessage != null &&
+                          color:
+                              _errorMessage != null &&
                                   _errorMessage!.contains("Invalid")
                               ? Colors.red
                               : colorSlate300,

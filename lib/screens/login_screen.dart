@@ -5,12 +5,14 @@ import 'package:lucide_icons/lucide_icons.dart';
 class LoginScreen extends StatelessWidget {
   final Function(String) setStep;
   final Future<void> Function()? onLoginGoogle;
+  final Future<void> Function()? onSkip;
   final VoidCallback? onBack;
 
   const LoginScreen({
     super.key,
     required this.setStep,
     this.onLoginGoogle,
+    this.onSkip,
     this.onBack,
   });
 
@@ -20,11 +22,9 @@ class LoginScreen extends StatelessWidget {
     const colorSlate50 = Color(0xFFF8FAFC);
     const colorSlate100 = Color(0xFFF1F5F9);
     const colorSlate300 = Color(0xFFCBD5E1);
-    const colorSlate400 = Color(0xFF94A3B8);
     const colorSlate500 = Color(0xFF64748B);
     const colorSlate700 = Color(0xFF334155);
     const colorSlate900 = Color(0xFF0F172A);
-    const colorGreen600 = Color(0xFF16A34A);
     const colorNavy = Color(0xFF003366);
     const colorVibrantGreen = Color(0xFF00CA50);
 
@@ -119,12 +119,15 @@ class LoginScreen extends StatelessWidget {
                                                 await onLoginGoogle!();
                                               } catch (e) {
                                                 if (context.mounted) {
-                                                  ScaffoldMessenger.of(context)
-                                                      .showSnackBar(
+                                                  ScaffoldMessenger.of(
+                                                    context,
+                                                  ).showSnackBar(
                                                     SnackBar(
-                                                      content:
-                                                          Text("Login failed: $e"),
-                                                      backgroundColor: Colors.red,
+                                                      content: Text(
+                                                        "Login failed: $e",
+                                                      ),
+                                                      backgroundColor:
+                                                          Colors.red,
                                                     ),
                                                   );
                                                 }
@@ -153,11 +156,13 @@ class LoginScreen extends StatelessWidget {
                                                 child: Center(
                                                   child: Text(
                                                     "G",
-                                                    style: GoogleFonts.notoSerif(
-                                                      color: Colors.white,
-                                                      fontSize: 10,
-                                                      fontWeight: FontWeight.bold,
-                                                    ),
+                                                    style:
+                                                        GoogleFonts.notoSerif(
+                                                          color: Colors.white,
+                                                          fontSize: 10,
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                        ),
                                                   ),
                                                 ),
                                               ),
@@ -203,6 +208,22 @@ class LoginScreen extends StatelessWidget {
                                             ],
                                           ),
                                         ),
+                                        const SizedBox(height: 16),
+                                        TextButton(
+                                          onPressed: onSkip == null
+                                              ? null
+                                              : () async {
+                                                  await onSkip!();
+                                                },
+                                          child: Text(
+                                            "Skip for now",
+                                            style: GoogleFonts.outfit(
+                                              color: colorSlate500,
+                                              fontSize: 15,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ),
                                       ],
                                     ),
                                   ),
@@ -210,53 +231,6 @@ class LoginScreen extends StatelessWidget {
                               ),
                             ),
 
-                            // --- Footer ---
-                            Column(
-                              children: [
-                                Padding(
-                                  padding: const EdgeInsets.only(bottom: 16),
-                                  child: Text(
-                                    "By continuing, you agree to our Terms of Service and Privacy Policy.",
-                                    textAlign: TextAlign.center,
-                                    style: GoogleFonts.outfit(
-                                      fontSize: 12, // text-xs
-                                      color: colorSlate400,
-                                    ),
-                                  ),
-                                ),
-
-                                // Security Badge
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                    vertical: 6,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFDCFCE7),
-                                    borderRadius: BorderRadius.circular(50),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      const Icon(
-                                        LucideIcons.shield,
-                                        size: 12,
-                                        color: colorGreen600,
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Text(
-                                        "Bank-Level Encryption",
-                                        style: GoogleFonts.outfit(
-                                          fontSize: 12, // text-xs
-                                          fontWeight: FontWeight.bold,
-                                          color: colorGreen600,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
                           ],
                         ),
                       ),
@@ -270,7 +244,10 @@ class LoginScreen extends StatelessWidget {
                   top: 0,
                   left: 0,
                   child: IconButton(
-                    icon: const Icon(LucideIcons.arrowLeft, color: colorSlate900),
+                    icon: const Icon(
+                      LucideIcons.arrowLeft,
+                      color: colorSlate900,
+                    ),
                     onPressed: onBack,
                   ),
                 ),

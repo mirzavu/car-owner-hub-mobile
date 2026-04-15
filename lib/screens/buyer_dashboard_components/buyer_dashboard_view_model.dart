@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../services/api_service.dart';
 import '../../services/auth_service.dart';
+import '../../services/data_service.dart';
 import 'buyer_dashboard_constants.dart';
 
 class BuyerDashboardViewModel extends ChangeNotifier {
@@ -72,14 +73,22 @@ class BuyerDashboardViewModel extends ChangeNotifier {
 
   Future<void> loadDraft() async {
     try {
-      final record = AuthService().pb.authStore.record;
-      if (record == null) return;
+      final appData = await DataService().loadAppData(
+        fallbackUserType: 'buyer',
+      );
+      final profile = appData.buyerProfile;
 
-      income = record.getStringValue('income_range');
-      employment = record.getStringValue('employment_status');
-      credit = record.getStringValue('credit_score_range');
+      income = (profile['income_range'] ?? '').toString().isEmpty
+          ? null
+          : (profile['income_range'] ?? '').toString();
+      employment = (profile['employment_status'] ?? '').toString().isEmpty
+          ? null
+          : (profile['employment_status'] ?? '').toString();
+      credit = (profile['credit_score_range'] ?? '').toString().isEmpty
+          ? null
+          : (profile['credit_score_range'] ?? '').toString();
 
-      final budgetRaw = record.get('monthly_budget');
+      final budgetRaw = profile['monthly_budget'];
       if (budgetRaw is num) {
         _budget = budgetRaw.toDouble().clamp(150, 900);
       } else if (budgetRaw is String) {
@@ -87,17 +96,7 @@ class BuyerDashboardViewModel extends ChangeNotifier {
         if (parsed != null) _budget = parsed.clamp(150, 900);
       }
 
-      dobMonth = record.getStringValue('dob_month');
-      if (dobMonth != null && dobMonth!.isNotEmpty) {
-        dobMonth = dobMonth!.padLeft(2, '0');
-      }
-      dobDay = record.getStringValue('dob_day');
-      if (dobDay != null && dobDay!.isNotEmpty) {
-        dobDay = dobDay!.padLeft(2, '0');
-      }
-      dobYear = record.getStringValue('dob_year');
-
-      final dobStr = record.getStringValue('dob');
+      final dobStr = (profile['dob'] ?? '').toString();
       if (dobStr.isNotEmpty && dobStr.contains('/')) {
         final parts = dobStr.split('/');
         if (parts.length == 3) {
@@ -107,11 +106,11 @@ class BuyerDashboardViewModel extends ChangeNotifier {
         }
       }
 
-      homeAddress = record.getStringValue('address');
-      empCompany = record.getStringValue('employer_name');
-      empTitle = record.getStringValue('job_title');
+      homeAddress = (profile['address'] ?? '').toString();
+      empCompany = (profile['employer_name'] ?? '').toString();
+      empTitle = (profile['job_title'] ?? '').toString();
 
-      final duration = record.getStringValue('employment_duration');
+      final duration = (profile['employment_duration'] ?? '').toString();
       if (duration.isNotEmpty && duration.contains('|')) {
         final parts = duration.split('|');
         if (parts.length == 2) {
@@ -120,10 +119,10 @@ class BuyerDashboardViewModel extends ChangeNotifier {
         }
       }
 
-      housingCost = _asDouble(record.get('housing_cost')).clamp(0, 5000);
-      downpayment = _asDouble(record.get('downpayment')).clamp(0, 10000);
-      hasCosigner = record.getBoolValue('has_cosigner') ? 'yes' : 'no';
-      notes = record.getStringValue('buyer_notes');
+      housingCost = _asDouble(profile['housing_cost']).clamp(0, 5000);
+      downpayment = _asDouble(profile['downpayment']).clamp(0, 10000);
+      hasCosigner = profile['has_cosigner'] == true ? 'yes' : 'no';
+      notes = (profile['buyer_notes'] ?? '').toString();
 
       notifyListeners();
     } catch (e) {
@@ -133,9 +132,6 @@ class BuyerDashboardViewModel extends ChangeNotifier {
 
   Future<void> saveDraft() async {
     try {
-      final auth = AuthService();
-      if (!auth.isAuthenticated) return;
-
       final body = {
         'income_range': income,
         'employment_status': employment,
@@ -154,7 +150,7 @@ class BuyerDashboardViewModel extends ChangeNotifier {
         'buyer_notes': notes,
       };
 
-      await auth.pb.collection('users').update(auth.userId, body: body);
+      await DataService().saveBuyerProfileDraft(body);
       notifyListeners();
     } catch (e) {
       debugPrint('[BUYER VM] Failed to save draft: $e');

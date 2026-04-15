@@ -4,10 +4,7 @@ class VehicleState {
   final Map<String, String> carDetails;
   final Map<String, dynamic>? lastScanData;
 
-  const VehicleState({
-    required this.carDetails,
-    required this.lastScanData,
-  });
+  const VehicleState({required this.carDetails, required this.lastScanData});
 
   factory VehicleState.initial() {
     return const VehicleState(
@@ -30,7 +27,9 @@ class VehicleState {
   }) {
     return VehicleState(
       carDetails: carDetails ?? this.carDetails,
-      lastScanData: keepLastScanData ? (lastScanData ?? this.lastScanData) : lastScanData,
+      lastScanData: keepLastScanData
+          ? (lastScanData ?? this.lastScanData)
+          : lastScanData,
     );
   }
 }
@@ -69,10 +68,7 @@ class VehicleNotifier extends StateNotifier<VehicleState> {
   void updateCarDetails(Map<String, String> patch) {
     final sanitized = _sanitizeCarDetailsPatch(patch);
     state = state.copyWith(
-      carDetails: {
-        ...state.carDetails,
-        ...sanitized,
-      },
+      carDetails: {...state.carDetails, ...sanitized},
       keepLastScanData: true,
     );
   }
@@ -83,6 +79,24 @@ class VehicleNotifier extends StateNotifier<VehicleState> {
 
   void clearLastScanData() {
     state = state.copyWith(lastScanData: null, keepLastScanData: false);
+  }
+
+  void hydrate({
+    required Map<String, String> carDetails,
+    Map<String, dynamic>? lastScanData,
+  }) {
+    state = VehicleState.initial().copyWith(
+      carDetails: {
+        ...VehicleState.initial().carDetails,
+        ..._sanitizeCarDetailsPatch(carDetails),
+      },
+      lastScanData: lastScanData,
+      keepLastScanData: false,
+    );
+  }
+
+  void reset() {
+    state = VehicleState.initial();
   }
 }
 

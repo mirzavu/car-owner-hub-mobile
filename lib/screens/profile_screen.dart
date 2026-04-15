@@ -8,8 +8,19 @@ import '../services/push_token_service.dart';
 
 class ProfileScreen extends StatefulWidget {
   final VoidCallback onLogout;
+  final VoidCallback onRequireLogin;
+  final bool isGuest;
+  final String profileName;
+  final String profilePhone;
 
-  const ProfileScreen({super.key, required this.onLogout});
+  const ProfileScreen({
+    super.key,
+    required this.onLogout,
+    required this.onRequireLogin,
+    this.isGuest = false,
+    this.profileName = '',
+    this.profilePhone = '',
+  });
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -148,10 +159,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           title,
           style: GoogleFonts.outfit(fontWeight: FontWeight.bold),
         ),
-        content: Text(
-          message,
-          style: GoogleFonts.outfit(),
-        ),
+        content: Text(message, style: GoogleFonts.outfit()),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -222,9 +230,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final email = _auth.userEmail;
-    final phone = _auth.userPhone;
-    final name = _auth.userName.isNotEmpty ? _auth.userName : "Car Owner";
+    final email = widget.isGuest ? '' : _auth.userEmail;
+    final phone = widget.isGuest ? widget.profilePhone : _auth.userPhone;
+    final name = widget.isGuest
+        ? (widget.profileName.isNotEmpty ? widget.profileName : 'Guest User')
+        : (_auth.userName.isNotEmpty ? _auth.userName : "Car Owner");
 
     // Colors
     const colorSlate50 = Color(0xFFF8FAFC);
@@ -283,7 +293,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       child: Column(
                         children: [
                           GestureDetector(
-                            onTap: _pickAndUploadAvatar,
+                            onTap: widget.isGuest ? null : _pickAndUploadAvatar,
                             child: Stack(
                               children: [
                                 Container(
@@ -365,7 +375,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                       ),
                                     ),
                                   )
-                                else
+                                else if (!widget.isGuest)
                                   Positioned(
                                     right: 0,
                                     bottom: 0,
@@ -395,7 +405,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ),
                           ),
                           Text(
-                            email.isNotEmpty ? email : "mikel@example.com",
+                            widget.isGuest
+                                ? "Data saved on this device"
+                                : (email.isNotEmpty
+                                      ? email
+                                      : "mikel@example.com"),
                             style: GoogleFonts.outfit(
                               fontSize: 14,
                               color: colorSlate500,
@@ -413,16 +427,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         icon: LucideIcons.phone,
                         title: "Phone Number",
                         subtitle: phone.isNotEmpty ? phone : "Not set",
-                        trailing: const Icon(
-                          LucideIcons.chevronRight,
-                          size: 16,
+                        trailing: widget.isGuest
+                            ? null
+                            : const Icon(LucideIcons.chevronRight, size: 16),
+                      ),
+                      if (!widget.isGuest)
+                        _buildListTile(
+                          icon: LucideIcons.mail,
+                          title: "Email Address",
+                          subtitle: email,
                         ),
-                      ),
-                      _buildListTile(
-                        icon: LucideIcons.mail,
-                        title: "Email Address",
-                        subtitle: email,
-                      ),
                     ]),
 
                     const SizedBox(height: 24),
@@ -473,7 +487,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           size: 16,
                         ),
                         onTap: () {
-                          launchUrl(Uri.parse('https://carownershub.app/privacy'));
+                          launchUrl(
+                            Uri.parse('https://carownershub.app/privacy'),
+                          );
                         },
                       ),
                       _buildListTile(
@@ -484,27 +500,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           size: 16,
                         ),
                         onTap: () {
-                          launchUrl(Uri.parse('https://carownershub.app/terms/'));
+                          launchUrl(
+                            Uri.parse('https://carownershub.app/terms/'),
+                          );
                         },
                       ),
-                      _buildListTile(
-                        icon: LucideIcons.trash2,
-                        title: "Delete Account",
-                        titleColor: Colors.red.shade600,
-                        iconColor: Colors.red.shade600,
-                        trailing: _isDeletingAccount
-                            ? const SizedBox(
-                                width: 16,
-                                height: 16,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Colors.red,
-                                ),
-                              )
-                            : null,
-                        onTap:
-                            _isDeletingAccount ? null : _confirmAndDeleteAccount,
-                      ),
+                      if (!widget.isGuest)
+                        _buildListTile(
+                          icon: LucideIcons.trash2,
+                          title: "Delete Account",
+                          titleColor: Colors.red.shade600,
+                          iconColor: Colors.red.shade600,
+                          trailing: _isDeletingAccount
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.red,
+                                  ),
+                                )
+                              : null,
+                          onTap: _isDeletingAccount
+                              ? null
+                              : _confirmAndDeleteAccount,
+                        ),
                     ]),
 
                     const SizedBox(height: 40),
@@ -514,14 +534,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       width: double.infinity,
                       child: ElevatedButton(
                         onPressed: () {
+                          if (widget.isGuest) {
+                            widget.onRequireLogin();
+                            return;
+                          }
                           _auth.logout();
                           widget.onLogout();
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.white,
-                          foregroundColor: Colors.red.shade600,
+                          foregroundColor: widget.isGuest
+                              ? const Color(0xFF003366)
+                              : Colors.red.shade600,
                           elevation: 0,
-                          side: BorderSide(color: Colors.red.shade100),
+                          side: BorderSide(
+                            color: widget.isGuest
+                                ? const Color(0xFFBFD3E6)
+                                : Colors.red.shade100,
+                          ),
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(16),
@@ -530,10 +560,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const Icon(LucideIcons.logOut, size: 18),
+                            Icon(
+                              widget.isGuest
+                                  ? LucideIcons.user
+                                  : LucideIcons.logOut,
+                              size: 18,
+                            ),
                             const SizedBox(width: 8),
                             Text(
-                              "Log Out",
+                              widget.isGuest ? "Sign Up / Log In" : "Log Out",
                               style: GoogleFonts.outfit(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 16,

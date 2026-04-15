@@ -13,8 +13,9 @@ enum ScanPhase { align, scanning, complete, error }
 
 class ScannerScreen extends StatefulWidget {
   final Function(String, Map<String, dynamic>?) setStep;
+  final Future<void> Function()? onSkip;
 
-  const ScannerScreen({super.key, required this.setStep});
+  const ScannerScreen({super.key, required this.setStep, this.onSkip});
 
   @override
   State<ScannerScreen> createState() => _ScannerScreenState();
@@ -309,10 +310,11 @@ class _ScannerScreenState extends State<ScannerScreen>
                       // Skip Button
                       InkWell(
                         onTap: () async {
-                          // Mark as skipped and go to dashboard
-                          final auth = AuthService();
-                          await auth.updateOnboardingStatus('skipped');
-                          widget.setStep('main-app', null);
+                          if (widget.onSkip != null) {
+                            await widget.onSkip!();
+                          } else {
+                            widget.setStep('main-app', null);
+                          }
                         },
                         borderRadius: BorderRadius.circular(50),
                         child: Container(

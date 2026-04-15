@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
-import '../services/api_service.dart';
+import '../services/app_data.dart';
 import '../services/auth_service.dart';
+import '../services/data_service.dart';
 import '../services/push_token_service.dart';
 import 'financials_state.dart';
 import 'user_state.dart';
@@ -13,6 +16,7 @@ class AppFlowState {
   final String activeTab;
   final int? shopInitialStepDelta;
   final String? overlayScreen;
+  final String? detailsBackTarget;
   final bool loading;
   final String loadingText;
 
@@ -21,6 +25,7 @@ class AppFlowState {
     required this.activeTab,
     required this.shopInitialStepDelta,
     required this.overlayScreen,
+    required this.detailsBackTarget,
     required this.loading,
     required this.loadingText,
   });
@@ -31,6 +36,7 @@ class AppFlowState {
       activeTab: 'home',
       shopInitialStepDelta: null,
       overlayScreen: null,
+      detailsBackTarget: null,
       loading: false,
       loadingText: '',
     );
@@ -41,17 +47,25 @@ class AppFlowState {
     String? activeTab,
     int? shopInitialStepDelta,
     String? overlayScreen,
+    String? detailsBackTarget,
     bool? loading,
     String? loadingText,
     bool keepOverlay = true,
     bool keepShopDelta = true,
+    bool keepDetailsBackTarget = true,
   }) {
     return AppFlowState(
       step: step ?? this.step,
       activeTab: activeTab ?? this.activeTab,
-      shopInitialStepDelta:
-          keepShopDelta ? (shopInitialStepDelta ?? this.shopInitialStepDelta) : shopInitialStepDelta,
-      overlayScreen: keepOverlay ? (overlayScreen ?? this.overlayScreen) : overlayScreen,
+      shopInitialStepDelta: keepShopDelta
+          ? (shopInitialStepDelta ?? this.shopInitialStepDelta)
+          : shopInitialStepDelta,
+      overlayScreen: keepOverlay
+          ? (overlayScreen ?? this.overlayScreen)
+          : overlayScreen,
+      detailsBackTarget: keepDetailsBackTarget
+          ? (detailsBackTarget ?? this.detailsBackTarget)
+          : detailsBackTarget,
       loading: loading ?? this.loading,
       loadingText: loadingText ?? this.loadingText,
     );
@@ -67,112 +81,68 @@ class AppFlowNotifier extends StateNotifier<AppFlowState> {
 
   Future<void> _initApp() async {
     final auth = AuthService();
+    final userNotifier = ref.read(userProvider.notifier);
 
     debugPrint('--- APP INITIALIZATION ---');
 
     await Future.delayed(const Duration(milliseconds: 500));
 
-    debugPrint('Is Authenticated: ${auth.isAuthenticated}');
-    if (!auth.isAuthenticated) {
-      debugPrint('Routing to: splash');
-      state = state.copyWith(step: 'splash');
-      return;
+    if (auth.isAuthenticated) {
+      final bool isSessionValid = await auth.verifySession();
+      if (!isSessionValid) {
+        debugPrint('Session invalid. Falling back to guest/local state.');
+      }
     }
 
-    final bool isSessionValid = await auth.verifySession();
-    if (!isSessionValid) {
-      debugPrint('Session invalid or user deleted. Routing to: splash');
-      state = state.copyWith(step: 'splash');
-      return;
-    }
+    final storedType = await userNotifier.restoreUserType();
+    final appData = await DataService().loadAppData(
+      fallbackUserType: storedType ?? ref.read(userProvider).userType,
+    );
+    _hydrateProviders(appData);
 
-    final storedType = await ref.read(userProvider.notifier).restoreUserType();
-    if (storedType == 'buyer') {
-      state = state.copyWith(activeTab: 'home');
-    }
+    if (auth.isAuthenticated) {
+      final fcmToken = await PushTokenService().initAndSyncToken();
+      if (fcmToken != null && fcmToken.isNotEmpty) {
+        debugPrint('[PUSH] FCM Token: $fcmToken');
 
-    final fcmToken = await PushTokenService().initAndSyncToken();
-    if (fcmToken != null && fcmToken.isNotEmpty) {
-      debugPrint('[PUSH] FCM Token: $fcmToken');
+        FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+          debugPrint('Got a message whilst in the foreground!');
+          debugPrint('Message data: ${message.data}');
 
-      FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-        debugPrint('Got a message whilst in the foreground!');
-        debugPrint('Message data: ${message.data}');
+          if (message.notification != null) {
+            debugPrint(
+              'Message also contained a notification: ${message.notification}',
+            );
+          }
+        });
 
-        if (message.notification != null) {
-          debugPrint(
-            'Message also contained a notification: ${message.notification}',
-          );
-        }
-      });
-
-      FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-        debugPrint('A new onMessageOpenedApp event was published!');
-      });
-    }
-
-    debugPrint('Onboarding Status: ${auth.onboardingStatus}');
-    debugPrint('Onboarding Completed: ${auth.isOnboardingCompleted}');
-    debugPrint('Has Phone: ${auth.hasPhone} (${auth.userPhone})');
-
-    LoanSnapshot? snapshot = await ApiService.getCurrentLoanSnapshot();
-    Map<String, dynamic>? userVehicle = await ApiService.getUserVehicle();
-
-    if (userVehicle != null) {
-      ref.read(vehicleProvider.notifier).updateCarDetails({
-        'year': userVehicle['year'],
-        'make': userVehicle['make'],
-        'model': userVehicle['model'],
-        'trim': userVehicle['trim'],
-        'vin': userVehicle['vin'],
-        'mileage': userVehicle['mileage'],
-      });
-      
-      final estimatedValue = userVehicle['current_market_value'] as double;
-      if (estimatedValue > 0) {
-        ref.read(financialsProvider.notifier).update({
-          'estimatedValue': estimatedValue,
+        FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+          debugPrint('A new onMessageOpenedApp event was published!');
         });
       }
     }
 
-    if (auth.isOnboardingCompleted || snapshot != null) {
-      debugPrint(
-        "[INIT] Routing to: main-app. ${snapshot != null ? 'Loan found.' : 'Onboarding marked completed.'}",
-      );
+    final nextStep = _resolveStep(
+      appData,
+      isAuthenticated: auth.isAuthenticated,
+      hasPhone: auth.hasPhone || appData.profilePhone.trim().isNotEmpty,
+    );
 
-      if (snapshot != null) {
-        ref.read(financialsProvider.notifier).applySnapshot(snapshot);
-      }
-
-      state = state.copyWith(step: 'main-app');
-
-      if (snapshot != null) {
-        await runTimeTravel(snapshot: snapshot);
-      }
-    } else if (!auth.hasPhone) {
-      debugPrint('Routing to: auth-phone');
-      state = state.copyWith(step: 'auth-phone');
-    } else {
-      final userType = ref.read(userProvider).userType;
-      if (userType == 'buyer') {
-        debugPrint('Routing to: main-app (buyer)');
-        state = state.copyWith(step: 'main-app');
-      } else {
-        debugPrint('Routing to: scan-intro');
-        state = state.copyWith(step: 'scan-intro');
-      }
-    }
+    debugPrint('Routing to: $nextStep');
+    state = state.copyWith(
+      step: nextStep,
+      activeTab: appData.userType == 'buyer' ? 'home' : state.activeTab,
+    );
 
     debugPrint('--------------------------');
   }
 
   void setStep(String newStep, [Map<String, dynamic>? data]) {
     if (state.step == newStep && data == null) return;
-    
+
     debugPrint('[STEP] Transition: ${state.step} -> $newStep');
     if (data != null) {
-      debugPrint('[STEP] Incoming Data: $data');
+      debugPrint('[STEP] Incoming Data: ${_sanitizeLogData(data)}');
     }
 
     if (data != null) {
@@ -180,16 +150,37 @@ class AppFlowNotifier extends StateNotifier<AppFlowState> {
       ref.read(financialsProvider.notifier).updateFromScanData(data);
     }
 
-    if (AuthService().isAuthenticated) {
-      final carDetails = ref.read(vehicleProvider).carDetails;
-      if (carDetails['year'] != null && carDetails['year']!.isNotEmpty) {
-        _syncDraftVehicle();
-      }
+    final detailsBackTarget = newStep == 'details'
+        ? (state.step == 'main-app' ? 'main-app' : 'user-type')
+        : null;
+
+    state = state.copyWith(
+      step: newStep,
+      detailsBackTarget: detailsBackTarget,
+      keepDetailsBackTarget: newStep == 'details',
+    );
+
+    final carDetails = ref.read(vehicleProvider).carDetails;
+    if ((carDetails['year'] ?? '').isNotEmpty ||
+        (carDetails['make'] ?? '').isNotEmpty ||
+        (carDetails['model'] ?? '').isNotEmpty) {
+      unawaited(_persistVehicleDraft());
     }
 
-    state = state.copyWith(step: newStep);
-
     if (newStep == 'main-app') {
+      final user = ref.read(userProvider);
+      if (user.isGuest && _hasLoanCompletionPayload(data)) {
+        debugPrint(
+          '[STEP] Guest loan completion detected. Promoting in-memory state to main dashboard.',
+        );
+        ref.read(financialsProvider.notifier).setLoanId('guest-loan');
+        ref
+            .read(userProvider.notifier)
+            .setProfile(
+              onboardingStatus: AppOnboardingStatus.completed,
+              dataSource: AppDataSource.guestLocal,
+            );
+      }
       ref.read(userProvider.notifier).clearTempPhone();
       ref.read(vehicleProvider.notifier).clearLastScanData();
     }
@@ -202,20 +193,7 @@ class AppFlowNotifier extends StateNotifier<AppFlowState> {
     try {
       await AuthService().loginWithGoogle();
       debugPrint('[AUTH] Google login backend successful');
-
-      final fcmToken = await PushTokenService().initAndSyncToken();
-      if (fcmToken != null && fcmToken.isNotEmpty) {
-        debugPrint('[PUSH] FCM Token synced: $fcmToken');
-      }
-
-      // Check if phone is already present
-      if (AuthService().userPhone.isNotEmpty) {
-        debugPrint('[AUTH] User has phone, routing to scan-intro');
-        setStep('scan-intro');
-      } else {
-        debugPrint('[AUTH] User missing phone, routing to auth-phone');
-        setStep('auth-phone');
-      }
+      await handleSuccessfulAuthentication();
     } catch (e, stackTrace) {
       debugPrint('[AUTH] Google Login Error: $e');
       debugPrint('[AUTH] Stack Trace: $stackTrace');
@@ -238,167 +216,313 @@ class AppFlowNotifier extends StateNotifier<AppFlowState> {
   }
 
   void handleBackFromRoot() {
-    final step = state.step;
-    debugPrint('[BACK] Root back handling for step: $step');
+    debugPrint('[BACK] Root back handling for step: ${state.step}');
+    navigateBack();
+  }
 
-    switch (step) {
+  bool canNavigateBack([String? step]) => backTargetFor(step) != null;
+
+  String? backTargetFor([String? step]) {
+    final currentStep = step ?? state.step;
+    final user = ref.read(userProvider);
+    final hasPhone = AuthService().hasPhone || user.profilePhone.isNotEmpty;
+
+    switch (currentStep) {
       case 'user-type':
-        setStep('splash');
-        return;
+        return 'splash';
       case 'details':
-        setStep('user-type');
-        return;
+        return state.detailsBackTarget ?? 'user-type';
       case 'teaser':
-        setStep('details');
-        return;
+        return 'details';
       case 'auth-login':
-        final userType = ref.read(userProvider).userType;
-        setStep(userType == 'buyer' ? 'user-type' : 'teaser');
-        return;
+        return _resolveAuthLoginBackTarget(user);
       case 'auth-email':
-        setStep('auth-login');
-        return;
+        return 'auth-login';
       case 'auth-otp':
-        setStep('auth-email');
-        return;
+        return 'auth-email';
       case 'auth-phone':
-        setStep('auth-login');
-        return;
+        return _authPhoneBackTarget(user);
       case 'scan-intro':
-        if (AuthService().hasPhone) {
-          setStep('main-app');
-        } else {
-          setStep('auth-phone');
-        }
-        return;
+        return _scanIntroBackTarget(user, hasPhone: hasPhone);
       case 'scanner':
       case 'verify':
-        setStep('scan-intro');
-        return;
+        return 'scan-intro';
       case 'loading':
       case 'splash':
       case 'main-app':
       default:
-        return;
+        return null;
     }
   }
 
-  Future<void> _syncDraftVehicle() async {
-    if (!AuthService().isAuthenticated) return;
+  void navigateBack([String? step]) {
+    final target = backTargetFor(step);
+    if (target == null) return;
+    setStep(target);
+  }
+
+  Future<void> _persistVehicleDraft() async {
     final carDetails = ref.read(vehicleProvider).carDetails;
     if (carDetails['year'] == null || carDetails['year']!.isEmpty) return;
 
     try {
-      debugPrint('[SYNC] Triggering background draft sync...');
+      debugPrint('[SYNC] Persisting vehicle draft...');
       final financials = ref.read(financialsProvider).data;
-      await ApiService.syncVehicleData(
+      await DataService().saveVehicleDraft(
         carDetails: carDetails,
         estimatedValue: (financials['estimatedValue'] as num).toDouble(),
+        userType: ref.read(userProvider).userType,
       );
-      debugPrint('[SYNC] Draft vehicle synced successfully.');
+      debugPrint('[SYNC] Draft vehicle persisted successfully.');
     } catch (e) {
-      debugPrint('[SYNC] Draft sync failed: $e');
+      debugPrint('[SYNC] Draft vehicle persistence failed: $e');
     }
   }
 
-  Future<void> runTimeTravel({LoanSnapshot? snapshot}) async {
-    debugPrint('[TIME-TRAVEL] Function called.');
+  Future<void> handleSuccessfulAuthentication() async {
+    final storedType = ref.read(userProvider).userType;
+    await DataService().migrateLocalToPocketBase(fallbackUserType: storedType);
 
-    if (snapshot == null) {
-      debugPrint('[TIME-TRAVEL] No snapshot provided. Fetching from DB...');
-      snapshot = await ApiService.getCurrentLoanSnapshot();
-    }
-
-    double originalBalance;
-    double interestRate;
-    int termMonths;
-    String? startDate;
-    double monthlyPayment;
-
-    final lastScanData = ref.read(vehicleProvider).lastScanData;
-
-    if (snapshot != null) {
-      debugPrint('[TIME-TRAVEL] Using database snapshot data.');
-      ref.read(financialsProvider.notifier).setLoanId(snapshot.loanId);
-      originalBalance = snapshot.originalBalance;
-      interestRate = snapshot.interestRate;
-      termMonths = snapshot.termMonths;
-      startDate = snapshot.startDate;
-      monthlyPayment = snapshot.monthlyPayment;
-    } else if (lastScanData != null) {
-      debugPrint('[TIME-TRAVEL] Using lastScanData from memory (fresh scan).');
-      originalBalance =
-          (lastScanData['original_amount_financed'] ??
-                  lastScanData['current_balance'] ??
-                  0)
-              .toDouble();
-      interestRate = (lastScanData['interest_rate'] ?? 0).toDouble();
-      termMonths = (lastScanData['term_months'] ?? 0).toInt();
-      startDate = lastScanData['contract_date']?.toString();
-      monthlyPayment =
-          (lastScanData['monthly_payment'] ??
-                  (lastScanData['bi_weekly_payment'] ?? 0) * 2.16)
-              .toDouble();
-    } else {
-      debugPrint(
-        '[TIME-TRAVEL] No data source available (restart or no scan). Skipping.',
-      );
-      return;
-    }
-
-    debugPrint(
-      '[TIME-TRAVEL] Input: Balance=$originalBalance, Rate=$interestRate, Term=$termMonths, Start=$startDate, Payment=$monthlyPayment',
+    final appData = await DataService().loadAppData(
+      fallbackUserType: storedType,
     );
+    _hydrateProviders(appData);
 
-    if (originalBalance == 0 ||
-        interestRate == 0 ||
-        termMonths == 0 ||
-        startDate == null ||
-        startDate.isEmpty) {
-      debugPrint('[TIME-TRAVEL] Missing required parameters. Aborting.');
-      return;
+    final fcmToken = await PushTokenService().initAndSyncToken();
+    if (fcmToken != null && fcmToken.isNotEmpty) {
+      debugPrint('[PUSH] FCM Token synced: $fcmToken');
     }
 
-    try {
-      final result = await ApiService.calculateLoanEquity(
-        originalBalance: originalBalance,
-        interestRate: interestRate,
-        termMonths: termMonths,
-        startDate: startDate,
-        monthlyPayment: monthlyPayment,
+    final nextStep = _resolveStep(
+      appData,
+      isAuthenticated: true,
+      hasPhone: AuthService().hasPhone || appData.profilePhone.isNotEmpty,
+    );
+    state = state.copyWith(
+      activeTab: appData.userType == 'buyer' ? 'home' : state.activeTab,
+    );
+    setStep(nextStep);
+  }
+
+  Future<void> skipLoginForNow() async {
+    final user = ref.read(userProvider);
+    await DataService().markOnboardingSkipped(userType: user.userType);
+    ref
+        .read(userProvider.notifier)
+        .setProfile(
+          onboardingStatus: AppOnboardingStatus.loginSkipped,
+          dataSource: AppDataSource.guestLocal,
+        );
+    setStep(user.userType == 'buyer' ? 'main-app' : 'scan-intro');
+  }
+
+  Future<void> skipRegistrationForNow() async {
+    final user = ref.read(userProvider);
+    await DataService().markOnboardingSkipped(
+      userType: user.userType,
+      status: user.userType == 'buyer'
+          ? AppOnboardingStatus.loginSkipped
+          : AppOnboardingStatus.profileCaptured,
+    );
+    ref
+        .read(userProvider.notifier)
+        .setProfile(
+          onboardingStatus: user.userType == 'buyer'
+              ? AppOnboardingStatus.loginSkipped
+              : AppOnboardingStatus.profileCaptured,
+          dataSource: user.dataSource,
+        );
+    setStep(user.userType == 'buyer' ? 'main-app' : 'scan-intro');
+  }
+
+  Future<void> skipLoanVerification() async {
+    final user = ref.read(userProvider);
+    final nextStatus = user.userType == 'owner'
+        ? AppOnboardingStatus.verificationSkipped
+        : AppOnboardingStatus.loginSkipped;
+    await DataService().markOnboardingSkipped(
+      userType: user.userType,
+      status: nextStatus,
+    );
+    ref
+        .read(userProvider.notifier)
+        .setProfile(onboardingStatus: nextStatus, dataSource: user.dataSource);
+    setStep('main-app');
+  }
+
+  Future<void> logoutToSplash() async {
+    if (AuthService().isAuthenticated) {
+      AuthService().logout();
+    }
+    await DataService().clearGuestData();
+    _resetProviders();
+    state = AppFlowState.initial().copyWith(step: 'splash');
+  }
+
+  String authLoginBackTarget() {
+    return _resolveAuthLoginBackTarget(ref.read(userProvider));
+  }
+
+  Future<void> startOwnerVehicleFlow() async {
+    final user = ref.read(userProvider);
+    ref.read(userProvider.notifier).setUserType('owner');
+    ref
+        .read(userProvider.notifier)
+        .setProfile(
+          onboardingStatus: AppOnboardingStatus.newUser,
+          dataSource: user.dataSource,
+        );
+
+    if (!AuthService().isAuthenticated) {
+      await DataService().updateGuestIdentity(
+        userType: 'owner',
+        onboardingStatus: AppOnboardingStatus.newUser,
       );
-
-      debugPrint('[TIME-TRAVEL] Result received: $result');
-
-      if (result['calculated_balance'] != null) {
-        final newBalance = result['calculated_balance'].toDouble();
-        debugPrint('[TIME-TRAVEL] Calculated balance from API: $newBalance');
-        ref.read(financialsProvider.notifier).update({
-          'userEstimatedLoan': newBalance,
-        });
-
-        if (newBalance == 0) {
-          ref.read(financialsProvider.notifier).update({
-            'monthlyPayment': 0.0,
-          });
-          debugPrint(
-            '[TIME-TRAVEL] Balance is 0. Setting monthly payment to 0.',
-          );
-        }
-
-        ref.read(financialsProvider.notifier).calculateEquity();
-        debugPrint(
-          '[TIME-TRAVEL] Equity recalculated. Proceeding to DB update...',
-        );
-        ApiService.updateLoanBalance(newBalance);
-      } else {
-        debugPrint(
-          '[TIME-TRAVEL] API returned null calculated_balance. No update performed.',
-        );
-      }
-    } catch (e) {
-      debugPrint('[TIME-TRAVEL] Error during calculation: $e');
     }
+
+    state = state.copyWith(activeTab: 'home');
+    setStep('details');
+  }
+
+  void _hydrateProviders(AppData appData) {
+    ref.read(userProvider.notifier).hydrateFromAppData(appData);
+    ref
+        .read(vehicleProvider.notifier)
+        .hydrate(
+          carDetails: appData.carDetails,
+          lastScanData: appData.scanData,
+        );
+    ref
+        .read(financialsProvider.notifier)
+        .hydrate(data: appData.financials, loanId: appData.loanId);
+  }
+
+  void _resetProviders() {
+    final selectedType = ref.read(userProvider).userType;
+    ref.read(userProvider.notifier).reset(userType: selectedType);
+    ref.read(vehicleProvider.notifier).reset();
+    ref.read(financialsProvider.notifier).reset();
+  }
+
+  String _resolveStep(
+    AppData appData, {
+    required bool isAuthenticated,
+    required bool hasPhone,
+  }) {
+    if (isAuthenticated) {
+      if (appData.userType == 'buyer') {
+        return 'main-app';
+      }
+      if ((appData.loanId ?? '').isNotEmpty ||
+          appData.onboardingStatus == AppOnboardingStatus.completed ||
+          AuthService().isOnboardingCompleted) {
+        return 'main-app';
+      }
+      if (!hasPhone) {
+        return 'auth-phone';
+      }
+      return 'scan-intro';
+    }
+
+    if (!appData.hasAnyData ||
+        appData.onboardingStatus == AppOnboardingStatus.newUser) {
+      return 'splash';
+    }
+
+    if (appData.userType == 'buyer') {
+      return 'main-app';
+    }
+
+    switch (appData.onboardingStatus) {
+      case AppOnboardingStatus.vehicleCaptured:
+        return 'teaser';
+      case AppOnboardingStatus.loginSkipped:
+      case AppOnboardingStatus.profileCaptured:
+        return 'scan-intro';
+      case AppOnboardingStatus.verificationSkipped:
+        return 'main-app';
+      case AppOnboardingStatus.loanCaptured:
+      case AppOnboardingStatus.completed:
+        return 'main-app';
+      case AppOnboardingStatus.newUser:
+        return 'splash';
+    }
+  }
+
+  String _resolveAuthLoginBackTarget(UserState user) {
+    if (AuthService().isAuthenticated) {
+      return 'main-app';
+    }
+
+    if (!user.isGuest || user.onboardingStatus == AppOnboardingStatus.newUser) {
+      return user.userType == 'buyer' ? 'user-type' : 'teaser';
+    }
+
+    if (user.userType == 'buyer') {
+      return 'main-app';
+    }
+
+    switch (user.onboardingStatus) {
+      case AppOnboardingStatus.vehicleCaptured:
+        return 'teaser';
+      case AppOnboardingStatus.loginSkipped:
+      case AppOnboardingStatus.profileCaptured:
+        return 'scan-intro';
+      case AppOnboardingStatus.verificationSkipped:
+        return 'main-app';
+      case AppOnboardingStatus.loanCaptured:
+      case AppOnboardingStatus.completed:
+        return 'main-app';
+      case AppOnboardingStatus.newUser:
+        return 'teaser';
+    }
+  }
+
+  String? _authPhoneBackTarget(UserState user) {
+    if (AuthService().isAuthenticated) {
+      return null;
+    }
+    return 'auth-login';
+  }
+
+  String _scanIntroBackTarget(UserState user, {required bool hasPhone}) {
+    if (user.isGuest && user.userType == 'owner') {
+      switch (user.onboardingStatus) {
+        case AppOnboardingStatus.profileCaptured:
+          return 'auth-phone';
+        case AppOnboardingStatus.verificationSkipped:
+          return 'main-app';
+        case AppOnboardingStatus.loginSkipped:
+        case AppOnboardingStatus.vehicleCaptured:
+        case AppOnboardingStatus.newUser:
+          return 'teaser';
+        case AppOnboardingStatus.loanCaptured:
+        case AppOnboardingStatus.completed:
+          return 'main-app';
+      }
+    }
+
+    if (hasPhone) {
+      return 'main-app';
+    }
+    return 'auth-phone';
+  }
+
+  bool _hasLoanCompletionPayload(Map<String, dynamic>? data) {
+    if (data == null || data.isEmpty) return false;
+    return data.containsKey('interest_rate') &&
+        (data.containsKey('original_amount_financed') ||
+            data.containsKey('current_balance') ||
+            data.containsKey('monthly_payment') ||
+            data.containsKey('bi_weekly_payment'));
+  }
+
+  Map<String, dynamic> _sanitizeLogData(Map<String, dynamic> data) {
+    final sanitized = Map<String, dynamic>.from(data);
+    if (sanitized.containsKey('raw_ocr')) {
+      sanitized['raw_ocr'] = '[TRUNCATED]';
+    }
+    return sanitized;
   }
 }
 

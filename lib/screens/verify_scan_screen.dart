@@ -4,6 +4,8 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:intl/intl.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
+import '../services/data_service.dart';
+import '../widgets/login_prompt_dialog.dart';
 
 class VerifyScanScreen extends StatefulWidget {
   final Function(String, [Map<String, dynamic>?]) setStep;
@@ -77,10 +79,9 @@ class _VerifyScanScreenState extends State<VerifyScanScreen>
     _controller.forward();
 
     debugPrint("[VERIFY] initState - carDetails: ${widget.carDetails}");
-    // Log scanData without raw_ocr
-    final logScanData = Map<String, dynamic>.from(widget.scanData);
-    logScanData['raw_ocr'] = '[TRUNCATED]';
-    debugPrint("[VERIFY] initState - scanData: $logScanData");
+    debugPrint(
+      "[VERIFY] initState - scanData: ${_sanitizedScanData(widget.scanData)}",
+    );
     _initControllers();
 
     // Check if scanData already contains vehicle info (from OCR)
@@ -89,14 +90,16 @@ class _VerifyScanScreenState extends State<VerifyScanScreen>
     final scanModel = widget.scanData['model']?.toString();
 
     if (scanYear != null || scanMake != null || scanModel != null) {
-      debugPrint("[VERIFY] Found vehicle data in scanData: year=$scanYear, make=$scanMake, model=$scanModel");
+      debugPrint(
+        "[VERIFY] Found vehicle data in scanData: year=$scanYear, make=$scanMake, model=$scanModel",
+      );
       _vinDetails = {
         'year': scanYear ?? '',
         'make': scanMake ?? '',
         'model': scanModel ?? '',
       };
       debugPrint("[VERIFY] _vinDetails initialized: $_vinDetails");
-      
+
       // Immediately refresh estimate if we have scanned details
       _refreshEstimate();
     } else {
@@ -194,21 +197,36 @@ class _VerifyScanScreenState extends State<VerifyScanScreen>
     return parts.isEmpty ? 'Unknown' : parts.join(' ');
   }
 
+  Map<String, dynamic> _sanitizedScanData(Map<String, dynamic> data) {
+    final sanitized = Map<String, dynamic>.from(data);
+    if (sanitized.containsKey('raw_ocr')) {
+      sanitized['raw_ocr'] = '[TRUNCATED]';
+    }
+    return sanitized;
+  }
+
   Future<void> _refreshEstimate() async {
-    final year = int.tryParse(_vinDetails?['year'] ?? '') ?? 
-                 int.tryParse(widget.carDetails['year'] ?? '') ?? 0;
+    final year =
+        int.tryParse(_vinDetails?['year'] ?? '') ??
+        int.tryParse(widget.carDetails['year'] ?? '') ??
+        0;
     final make = _vinDetails?['make'] ?? widget.carDetails['make'] ?? '';
     final model = _vinDetails?['model'] ?? widget.carDetails['model'] ?? '';
-    
-    final mileageStr = widget.carDetails['mileage']?.replaceAll(RegExp(r'[^0-9]'), '') ?? '';
+
+    final mileageStr =
+        widget.carDetails['mileage']?.replaceAll(RegExp(r'[^0-9]'), '') ?? '';
     final mileage = int.tryParse(mileageStr);
 
     if (year == 0 || make.isEmpty || model.isEmpty) {
-      debugPrint("[VERIFY] Skipping estimate refresh: Incomplete data (Year: $year, Make: $make, Model: $model)");
+      debugPrint(
+        "[VERIFY] Skipping estimate refresh: Incomplete data (Year: $year, Make: $make, Model: $model)",
+      );
       return;
     }
 
-    debugPrint("[VERIFY] Requesting Market Value for: $year $make $model, Mileage: $mileage");
+    debugPrint(
+      "[VERIFY] Requesting Market Value for: $year $make $model, Mileage: $mileage",
+    );
     try {
       final res = await ApiService.getEstimate(
         year: year,
@@ -216,19 +234,22 @@ class _VerifyScanScreenState extends State<VerifyScanScreen>
         model: model,
         mileage: mileage,
       );
-      if (mounted && (res.containsKey('value') || res.containsKey('estimated_value'))) {
+      if (mounted &&
+          (res.containsKey('value') || res.containsKey('estimated_value'))) {
         setState(() {
-          _refreshedEstimate = (res['value'] ?? res['estimated_value'] as num).toDouble();
+          _refreshedEstimate = (res['value'] ?? res['estimated_value'] as num)
+              .toDouble();
         });
-        debugPrint("[VERIFY] Fresh Market Value Received: \$$_refreshedEstimate");
+        debugPrint(
+          "[VERIFY] Fresh Market Value Received: \$$_refreshedEstimate",
+        );
       } else {
-         debugPrint("[VERIFY] Estimate response missing keys: $res");
+        debugPrint("[VERIFY] Estimate response missing keys: $res");
       }
     } catch (e) {
       debugPrint("[VERIFY] Refresh Estimate Error: $e");
     }
   }
-
 
   bool _matchesIfPresent(String? a, String? b) {
     if ((a ?? '').trim().isEmpty || (b ?? '').trim().isEmpty) return true;
@@ -249,11 +270,13 @@ class _VerifyScanScreenState extends State<VerifyScanScreen>
     final yearOk = _matchesIfPresent(user['year'], _vinDetails!['year']);
     final makeOk = _matchesIfPresent(user['make'], _vinDetails!['make']);
     final modelOk = _matchesIfPresent(user['model'], _vinDetails!['model']);
-    
+
     final conflict = !(yearOk && makeOk && modelOk);
-    debugPrint("[VERIFY] _hasConflict check: conflict=$conflict (yearOk=$yearOk, makeOk=$makeOk, modelOk=$modelOk)");
+    debugPrint(
+      "[VERIFY] _hasConflict check: conflict=$conflict (yearOk=$yearOk, makeOk=$makeOk, modelOk=$modelOk)",
+    );
     debugPrint("[VERIFY] Comparing user: $user vs scanned: $_vinDetails");
-    
+
     return conflict;
   }
 
@@ -269,9 +292,15 @@ class _VerifyScanScreenState extends State<VerifyScanScreen>
       // 1. If editing, we must capture manual inputs from controllers back into scanData
       if (_isEditing) {
         debugPrint("[VERIFY] Capturing manual input before sync...");
-        
-        final balanceText = _balanceController.text.replaceAll(RegExp(r'[^0-9.]'), '');
-        final paymentText = _paymentController.text.replaceAll(RegExp(r'[^0-9.]'), '');
+
+        final balanceText = _balanceController.text.replaceAll(
+          RegExp(r'[^0-9.]'),
+          '',
+        );
+        final paymentText = _paymentController.text.replaceAll(
+          RegExp(r'[^0-9.]'),
+          '',
+        );
         final aprText = _aprController.text.replaceAll(RegExp(r'[^0-9.]'), '');
         final termText = _termController.text.replaceAll(RegExp(r'[^0-9]'), '');
 
@@ -286,7 +315,7 @@ class _VerifyScanScreenState extends State<VerifyScanScreen>
         } else {
           widget.scanData['monthly_payment'] = double.tryParse(paymentText);
         }
-        
+
         // Update both just in case
         double? bVal = double.tryParse(balanceText);
         widget.scanData['original_amount_financed'] = bVal;
@@ -301,19 +330,24 @@ class _VerifyScanScreenState extends State<VerifyScanScreen>
             'make': vehicleParts[1],
             'model': vehicleParts.sublist(2).join(' '),
           };
-          debugPrint("[VERIFY] Updating car details from manual vehicle text: $updates");
+          debugPrint(
+            "[VERIFY] Updating car details from manual vehicle text: $updates",
+          );
           widget.onUpdateCarDetails(updates);
         }
       }
 
       double finalEstimate = _refreshedEstimate ?? widget.estimatedValue;
 
-      final logScanData = Map<String, dynamic>.from(widget.scanData);
-      logScanData['raw_ocr'] = '[TRUNCATED]';
-      debugPrint("[VERIFY] Starting Sync. Final Market Value: $finalEstimate (Refreshed: $_refreshedEstimate, Inherited: ${widget.estimatedValue})");
-      debugPrint("[VERIFY] CarDetails: ${widget.carDetails}, ScanData: $logScanData");
+      debugPrint(
+        "[VERIFY] Starting Sync. Final Market Value: $finalEstimate (Refreshed: $_refreshedEstimate, Inherited: ${widget.estimatedValue})",
+      );
+      debugPrint(
+        "[VERIFY] CarDetails: ${widget.carDetails}, ScanData: ${_sanitizedScanData(widget.scanData)}",
+      );
 
-      await ApiService.syncOnboardingData(
+      final saveResult = await DataService().saveOnboardingData(
+        userType: 'owner',
         carDetails: widget.carDetails,
         scanData: widget.scanData,
         estimatedValue: finalEstimate,
@@ -321,13 +355,26 @@ class _VerifyScanScreenState extends State<VerifyScanScreen>
         documentId: widget.scanData['documentId']?.toString(),
       );
 
-      debugPrint("[VERIFY] Sync Complete. Updating status and navigating...");
-      await AuthService().updateOnboardingStatus('completed');
-      
+      debugPrint(
+        "[VERIFY] Sync Complete. Resolved balance=${saveResult.resolvedBalance} source=${saveResult.balanceSource}. Updating status and navigating...",
+      );
+
+      if (!mounted) return;
+      if (!AuthService().isAuthenticated) {
+        final wantsToSignUp = await showLoginPromptDialog(context);
+        if (!mounted) return;
+        if (wantsToSignUp) {
+          widget.setStep('auth-login');
+          return;
+        }
+      }
+
       // Pass the final estimate to the global state to prevent background sync overwriting it with old data
       widget.setStep('main-app', {
-        ...widget.scanData,
+        ...saveResult.persistedScanData,
         'estimatedValue': finalEstimate,
+        'userEstimatedLoan': saveResult.resolvedBalance,
+        'loanBalanceSource': saveResult.balanceSource,
       });
     } catch (e) {
       debugPrint("[VERIFY] Sync Error: $e");
@@ -335,15 +382,17 @@ class _VerifyScanScreenState extends State<VerifyScanScreen>
         setState(() {
           _isSubmitting = false;
         });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Action failed: $e")),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("Action failed: $e")));
       }
     }
   }
 
   Future<void> _handleUseDocumentDetails() async {
-    debugPrint("[VERIFY] _handleUseDocumentDetails called. isSubmitting: $_isSubmitting");
+    debugPrint(
+      "[VERIFY] _handleUseDocumentDetails called. isSubmitting: $_isSubmitting",
+    );
     if (_isSubmitting) return;
 
     setState(() {
@@ -364,27 +413,45 @@ class _VerifyScanScreenState extends State<VerifyScanScreen>
 
       // 2. Fetch the correct estimate for the new vehicle
       double finalEstimate = _refreshedEstimate ?? widget.estimatedValue;
-      
+
       debugPrint(
         "[VERIFY] HandleUseDocDetails. Final Market Value: $finalEstimate (Refreshed: $_refreshedEstimate, Inherited: ${widget.estimatedValue})",
       );
-      debugPrint("[VERIFY] Scanned CarDetails: $_vinDetails, ScanData: ${widget.scanData}");
+      debugPrint(
+        "[VERIFY] Scanned CarDetails: $_vinDetails, ScanData: ${_sanitizedScanData(widget.scanData)}",
+      );
 
-      await ApiService.syncOnboardingData(
-        carDetails: _vinDetails != null ? Map<String, String>.from(_vinDetails!) : widget.carDetails,
+      final saveResult = await DataService().saveOnboardingData(
+        userType: 'owner',
+        carDetails: _vinDetails != null
+            ? Map<String, String>.from(_vinDetails!)
+            : widget.carDetails,
         scanData: widget.scanData,
         estimatedValue: finalEstimate,
         isVerified: true,
         documentId: widget.scanData['documentId']?.toString(),
       );
 
-      debugPrint("[VERIFY] Sync Complete. Updating status and navigating...");
-      await AuthService().updateOnboardingStatus('completed');
+      debugPrint(
+        "[VERIFY] Sync Complete. Resolved balance=${saveResult.resolvedBalance} source=${saveResult.balanceSource}. Updating status and navigating...",
+      );
+
+      if (!mounted) return;
+      if (!AuthService().isAuthenticated) {
+        final wantsToSignUp = await showLoginPromptDialog(context);
+        if (!mounted) return;
+        if (wantsToSignUp) {
+          widget.setStep('auth-login');
+          return;
+        }
+      }
 
       // Pass the final estimate to the global state to prevent background sync overwriting it with old data
       widget.setStep('main-app', {
-        ...widget.scanData,
+        ...saveResult.persistedScanData,
         'estimatedValue': finalEstimate,
+        'userEstimatedLoan': saveResult.resolvedBalance,
+        'loanBalanceSource': saveResult.balanceSource,
       });
     } catch (e) {
       debugPrint("[VERIFY] Sync Error: $e");
@@ -392,13 +459,12 @@ class _VerifyScanScreenState extends State<VerifyScanScreen>
         setState(() {
           _isSubmitting = false;
         });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Action failed: $e")),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("Action failed: $e")));
       }
     }
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -492,8 +558,8 @@ class _VerifyScanScreenState extends State<VerifyScanScreen>
                                     borderRadius: BorderRadius.circular(20),
                                     boxShadow: [
                                       BoxShadow(
-                                        color: Colors.black.withOpacity(
-                                          0.08,
+                                        color: Colors.black.withValues(
+                                          alpha: 0.08,
                                         ),
                                         blurRadius: 24,
                                         offset: const Offset(0, 12),
@@ -709,8 +775,8 @@ class _VerifyScanScreenState extends State<VerifyScanScreen>
                                                       child: Container(
                                                         decoration: BoxDecoration(
                                                           color: colorAmber100
-                                                              .withOpacity(
-                                                                0.3,
+                                                              .withValues(
+                                                                alpha: 0.3,
                                                               ),
                                                           borderRadius:
                                                               const BorderRadius.only(
@@ -919,15 +985,17 @@ class _VerifyScanScreenState extends State<VerifyScanScreen>
                                       SizedBox(
                                         width: double.infinity,
                                         child: ElevatedButton(
-                                          onPressed: _isSubmitting ? null : () {
-                                            if (_isEditing) {
-                                              _handleVerify();
-                                            } else if (hasConflict) {
-                                              _handleUseDocumentDetails();
-                                            } else {
-                                              _handleVerify();
-                                            }
-                                          },
+                                          onPressed: _isSubmitting
+                                              ? null
+                                              : () {
+                                                  if (_isEditing) {
+                                                    _handleVerify();
+                                                  } else if (hasConflict) {
+                                                    _handleUseDocumentDetails();
+                                                  } else {
+                                                    _handleVerify();
+                                                  }
+                                                },
                                           style: ElevatedButton.styleFrom(
                                             backgroundColor: colorVibrantGreen,
                                             foregroundColor: Colors.white,

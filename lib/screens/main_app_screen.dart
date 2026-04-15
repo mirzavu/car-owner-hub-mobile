@@ -30,11 +30,17 @@ class MainAppScreen extends ConsumerWidget {
     final userType = user.userType;
     final activeTab = appFlow.activeTab;
     final loanId = financialsState.loanId;
+    final isGuest = user.isGuest && !AuthService().isAuthenticated;
 
     Widget content;
 
     if (userType == 'buyer') {
       content = BuyerDashboardScreen(
+        isGuest: isGuest,
+        onRequireLogin: () => appFlowNotifier.setStep('auth-login'),
+        onResetData: () => appFlowNotifier.logoutToSplash(),
+        onAddCar: () => appFlowNotifier.startOwnerVehicleFlow(),
+        onLogout: () => appFlowNotifier.logoutToSplash(),
         onLeadSubmitted: () {
           debugPrint('[BUYER] Preapproval lead submitted.');
         },
@@ -57,16 +63,25 @@ class MainAppScreen extends ConsumerWidget {
       );
     } else if (userType == 'owner' && (loanId == null || loanId.isEmpty)) {
       content = TeaserDashboardScreen(
+        isGuest: isGuest,
         carDetails: vehicle.carDetails,
-        estimatedValue: (financialsState.data['estimatedValue'] as num).toDouble(),
+        estimatedValue: (financialsState.data['estimatedValue'] as num)
+            .toDouble(),
         onScanClick: () => appFlowNotifier.setStep('scan-intro'),
         onLogout: () {
-          AuthService().logout();
-          appFlowNotifier.setStep('splash');
+          if (isGuest) {
+            appFlowNotifier.setStep('auth-login');
+            return;
+          }
+          appFlowNotifier.logoutToSplash();
         },
       );
     } else {
       content = DashboardScreen(
+        isGuest: isGuest,
+        profileName: user.profileName,
+        profilePhone: user.profilePhone,
+        onboardingStatus: user.onboardingStatus,
         carDetails: CarDetails(
           year: vehicle.carDetails['year'] ?? '',
           make: vehicle.carDetails['make'] ?? '',
@@ -76,7 +91,8 @@ class MainAppScreen extends ConsumerWidget {
         setOverlayScreen: (screen) => appFlowNotifier.setOverlay(screen),
         setActiveTab: (String tab, {int? stepDelta}) =>
             appFlowNotifier.setActiveTab(tab, stepDelta: stepDelta),
-        onLogout: () => appFlowNotifier.setStep('auth-login'),
+        onLogout: () => appFlowNotifier.logoutToSplash(),
+        onRequireLogin: () => appFlowNotifier.setStep('auth-login'),
         onReverify: () => appFlowNotifier.setStep('scan-intro'),
         onFinancialsUpdate: (data) {
           financialsNotifier.update(data);

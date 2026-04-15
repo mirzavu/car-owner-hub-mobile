@@ -13,15 +13,13 @@ class PushTokenService {
   static final PushTokenService _instance = PushTokenService._internal();
   factory PushTokenService() => _instance;
   static const String _pushEnabledPrefKeyBase = 'push_notifications_enabled';
+  static const String _guestPendingTokenKey = 'guest_pending_fcm_token';
 
   bool _initialized = false;
   String _lastSyncedToken = '';
   StreamSubscription<String>? _tokenRefreshSubscription;
 
   Future<String?> initAndSyncToken({bool force = false}) async {
-    final auth = AuthService();
-    if (!auth.isAuthenticated || auth.userId.isEmpty) return null;
-
     if (!force) {
       final shouldSync = await _shouldSyncToken();
       if (!shouldSync) {
@@ -91,6 +89,8 @@ class PushTokenService {
           .collection('users')
           .update(auth.userId, body: {'fcm_token': ''});
     }
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_guestPendingTokenKey);
 
     _lastSyncedToken = '';
 
@@ -172,7 +172,12 @@ class PushTokenService {
     if (token.isEmpty) return;
 
     final auth = AuthService();
-    if (!auth.isAuthenticated || auth.userId.isEmpty) return;
+    final prefs = await SharedPreferences.getInstance();
+    if (!auth.isAuthenticated || auth.userId.isEmpty) {
+      await prefs.setString(_guestPendingTokenKey, token);
+      _lastSyncedToken = token;
+      return;
+    }
 
     if (_lastSyncedToken == token) return;
 
@@ -187,6 +192,7 @@ class PushTokenService {
       await auth.pb
           .collection('users')
           .update(auth.userId, body: {'fcm_token': token});
+      await prefs.remove(_guestPendingTokenKey);
       _lastSyncedToken = token;
       debugPrint('[PUSH] FCM token synced for user ${auth.userId}');
     } catch (error) {

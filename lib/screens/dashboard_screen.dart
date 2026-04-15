@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:intl/intl.dart';
 import '../services/api_service.dart';
+import '../services/app_data.dart';
 import '../services/auth_service.dart';
 import '../services/finance_service.dart';
 import '../services/refinance_service.dart';
@@ -24,7 +25,12 @@ class DashboardScreen extends StatefulWidget {
   final Function(String) setOverlayScreen;
   final void Function(String, {int? stepDelta}) setActiveTab;
   final VoidCallback onLogout;
+  final VoidCallback onRequireLogin;
   final VoidCallback onReverify;
+  final bool isGuest;
+  final String profileName;
+  final String profilePhone;
+  final AppOnboardingStatus onboardingStatus;
 
   const DashboardScreen({
     super.key,
@@ -32,7 +38,12 @@ class DashboardScreen extends StatefulWidget {
     required this.setOverlayScreen,
     required this.setActiveTab,
     required this.onLogout,
+    required this.onRequireLogin,
     required this.onReverify,
+    required this.isGuest,
+    required this.profileName,
+    required this.profilePhone,
+    required this.onboardingStatus,
     required this.initialFinancials,
     this.onFinancialsUpdate,
     this.onCarDetailsUpdate,
@@ -97,9 +108,11 @@ class _DashboardScreenState extends State<DashboardScreen>
     _vehicleModel = widget.carDetails.model;
 
     _scrollController.addListener(_scrollListener);
-    _fetchDashboardData();
-    _fetchMarketRate();
-    AuthService().addListener(_onAuthChanged);
+    if (!widget.isGuest) {
+      _fetchDashboardData();
+      _fetchMarketRate();
+      AuthService().addListener(_onAuthChanged);
+    }
   }
 
   void _onAuthChanged() {
@@ -196,8 +209,13 @@ class _DashboardScreenState extends State<DashboardScreen>
   void _openProfileScreen() {
     Navigator.of(context).push(
       PageRouteBuilder(
-        pageBuilder: (context, animation, secondaryAnimation) =>
-            ProfileScreen(onLogout: widget.onLogout),
+        pageBuilder: (context, animation, secondaryAnimation) => ProfileScreen(
+          onLogout: widget.onLogout,
+          onRequireLogin: widget.onRequireLogin,
+          isGuest: widget.isGuest,
+          profileName: widget.profileName,
+          profilePhone: widget.profilePhone,
+        ),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           final tween = Tween<Offset>(
             begin: const Offset(-1.0, 0.0),
@@ -216,6 +234,17 @@ class _DashboardScreenState extends State<DashboardScreen>
   }
 
   Future<void> _openNotificationScreen() async {
+    if (widget.isGuest) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Notifications are available after you create an account.',
+          ),
+        ),
+      );
+      return;
+    }
     final route = await Navigator.push<String>(
       context,
       MaterialPageRoute(builder: (context) => const NotificationScreen()),
@@ -279,7 +308,9 @@ class _DashboardScreenState extends State<DashboardScreen>
 
   @override
   void dispose() {
-    AuthService().removeListener(_onAuthChanged);
+    if (!widget.isGuest) {
+      AuthService().removeListener(_onAuthChanged);
+    }
     WidgetsBinding.instance.removeObserver(this);
     _scrollController.removeListener(_scrollListener);
     _scrollController.dispose();
@@ -288,7 +319,7 @@ class _DashboardScreenState extends State<DashboardScreen>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
+    if (state == AppLifecycleState.resumed && !widget.isGuest) {
       _fetchTradeUpPreview();
       _fetchDashboardData();
     }
@@ -568,6 +599,16 @@ class _DashboardScreenState extends State<DashboardScreen>
 
   @override
   Widget build(BuildContext context) {
+    final displayName = widget.profileName.isNotEmpty
+        ? widget.profileName
+        : (widget.isGuest
+              ? 'Guest User'
+              : (AuthService().userName.isNotEmpty
+                    ? AuthService().userName
+                    : 'Car Owner'));
+    final avatarUrl = widget.isGuest
+        ? null
+        : AuthService().getAvatarUrl(thumb: '100x100');
     // Colors
     const colorSlate50 = Color(0xFFF8FAFC);
     const colorSlate800 = Color(0xFF1E293B);
@@ -625,7 +666,7 @@ class _DashboardScreenState extends State<DashboardScreen>
     final bool refinanceQualifies = refinancePreview?.qualifies ?? true;
     final bool showScanRateOpportunity =
         !refinanceUnavailableForPaidOff &&
-        (AuthService().onboardingStatus == 'skipped' || interestRate == 0);
+        widget.onboardingStatus == AppOnboardingStatus.verificationSkipped;
     final bool showRateAlertOpportunity =
         !refinanceUnavailableForPaidOff &&
         hasRefinanceData &&
@@ -1010,16 +1051,14 @@ class _DashboardScreenState extends State<DashboardScreen>
                         ),
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(50),
-                          child:
-                              AuthService().getAvatarUrl(thumb: '100x100') !=
-                                  null
+                          child: avatarUrl != null
                               ? Image.network(
-                                  AuthService().getAvatarUrl(thumb: '100x100')!,
+                                  avatarUrl,
                                   fit: BoxFit.cover,
                                   errorBuilder: (context, error, stackTrace) =>
                                       Center(
                                         child: Text(
-                                          _getInitials(AuthService().userName),
+                                          _getInitials(displayName),
                                           style: GoogleFonts.outfit(
                                             fontSize: 12,
                                             fontWeight: FontWeight.bold,
@@ -1030,7 +1069,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                                 )
                               : Center(
                                   child: Text(
-                                    _getInitials(AuthService().userName),
+                                    _getInitials(displayName),
                                     style: GoogleFonts.outfit(
                                       fontSize: 12,
                                       fontWeight: FontWeight.bold,
@@ -1196,16 +1235,9 @@ class _DashboardScreenState extends State<DashboardScreen>
                                             child: ClipRRect(
                                               borderRadius:
                                                   BorderRadius.circular(50),
-                                              child:
-                                                  AuthService().getAvatarUrl(
-                                                        thumb: '100x100',
-                                                      ) !=
-                                                      null
+                                              child: avatarUrl != null
                                                   ? Image.network(
-                                                      AuthService()
-                                                          .getAvatarUrl(
-                                                            thumb: '100x100',
-                                                          )!,
+                                                      avatarUrl,
                                                       fit: BoxFit.cover,
                                                       errorBuilder:
                                                           (
@@ -1215,8 +1247,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                                                           ) => Center(
                                                             child: Text(
                                                               _getInitials(
-                                                                AuthService()
-                                                                    .userName,
+                                                                displayName,
                                                               ),
                                                               style: GoogleFonts.outfit(
                                                                 fontSize: 12,
@@ -1232,8 +1263,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                                                   : Center(
                                                       child: Text(
                                                         _getInitials(
-                                                          AuthService()
-                                                              .userName,
+                                                          displayName,
                                                         ),
                                                         style:
                                                             GoogleFonts.outfit(
@@ -1265,9 +1295,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                                             ),
                                           ),
                                           Text(
-                                            AuthService().userName.isNotEmpty
-                                                ? AuthService().userName
-                                                : "Car Owner",
+                                            displayName,
                                             style: GoogleFonts.outfit(
                                               color: Colors.white,
                                               fontSize: 14,
@@ -1574,8 +1602,9 @@ class _DashboardScreenState extends State<DashboardScreen>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Verification Required Banner for Skipped Users
-                  if (AuthService().onboardingStatus == 'skipped')
+                  // Verification Required Banner only for owners who explicitly skipped loan verification.
+                  if (widget.onboardingStatus ==
+                      AppOnboardingStatus.verificationSkipped)
                     Container(
                       margin: const EdgeInsets.only(bottom: 32),
                       padding: const EdgeInsets.all(20),

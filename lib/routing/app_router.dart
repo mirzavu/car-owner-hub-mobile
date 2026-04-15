@@ -2,7 +2,8 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter/material.dart';
-import '../services/auth_service.dart';
+import '../services/app_data.dart';
+import '../services/data_service.dart';
 import '../screens/auth_email_screen.dart';
 import '../screens/auth_otp_screen.dart';
 import '../screens/login_screen.dart';
@@ -55,14 +56,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         routes: [
           GoRoute(
             path: '/loading',
-            builder: (context, state) =>
-                const Scaffold(body: Center(child: CircularProgressIndicator())),
+            builder: (context, state) => const Scaffold(
+              body: Center(child: CircularProgressIndicator()),
+            ),
           ),
           GoRoute(
             path: '/splash',
             builder: (context, state) => Consumer(
               builder: (context, ref, _) => SplashScreen(
-                onNext: () => ref.read(appFlowProvider.notifier).setStep('user-type'),
+                onNext: () =>
+                    ref.read(appFlowProvider.notifier).setStep('user-type'),
               ),
             ),
           ),
@@ -81,7 +84,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                     ref.read(appFlowProvider.notifier).setStep('auth-login');
                   }
                 },
-                onBack: () => ref.read(appFlowProvider.notifier).setStep('splash'),
+                onBack: () =>
+                    ref.read(appFlowProvider.notifier).setStep('splash'),
               ),
             ),
           ),
@@ -89,6 +93,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: '/details',
             builder: (context, state) => Consumer(
               builder: (context, ref, _) => VehicleInfoScreen(
+                onBack:
+                    ref
+                        .read(appFlowProvider.notifier)
+                        .canNavigateBack('details')
+                    ? () => ref
+                          .read(appFlowProvider.notifier)
+                          .navigateBack('details')
+                    : null,
                 onNext: (nextStep) =>
                     ref.read(appFlowProvider.notifier).setStep(nextStep),
                 onEstimateComplete: (value, details) {
@@ -128,8 +140,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                     estimatedValue: financials['estimatedValue'],
                     userEstimatedLoan: financials['userEstimatedLoan'],
                   ),
-                  onNext: () => ref.read(appFlowProvider.notifier).setStep('auth-login'),
-                  onBack: () => ref.read(appFlowProvider.notifier).setStep('details'),
+                  onNext: () =>
+                      ref.read(appFlowProvider.notifier).setStep('auth-login'),
+                  onBack: () =>
+                      ref.read(appFlowProvider.notifier).navigateBack('teaser'),
                 );
               },
             ),
@@ -140,13 +154,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               builder: (context, ref, _) => LoginScreen(
                 onLoginGoogle: () =>
                     ref.read(appFlowProvider.notifier).loginWithGoogle(),
+                onSkip: () =>
+                    ref.read(appFlowProvider.notifier).skipLoginForNow(),
                 setStep: (nextStep) =>
                     ref.read(appFlowProvider.notifier).setStep(nextStep),
                 onBack: () => ref
                     .read(appFlowProvider.notifier)
-                    .setStep(ref.read(userProvider).userType == 'buyer'
-                        ? 'user-type'
-                        : 'teaser'),
+                    .navigateBack('auth-login'),
               ),
             ),
           ),
@@ -156,7 +170,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               builder: (context, ref, _) => AuthEmailScreen(
                 setStep: (nextStep, [data]) =>
                     ref.read(appFlowProvider.notifier).setStep(nextStep, data),
-                onBack: () => ref.read(appFlowProvider.notifier).setStep('auth-login'),
+                onBack: () => ref
+                    .read(appFlowProvider.notifier)
+                    .navigateBack('auth-email'),
               ),
             ),
           ),
@@ -167,10 +183,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 final lastScanData = ref.read(vehicleProvider).lastScanData;
                 return AuthOtpScreen(
                   email: lastScanData?['email'] ?? '',
+                  onAuthSuccess: () => ref
+                      .read(appFlowProvider.notifier)
+                      .handleSuccessfulAuthentication(),
                   setStep: (nextStep) =>
                       ref.read(appFlowProvider.notifier).setStep(nextStep),
-                  onBack: () =>
-                      ref.read(appFlowProvider.notifier).setStep('auth-email'),
+                  onBack: () => ref
+                      .read(appFlowProvider.notifier)
+                      .navigateBack('auth-otp'),
                 );
               },
             ),
@@ -181,6 +201,15 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               builder: (context, ref, _) {
                 final user = ref.read(userProvider);
                 return RegistrationScreen(
+                  initialName: user.profileName,
+                  onBack:
+                      ref
+                          .read(appFlowProvider.notifier)
+                          .canNavigateBack('auth-phone')
+                      ? () => ref
+                            .read(appFlowProvider.notifier)
+                            .navigateBack('auth-phone')
+                      : null,
                   setStep: (nextStep) {
                     if (nextStep == 'scan-intro' && user.userType == 'buyer') {
                       ref.read(appFlowProvider.notifier).setStep('main-app');
@@ -189,7 +218,27 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                     }
                   },
                   initialValue: user.tempPhone,
-                  onChanged: (val) => ref.read(userProvider.notifier).setTempPhone(val),
+                  onChanged: (val) =>
+                      ref.read(userProvider.notifier).setTempPhone(val),
+                  onSubmitProfile: (name, phone) async {
+                    await DataService().saveProfile(
+                      userType: user.userType,
+                      name: name,
+                      phone: phone,
+                    );
+                    ref
+                        .read(userProvider.notifier)
+                        .setProfile(
+                          name: name,
+                          phone: phone,
+                          onboardingStatus: AppOnboardingStatus.profileCaptured,
+                        );
+                  },
+                  onSkip: user.isGuest
+                      ? () => ref
+                            .read(appFlowProvider.notifier)
+                            .skipRegistrationForNow()
+                      : null,
                 );
               },
             ),
@@ -198,15 +247,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: '/scan-intro',
             builder: (context, state) => Consumer(
               builder: (context, ref, _) => ScanPromptScreen(
+                onSkip: () =>
+                    ref.read(appFlowProvider.notifier).skipLoanVerification(),
                 setStep: (nextStep, [data]) =>
                     ref.read(appFlowProvider.notifier).setStep(nextStep, data),
-                onBack: () {
-                  if (AuthService().hasPhone) {
-                    ref.read(appFlowProvider.notifier).setStep('main-app');
-                  } else {
-                    ref.read(appFlowProvider.notifier).setStep('auth-phone');
-                  }
-                },
+                onBack: () => ref
+                    .read(appFlowProvider.notifier)
+                    .navigateBack('scan-intro'),
               ),
             ),
           ),
@@ -214,6 +261,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: '/scanner',
             builder: (context, state) => Consumer(
               builder: (context, ref, _) => ScannerScreen(
+                onSkip: () =>
+                    ref.read(appFlowProvider.notifier).skipLoanVerification(),
                 setStep: (nextStep, data) =>
                     ref.read(appFlowProvider.notifier).setStep(nextStep, data),
               ),
@@ -226,25 +275,20 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 final vehicle = ref.read(vehicleProvider);
                 final financials = ref.read(financialsProvider).data;
                 return VerifyScanScreen(
-                  setStep: (nextStep, [data]) async {
+                  setStep: (nextStep, [data]) {
                     ref.read(appFlowProvider.notifier).setStep(nextStep, data);
-                    if (nextStep == 'main-app') {
-                      await ref.read(appFlowProvider.notifier).runTimeTravel();
-                    }
                   },
                   scanData: vehicle.lastScanData ?? {},
                   carDetails: vehicle.carDetails,
-                  estimatedValue: (financials['estimatedValue'] as num).toDouble(),
+                  estimatedValue: (financials['estimatedValue'] as num)
+                      .toDouble(),
                   onUpdateCarDetails: (updates) {
-                    ref.read(vehicleProvider.notifier).updateCarDetails(updates);
+                    ref
+                        .read(vehicleProvider.notifier)
+                        .updateCarDetails(updates);
                   },
                   onBack: () {
-                    if (vehicle.lastScanData == null ||
-                        vehicle.lastScanData!.isEmpty) {
-                      ref.read(appFlowProvider.notifier).setStep('scan-intro');
-                    } else {
-                      ref.read(appFlowProvider.notifier).setStep('scan-intro');
-                    }
+                    ref.read(appFlowProvider.notifier).navigateBack('verify');
                   },
                 );
               },

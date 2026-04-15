@@ -14,23 +14,55 @@ import 'buyer_dashboard_components/wizard_step_content.dart';
 import '../components/custom_slider_components.dart';
 
 class BuyerDashboardScreen extends StatelessWidget {
+  final bool isGuest;
   final VoidCallback? onLeadSubmitted;
+  final VoidCallback? onRequireLogin;
+  final Future<void> Function()? onResetData;
+  final VoidCallback? onAddCar;
+  final VoidCallback? onLogout;
 
-  const BuyerDashboardScreen({super.key, this.onLeadSubmitted});
+  const BuyerDashboardScreen({
+    super.key,
+    this.isGuest = false,
+    this.onLeadSubmitted,
+    this.onRequireLogin,
+    this.onResetData,
+    this.onAddCar,
+    this.onLogout,
+  });
 
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
       create: (_) => BuyerDashboardViewModel()..loadDraft(),
-      child: _BuyerDashboardContent(onLeadSubmitted: onLeadSubmitted),
+      child: _BuyerDashboardContent(
+        isGuest: isGuest,
+        onLeadSubmitted: onLeadSubmitted,
+        onRequireLogin: onRequireLogin,
+        onResetData: onResetData,
+        onAddCar: onAddCar,
+        onLogout: onLogout,
+      ),
     );
   }
 }
 
 class _BuyerDashboardContent extends StatefulWidget {
+  final bool isGuest;
   final VoidCallback? onLeadSubmitted;
+  final VoidCallback? onRequireLogin;
+  final Future<void> Function()? onResetData;
+  final VoidCallback? onAddCar;
+  final VoidCallback? onLogout;
 
-  const _BuyerDashboardContent({this.onLeadSubmitted});
+  const _BuyerDashboardContent({
+    this.isGuest = false,
+    this.onLeadSubmitted,
+    this.onRequireLogin,
+    this.onResetData,
+    this.onAddCar,
+    this.onLogout,
+  });
 
   @override
   State<_BuyerDashboardContent> createState() => _BuyerDashboardContentState();
@@ -97,8 +129,154 @@ class _BuyerDashboardContentState extends State<_BuyerDashboardContent>
           viewModel: vm,
           inventoryContextIds: vm.inventoryContextIds,
           onLeadSubmitted: widget.onLeadSubmitted,
+          onRequireLogin: widget.onRequireLogin,
         );
       },
+    );
+  }
+
+  Future<void> _openSettings() async {
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          ),
+          padding: const EdgeInsets.fromLTRB(24, 20, 24, 28),
+          child: SafeArea(
+            top: false,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 42,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE2E8F0),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  'Settings',
+                  style: GoogleFonts.outfit(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w800,
+                    color: const Color(0xFF0F172A),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                _buildSettingsAction(
+                  icon: widget.isGuest ? LucideIcons.user : LucideIcons.logOut,
+                  label: widget.isGuest ? 'Sign Up / Log In' : 'Log Out',
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    if (widget.isGuest) {
+                      widget.onRequireLogin?.call();
+                    } else {
+                      widget.onLogout?.call();
+                    }
+                  },
+                ),
+                if (widget.onAddCar != null) ...[
+                  const SizedBox(height: 10),
+                  _buildSettingsAction(
+                    icon: LucideIcons.car,
+                    label: 'Add My Car',
+                    onTap: () {
+                      Navigator.of(context).pop();
+                      widget.onAddCar?.call();
+                    },
+                  ),
+                ],
+                if (widget.isGuest && widget.onResetData != null) ...[
+                  const SizedBox(height: 10),
+                  _buildSettingsAction(
+                    icon: LucideIcons.rotateCcw,
+                    label: 'Reset Data',
+                    color: const Color(0xFFB91C1C),
+                    onTap: () async {
+                      Navigator.of(context).pop();
+                      final confirmed = await _confirmReset();
+                      if (!confirmed) return;
+                      await widget.onResetData!();
+                    },
+                  ),
+                ],
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<bool> _confirmReset() async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(
+          'Reset guest data?',
+          style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
+        ),
+        content: Text(
+          'This clears the saved device data and returns you to the start.',
+          style: GoogleFonts.outfit(),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text('Cancel', style: GoogleFonts.outfit()),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text(
+              'Reset',
+              style: GoogleFonts.outfit(color: const Color(0xFFB91C1C)),
+            ),
+          ),
+        ],
+      ),
+    );
+    return result ?? false;
+  }
+
+  Widget _buildSettingsAction({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+    Color color = const Color(0xFF0F172A),
+  }) {
+    return Material(
+      color: const Color(0xFFF8FAFC),
+      borderRadius: BorderRadius.circular(18),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(18),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          child: Row(
+            children: [
+              Icon(icon, size: 18, color: color),
+              const SizedBox(width: 12),
+              Text(
+                label,
+                style: GoogleFonts.outfit(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: color,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -161,20 +339,26 @@ class _BuyerDashboardContentState extends State<_BuyerDashboardContent>
                                   ),
                                 ],
                               ),
-                              Container(
-                                width: 40,
-                                height: 40,
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.05),
-                                  border: Border.all(
-                                    color: Colors.white.withValues(alpha: 0.1),
+                              GestureDetector(
+                                onTap: _openSettings,
+                                behavior: HitTestBehavior.opaque,
+                                child: Container(
+                                  width: 40,
+                                  height: 40,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withValues(alpha: 0.05),
+                                    border: Border.all(
+                                      color: Colors.white.withValues(
+                                        alpha: 0.1,
+                                      ),
+                                    ),
+                                    borderRadius: BorderRadius.circular(999),
                                   ),
-                                  borderRadius: BorderRadius.circular(999),
-                                ),
-                                child: const Icon(
-                                  LucideIcons.shieldCheck,
-                                  size: 20,
-                                  color: cNeon,
+                                  child: const Icon(
+                                    LucideIcons.settings2,
+                                    size: 20,
+                                    color: cNeon,
+                                  ),
                                 ),
                               ),
                             ],
@@ -316,12 +500,11 @@ class _BuyerDashboardContentState extends State<_BuyerDashboardContent>
               child: Stack(
                 alignment: Alignment.center,
                 children: [
-                  const SizedBox(
-                    width: 24,
-                    height: 24,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.white24,
+                  CircularProgressIndicator(
+                    value: 1,
+                    strokeWidth: 3,
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      Colors.white.withValues(alpha: 0.1),
                     ),
                   ),
                   TweenAnimationBuilder<double>(

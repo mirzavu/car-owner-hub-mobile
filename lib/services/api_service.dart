@@ -130,6 +130,14 @@ class ApiService {
     return fallback;
   }
 
+  static Map<String, dynamic> _sanitizeScanLogData(Map<String, dynamic> data) {
+    final sanitized = Map<String, dynamic>.from(data);
+    if (sanitized.containsKey('raw_ocr')) {
+      sanitized['raw_ocr'] = '[TRUNCATED]';
+    }
+    return sanitized;
+  }
+
   // 1. Upload Document for OCR
   static Future<Map<String, dynamic>> scanDocument(
     String filePath, {
@@ -157,8 +165,9 @@ class ApiService {
     debugPrint("[SCAN] Response Code: ${response.statusCode}");
 
     if (response.statusCode == 200) {
-      debugPrint("[SCAN] Success: ${response.body}");
-      return jsonDecode(response.body);
+      final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+      debugPrint("[SCAN] Success: ${_sanitizeScanLogData(decoded)}");
+      return decoded;
     } else {
       debugPrint("[SCAN] Failed: ${response.body}");
       throw Exception('OCR Failed: ${response.body}');
@@ -252,7 +261,7 @@ class ApiService {
 
     debugPrint("[SYNC] Starting Onboarding Data Sync...");
     debugPrint("[SYNC] Car Details: $carDetails");
-    debugPrint("[SYNC] Scan Data: $scanData");
+    debugPrint("[SYNC] Scan Data: ${_sanitizeScanLogData(scanData)}");
     debugPrint("[SYNC] Estimated Value Input: $estimatedValue");
     debugPrint("[SYNC] Document ID: $documentId");
 
@@ -269,7 +278,11 @@ class ApiService {
         'make': carDetails['make'] ?? '',
         'model': carDetails['model'] ?? '',
         'trim': carDetails['trim'] ?? '',
-        'mileage': int.tryParse(carDetails['mileage']?.replaceAll(RegExp(r'[^0-9]'), '') ?? '') ?? 0,
+        'mileage':
+            int.tryParse(
+              carDetails['mileage']?.replaceAll(RegExp(r'[^0-9]'), '') ?? '',
+            ) ??
+            0,
         'vin': carDetails['vin'] ?? scanData['vin'] ?? '',
         'current_market_value': estimatedValue,
         'status': 'active',
@@ -295,20 +308,28 @@ class ApiService {
           .getList(page: 1, perPage: 1, filter: 'vehicle_id = "$vehicleId"');
 
       // 3. Calculate Current Balance dynamically if possible
-      double originalBalance =
-          (scanData['original_amount_financed'] ??
-                  scanData['current_balance'] ??
-                  0.0)
-              .toDouble();
-      double currentBalance = originalBalance;
+      double originalBalance = _toDouble(
+        scanData['original_amount_financed'] ?? scanData['current_balance'],
+      );
+      final resolvedBalance = _toDouble(scanData['resolved_loan_balance'], -1);
+      double currentBalance = resolvedBalance >= 0
+          ? resolvedBalance
+          : originalBalance;
 
-      // If we have the necessary data, calculate the real-time balance
-      if (originalBalance > 0 &&
+      // If DataService already resolved the balance, persist that value directly.
+      if (resolvedBalance >= 0) {
+        debugPrint(
+          "[SYNC] Using pre-resolved loan balance from DataService: $currentBalance (${scanData['loan_balance_source'] ?? 'unknown'})",
+        );
+      } else if (originalBalance > 0 &&
           scanData['interest_rate'] != null &&
           scanData['term_months'] != null &&
           scanData['contract_date'] != null) {
+        // Otherwise calculate the real-time balance now.
         try {
-          debugPrint("[SYNC] Calling calculateLoanEquity with: balance=$originalBalance, rate=${scanData['interest_rate']}, term=${scanData['term_months']}, date=${scanData['contract_date']}, payment=${scanData['monthly_payment'] ?? (scanData['bi_weekly_payment'] ?? 0.0) * 2.16}");
+          debugPrint(
+            "[SYNC] Calling calculateLoanEquity with: balance=$originalBalance, rate=${scanData['interest_rate']}, term=${scanData['term_months']}, date=${scanData['contract_date']}, payment=${scanData['monthly_payment'] ?? (scanData['bi_weekly_payment'] ?? 0.0) * 2.16}",
+          );
           final calculation = await calculateLoanEquity(
             originalBalance: originalBalance,
             interestRate: (scanData['interest_rate'] ?? 0.0).toDouble(),
@@ -405,21 +426,25 @@ class ApiService {
       final vehicles = await auth.pb
           .collection('vehicles')
           .getList(page: 1, perPage: 1, filter: 'user_id = "$userId"');
-final vehicleBody = {
-  'user_id': userId,
-  'year': int.tryParse(carDetails['year'] ?? '') ?? 0,
-  'make': carDetails['make'] ?? '',
-  'model': carDetails['model'] ?? '',
-  'trim': carDetails['trim'] ?? '',
-  'mileage': int.tryParse(carDetails['mileage']?.replaceAll(RegExp(r'[^0-9]'), '') ?? '') ?? 0,
-  'vin': carDetails['vin'] ?? '',
-  'plate': carDetails['plate'] ?? '',
-  'is_verified': false,
-};
+      final vehicleBody = {
+        'user_id': userId,
+        'year': int.tryParse(carDetails['year'] ?? '') ?? 0,
+        'make': carDetails['make'] ?? '',
+        'model': carDetails['model'] ?? '',
+        'trim': carDetails['trim'] ?? '',
+        'mileage':
+            int.tryParse(
+              carDetails['mileage']?.replaceAll(RegExp(r'[^0-9]'), '') ?? '',
+            ) ??
+            0,
+        'vin': carDetails['vin'] ?? '',
+        'plate': carDetails['plate'] ?? '',
+        'is_verified': false,
+      };
 
-if (estimatedValue != null) {
-  vehicleBody['current_market_value'] = estimatedValue;
-}
+      if (estimatedValue != null) {
+        vehicleBody['current_market_value'] = estimatedValue;
+      }
 
       if (vehicles.items.isEmpty) {
         final record = await auth.pb
@@ -659,7 +684,7 @@ if (estimatedValue != null) {
           .getList(page: 1, perPage: 1, filter: 'user_id = "$userId"');
       if (vehicles.items.isEmpty) return null;
       final vehicle = vehicles.items.first;
-      
+
       return {
         'id': vehicle.id,
         'year': vehicle.data['year']?.toString() ?? '',
@@ -838,8 +863,10 @@ if (estimatedValue != null) {
           .get(Uri.parse(url))
           .timeout(const Duration(seconds: 5));
 
-      debugPrint("[API] getVehicleOptions response code: ${response.statusCode}");
-      
+      debugPrint(
+        "[API] getVehicleOptions response code: ${response.statusCode}",
+      );
+
       if (response.statusCode == 200) {
         // Convert [2023, 2022] to ["2023", "2022"]
         final List<dynamic> data = jsonDecode(response.body);

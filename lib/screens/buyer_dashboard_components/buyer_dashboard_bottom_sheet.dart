@@ -4,12 +4,15 @@ import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../services/api_service.dart';
 import '../../services/auth_service.dart';
+import '../../services/data_service.dart';
+import '../../widgets/login_prompt_dialog.dart';
 import 'buyer_dashboard_constants.dart';
 import 'buyer_dashboard_view_model.dart';
 
 class BuyerDashboardBottomSheet extends StatefulWidget {
   final BuyerDashboardViewModel viewModel;
   final VoidCallback? onLeadSubmitted;
+  final VoidCallback? onRequireLogin;
   final Set<String> inventoryContextIds;
 
   const BuyerDashboardBottomSheet({
@@ -17,6 +20,7 @@ class BuyerDashboardBottomSheet extends StatefulWidget {
     required this.viewModel,
     required this.inventoryContextIds,
     this.onLeadSubmitted,
+    this.onRequireLogin,
   });
 
   @override
@@ -113,9 +117,28 @@ Notes: ${_notesController.text}
     final messenger = ScaffoldMessenger.of(context);
 
     try {
+      if (!auth.isAuthenticated) {
+        final wantsToSignUp = await showLoginPromptDialog(context);
+        if (!mounted) return;
+        if (wantsToSignUp) {
+          navigator.pop();
+          widget.onRequireLogin?.call();
+          return;
+        }
+      }
+
+      final appData = await DataService().loadAppData(
+        fallbackUserType: 'buyer',
+      );
       await ApiService.submitBuyerPreapprovalLead(
-        name: auth.userName.isEmpty ? 'User' : auth.userName,
-        phone: auth.userPhone.isEmpty ? '0000000000' : auth.userPhone,
+        name: auth.userName.isNotEmpty
+            ? auth.userName
+            : (appData.profileName.isEmpty ? 'User' : appData.profileName),
+        phone: auth.userPhone.isNotEmpty
+            ? auth.userPhone
+            : (appData.profilePhone.isEmpty
+                  ? '0000000000'
+                  : appData.profilePhone),
         monthlyBudgetTarget: widget.viewModel.budget,
         incomeRange: widget.viewModel.income!,
         employmentStatus: widget.viewModel.employment!,

@@ -57,9 +57,7 @@ class _VehicleInfoScreenState extends State<VehicleInfoScreen> {
     });
 
     try {
-      final data = await ApiService.getVehicleOptions(
-        type: 'makes',
-      );
+      final data = await ApiService.getVehicleOptions(type: 'makes');
       debugPrint("[VEHICLE-INFO] API returned makes: $data");
       if (mounted) {
         setState(() {
@@ -176,124 +174,132 @@ class _VehicleInfoScreenState extends State<VehicleInfoScreen> {
       return _buildLoadingScreen();
     }
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          final headerHeight = constraints.maxHeight * 0.45;
-          const minHeaderHeight = 360.0;
-          final actualHeaderHeight = headerHeight > minHeaderHeight
-              ? headerHeight
-              : minHeaderHeight;
-          const overlapHeight = 24.0;
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        widget.onBack?.call();
+      },
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF8FAFC),
+        body: LayoutBuilder(
+          builder: (context, constraints) {
+            final headerHeight = constraints.maxHeight * 0.45;
+            const minHeaderHeight = 360.0;
+            final actualHeaderHeight = headerHeight > minHeaderHeight
+                ? headerHeight
+                : minHeaderHeight;
+            const overlapHeight = 24.0;
 
-          return Stack(
-            children: [
-              // --- HEADER SECTION ---
-              Positioned(
-                top: 0,
-                left: 0,
-                right: 0,
-                height: actualHeaderHeight,
-                child: _buildHeader(),
-              ),
+            return Stack(
+              children: [
+                // --- HEADER SECTION ---
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  height: actualHeaderHeight,
+                  child: _buildHeader(),
+                ),
 
-              // --- GRID SYSTEM BODY ---
-              Positioned(
-                top: actualHeaderHeight - overlapHeight,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                child: Container(
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF8FAFC),
-                    borderRadius: const BorderRadius.vertical(
-                      top: Radius.circular(24),
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.03),
-                        blurRadius: 4,
-                        offset: const Offset(0, -2),
+                // --- GRID SYSTEM BODY ---
+                Positioned(
+                  top: actualHeaderHeight - overlapHeight,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  child: Container(
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF8FAFC),
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(24),
                       ),
-                    ],
-                  ),
-                  child: SingleChildScrollView(
-                    child: Column(
-                      children: [
-                        // ROW 1: MAKE & MODEL
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _buildTile(
-                                label: "MAKE",
-                                value: selectedMake,
-                                items: makes,
-                                fontSize: 16,
-                                chevronRight: 12,
-                                isLoading: isLoadingMakes,
-                                onChanged: (v) {
-                                  setState(() => selectedMake = v);
-                                  if (v != null) _loadModels(v);
-                                },
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: _buildTile(
-                                label: "MODEL",
-                                value: selectedModel,
-                                items: models,
-                                fontSize: 16,
-                                chevronRight: 12,
-                                isLoading: isLoadingModels,
-                                onChanged: (v) {
-                                  setState(() => selectedModel = v);
-                                },
-                              ),
-                            ),
-                          ],
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.03),
+                          blurRadius: 4,
+                          offset: const Offset(0, -2),
                         ),
-                        const SizedBox(height: 12),
-
-                        // ROW 2: YEAR SLIDER
-                        _buildSliderTile(
-                          label: "YEAR",
-                          value: selectedYear,
-                          min: 2000,
-                          max: 2026,
-                          divisions: 26,
-                          displayValue: selectedYear.toInt().toString(),
-                          onChanged: (v) => setState(() => selectedYear = v),
-                        ),
-                        const SizedBox(height: 12),
-
-                        // ROW 3: MILEAGE SLIDER
-                        _buildSliderTile(
-                          label: "MILEAGE (KM)",
-                          value: selectedMileage,
-                          min: 0,
-                          max: 300000,
-                          divisions: 300,
-                          displayValue: _formatMileage(selectedMileage),
-                          onChanged: (v) => setState(() => selectedMileage = v),
-                        ),
-
-                        const SizedBox(height: 24),
-
-                        // ACTION BUTTON
-                        _buildSubmitButton(),
-
-                        const SizedBox(height: 20),
                       ],
+                    ),
+                    child: SingleChildScrollView(
+                      child: Column(
+                        children: [
+                          // ROW 1: MAKE & MODEL
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _buildTile(
+                                  label: "MAKE",
+                                  value: selectedMake,
+                                  items: makes,
+                                  fontSize: 16,
+                                  chevronRight: 12,
+                                  isLoading: isLoadingMakes,
+                                  onChanged: (v) {
+                                    setState(() => selectedMake = v);
+                                    if (v != null) _loadModels(v);
+                                  },
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: _buildTile(
+                                  label: "MODEL",
+                                  value: selectedModel,
+                                  items: models,
+                                  fontSize: 16,
+                                  chevronRight: 12,
+                                  isLoading: isLoadingModels,
+                                  onChanged: (v) {
+                                    setState(() => selectedModel = v);
+                                  },
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+
+                          // ROW 2: YEAR SLIDER
+                          _buildSliderTile(
+                            label: "YEAR",
+                            value: selectedYear,
+                            min: 2000,
+                            max: 2026,
+                            divisions: 26,
+                            displayValue: selectedYear.toInt().toString(),
+                            onChanged: (v) => setState(() => selectedYear = v),
+                          ),
+                          const SizedBox(height: 12),
+
+                          // ROW 3: MILEAGE SLIDER
+                          _buildSliderTile(
+                            label: "MILEAGE (KM)",
+                            value: selectedMileage,
+                            min: 0,
+                            max: 300000,
+                            divisions: 300,
+                            displayValue: _formatMileage(selectedMileage),
+                            onChanged: (v) =>
+                                setState(() => selectedMileage = v),
+                          ),
+
+                          const SizedBox(height: 24),
+
+                          // ACTION BUTTON
+                          _buildSubmitButton(),
+
+                          const SizedBox(height: 20),
+                        ],
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ],
-          );
-        },
+              ],
+            );
+          },
+        ),
       ),
     );
   }
@@ -429,6 +435,18 @@ class _VehicleInfoScreenState extends State<VehicleInfoScreen> {
           ),
         ),
         Positioned.fill(child: CustomPaint(painter: OverlayBlobPainter())),
+        if (widget.onBack != null)
+          Positioned(
+            top: 8,
+            left: 12,
+            child: SafeArea(
+              bottom: false,
+              child: IconButton(
+                icon: const Icon(LucideIcons.arrowLeft, color: Colors.white),
+                onPressed: widget.onBack,
+              ),
+            ),
+          ),
         SafeArea(
           bottom: false,
           child: Center(
@@ -610,7 +628,9 @@ class _VehicleInfoScreenState extends State<VehicleInfoScreen> {
                   ? Align(
                       alignment: Alignment.centerLeft,
                       child: Padding(
-                        padding: EdgeInsets.only(left: chevronRight == 24 ? 24 : 20),
+                        padding: EdgeInsets.only(
+                          left: chevronRight == 24 ? 24 : 20,
+                        ),
                         child: const SizedBox(
                           width: 16,
                           height: 16,
@@ -626,7 +646,10 @@ class _VehicleInfoScreenState extends State<VehicleInfoScreen> {
                         dropdownColor: Colors.white,
                         borderRadius: BorderRadius.circular(24),
                         hint: Padding(
-                          padding: EdgeInsets.only(left: chevronRight == 24 ? 24 : 20, right: chevronRight + 12),
+                          padding: EdgeInsets.only(
+                            left: chevronRight == 24 ? 24 : 20,
+                            right: chevronRight + 12,
+                          ),
                           child: Text(
                             "Select",
                             style: GoogleFonts.outfit(
@@ -639,7 +662,10 @@ class _VehicleInfoScreenState extends State<VehicleInfoScreen> {
                         selectedItemBuilder: (BuildContext context) {
                           return items.map<Widget>((String item) {
                             return Padding(
-                              padding: EdgeInsets.only(left: chevronRight == 24 ? 24 : 20, right: chevronRight + 12),
+                              padding: EdgeInsets.only(
+                                left: chevronRight == 24 ? 24 : 20,
+                                right: chevronRight + 12,
+                              ),
                               child: Align(
                                 alignment: Alignment.centerLeft,
                                 child: Text(
@@ -658,7 +684,9 @@ class _VehicleInfoScreenState extends State<VehicleInfoScreen> {
                           return DropdownMenuItem<String>(
                             value: item,
                             child: Padding(
-                              padding: EdgeInsets.only(left: chevronRight == 24 ? 8 : 4),
+                              padding: EdgeInsets.only(
+                                left: chevronRight == 24 ? 8 : 4,
+                              ),
                               child: Text(
                                 item,
                                 style: GoogleFonts.outfit(
