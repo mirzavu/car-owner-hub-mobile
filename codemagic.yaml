@@ -12,7 +12,7 @@ workflows:
           source: true
       # DISABLE automatic builds on every push to save minutes
       # You can trigger builds manually from Codemagic UI
-      cancel_previous_builds_on_new_commit: true
+      cancel_previous_builds: true
     
     cache:
       cache_paths:
