@@ -9,7 +9,7 @@
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
-	<string>com.carownerhub.mobileApp</string>
+	<string>com.carownershub.mobileApp</string>
 	<key>PROJECT_ID</key>
 	<string>carownerhub</string>
 	<key>STORAGE_BUCKET</key>
@@ -25,6 +25,6 @@
 	<key>IS_SIGNIN_ENABLED</key>
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:616425668695:ios:c7e9986fee91f4b5dde312</string>
+	<string>1:616425668695:ios:199491595dabec22dde312</string>
 </dict>
 </plist>

@@ -1,4 +1,4 @@
-package com.carownerhub.mobile_app
+package com.carownershub.mobile_app
 
 import io.flutter.embedding.android.FlutterActivity
 

@@ -94,7 +94,7 @@ class AuthService extends ChangeNotifier {
         orElse: () => throw Exception('Google OAuth provider not configured'),
       );
 
-      const callbackScheme = 'carownerhub';
+      const callbackScheme = 'carownershub';
       const webRedirectUri =
           'https://pb.carowner.demotesting.co.uk/oauth2-mobile-redirect.html';
 
