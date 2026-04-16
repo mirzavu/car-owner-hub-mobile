@@ -37,9 +37,15 @@ workflows:
       - name: Set up code signing in Xcode
         script: |
           xcode-project use-profiles
+      - name: Get latest build number
+        script: |
+          LATEST_BUILD=$(app-store-connect get-latest-testflight-build-number "6762402739" || echo 0)
+          echo "Latest build number: $LATEST_BUILD"
+          echo "NEW_BUILD_NUMBER=$((LATEST_BUILD + 1))" >> $CM_ENV
       - name: Flutter build IPA
         script: |
           flutter build ipa --release \
+            --build-number=$NEW_BUILD_NUMBER \
             --export-options-plist=/Users/builder/export_options.plist
 
     artifacts:
