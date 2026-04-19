@@ -7,6 +7,10 @@ import 'package:http/http.dart' as http;
 import 'config.dart';
 
 class AuthService extends ChangeNotifier {
+  static const String _oauthCallbackScheme = 'carownershub';
+  static const String _mobileOauthRedirectUri =
+      'https://pb.carowner.demotesting.co.uk/oauth2-mobile-redirect.html';
+
   // Singleton instance
   static final AuthService _instance = AuthService._internal();
   factory AuthService() => _instance;
@@ -94,13 +98,9 @@ class AuthService extends ChangeNotifier {
         orElse: () => throw Exception('Google OAuth provider not configured'),
       );
 
-      const callbackScheme = 'carownershub';
-      const webRedirectUri =
-          'https://pb.carowner.demotesting.co.uk/oauth2-mobile-redirect.html';
-
       final originalUri = Uri.parse(googleProvider.authURL);
       final newParams = Map<String, String>.from(originalUri.queryParameters);
-      newParams['redirect_uri'] = webRedirectUri;
+      newParams['redirect_uri'] = _mobileOauthRedirectUri;
 
       final authUrl = originalUri
           .replace(queryParameters: newParams)
@@ -110,7 +110,7 @@ class AuthService extends ChangeNotifier {
 
       final result = await FlutterWebAuth2.authenticate(
         url: authUrl,
-        callbackUrlScheme: callbackScheme,
+        callbackUrlScheme: _oauthCallbackScheme,
       );
 
       debugPrint('[AUTH] Callback result received.');
@@ -130,7 +130,7 @@ class AuthService extends ChangeNotifier {
             'google',
             code,
             googleProvider.codeVerifier,
-            webRedirectUri,
+            _mobileOauthRedirectUri,
           );
 
       debugPrint('[AUTH] Google login successful: $userId');

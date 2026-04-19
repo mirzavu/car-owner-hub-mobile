@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
@@ -18,6 +19,9 @@ class LoginScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final showGoogleLogin =
+        !kIsWeb && defaultTargetPlatform != TargetPlatform.iOS;
+
     // Tailwind Color Palette Mapping
     const colorSlate50 = Color(0xFFF8FAFC);
     const colorSlate100 = Color(0xFFF1F5F9);
@@ -97,7 +101,9 @@ class LoginScreen extends StatelessWidget {
                                   ),
                                   const SizedBox(height: 12), // mb-3
                                   Text(
-                                    "Create a secure account to track your equity and unlock refinance offers.",
+                                    showGoogleLogin
+                                        ? "Create a secure account to track your equity and unlock refinance offers."
+                                        : "Create a secure account with email to track your equity and unlock refinance offers.",
                                     textAlign: TextAlign.center,
                                     style: GoogleFonts.outfit(
                                       fontSize: 18, // text-lg
@@ -111,75 +117,74 @@ class LoginScreen extends StatelessWidget {
                                     width: double.infinity,
                                     child: Column(
                                       children: [
-                                        // Google Button Mock
-                                        _LoginButton(
-                                          onTap: () async {
-                                            if (onLoginGoogle != null) {
-                                              try {
-                                                await onLoginGoogle!();
-                                              } catch (e) {
-                                                if (context.mounted) {
-                                                  ScaffoldMessenger.of(
-                                                    context,
-                                                  ).showSnackBar(
-                                                    SnackBar(
-                                                      content: Text(
-                                                        "Login failed: $e",
+                                        if (showGoogleLogin) ...[
+                                          _LoginButton(
+                                            onTap: () async {
+                                              if (onLoginGoogle != null) {
+                                                try {
+                                                  await onLoginGoogle!();
+                                                } catch (e) {
+                                                  if (context.mounted) {
+                                                    ScaffoldMessenger.of(
+                                                      context,
+                                                    ).showSnackBar(
+                                                      SnackBar(
+                                                        content: Text(
+                                                          "Login failed: $e",
+                                                        ),
+                                                        backgroundColor:
+                                                            Colors.red,
                                                       ),
-                                                      backgroundColor:
-                                                          Colors.red,
-                                                    ),
-                                                  );
+                                                    );
+                                                  }
                                                 }
                                               }
-                                            }
-                                          },
-                                          backgroundColor: Colors.white,
-                                          borderColor: colorSlate300,
-                                          shadowColor: Colors.black.withValues(
-                                            alpha: 0.05,
-                                          ),
-                                          overlayColor:
-                                              colorSlate50, // hover effect
-                                          child: Row(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.center,
-                                            children: [
-                                              // Mock Google 'G' Icon
-                                              Container(
-                                                width: 20,
-                                                height: 20,
-                                                decoration: const BoxDecoration(
-                                                  color: colorNavy,
-                                                  shape: BoxShape.circle,
-                                                ),
-                                                child: Center(
-                                                  child: Text(
-                                                    "G",
-                                                    style:
-                                                        GoogleFonts.notoSerif(
-                                                          color: Colors.white,
-                                                          fontSize: 10,
-                                                          fontWeight:
-                                                              FontWeight.bold,
-                                                        ),
+                                            },
+                                            backgroundColor: Colors.white,
+                                            borderColor: colorSlate300,
+                                            shadowColor: Colors.black
+                                                .withValues(alpha: 0.05),
+                                            overlayColor:
+                                                colorSlate50, // hover effect
+                                            child: Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.center,
+                                              children: [
+                                                Container(
+                                                  width: 20,
+                                                  height: 20,
+                                                  decoration:
+                                                      const BoxDecoration(
+                                                        color: colorNavy,
+                                                        shape: BoxShape.circle,
+                                                      ),
+                                                  child: Center(
+                                                    child: Text(
+                                                      "G",
+                                                      style:
+                                                          GoogleFonts.notoSerif(
+                                                            color: Colors.white,
+                                                            fontSize: 10,
+                                                            fontWeight:
+                                                                FontWeight.bold,
+                                                          ),
+                                                    ),
                                                   ),
                                                 ),
-                                              ),
-                                              const SizedBox(width: 12),
-                                              Text(
-                                                "Continue with Google",
-                                                style: GoogleFonts.outfit(
-                                                  color: colorSlate700,
-                                                  fontSize: 18,
-                                                  fontWeight: FontWeight.bold,
+                                                const SizedBox(width: 12),
+                                                Text(
+                                                  "Continue with Google",
+                                                  style: GoogleFonts.outfit(
+                                                    color: colorSlate700,
+                                                    fontSize: 18,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
                                                 ),
-                                              ),
-                                            ],
+                                              ],
+                                            ),
                                           ),
-                                        ),
-
-                                        const SizedBox(height: 16), // space-y-4
+                                          const SizedBox(height: 16),
+                                        ],
                                         // Email Fallback Button
                                         _LoginButton(
                                           onTap: () => setStep('auth-email'),
@@ -198,7 +203,9 @@ class LoginScreen extends StatelessWidget {
                                               ),
                                               const SizedBox(width: 12),
                                               Text(
-                                                "Continue with Email",
+                                                showGoogleLogin
+                                                    ? "Continue with Email"
+                                                    : "Continue with Secure Email",
                                                 style: GoogleFonts.outfit(
                                                   color: Colors.white,
                                                   fontSize: 18,
@@ -230,7 +237,6 @@ class LoginScreen extends StatelessWidget {
                                 ],
                               ),
                             ),
-
                           ],
                         ),
                       ),
