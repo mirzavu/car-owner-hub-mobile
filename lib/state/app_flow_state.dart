@@ -185,7 +185,7 @@ class AppFlowNotifier extends StateNotifier<AppFlowState> {
     state = state.copyWith(
       step: newStep,
       detailsBackTarget: detailsBackTarget,
-      keepDetailsBackTarget: newStep == 'details',
+      keepDetailsBackTarget: newStep == 'details' || newStep == 'teaser',
       scannerMode: scannerMode ?? (newStep == 'scanner' ? state.scannerMode : 'onboarding'),
       pendingDocType: pendingDocType ?? state.pendingDocType,
     );
@@ -401,16 +401,24 @@ class AppFlowNotifier extends StateNotifier<AppFlowState> {
 
   Future<void> skipLoanVerification() async {
     final user = ref.read(userProvider);
-    final nextStatus = user.userType == 'owner'
-        ? AppOnboardingStatus.verificationSkipped
-        : AppOnboardingStatus.loginSkipped;
-    await DataService().markOnboardingSkipped(
-      userType: user.userType,
-      status: nextStatus,
-    );
-    ref
-        .read(userProvider.notifier)
-        .setProfile(onboardingStatus: nextStatus, dataSource: user.dataSource);
+    final currentStatus = user.onboardingStatus;
+
+    // Only set skipped if it is not already higher (loanCaptured or completed)
+    final bool shouldUpdateStatus = !(currentStatus == AppOnboardingStatus.completed ||
+        currentStatus == AppOnboardingStatus.loanCaptured ||
+        currentStatus == AppOnboardingStatus.verificationSkipped);
+
+    if (shouldUpdateStatus) {
+      final nextStatus = user.userType == 'owner'
+          ? AppOnboardingStatus.verificationSkipped
+          : AppOnboardingStatus.loginSkipped;
+      await DataService().markOnboardingSkipped(
+        userType: user.userType,
+        status: nextStatus,
+      );
+      ref.read(userProvider.notifier).setProfile(onboardingStatus: nextStatus, dataSource: user.dataSource);
+    }
+
     setStep('main-app');
   }
 

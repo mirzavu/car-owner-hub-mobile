@@ -11,6 +11,7 @@ class RegistrationScreen extends StatefulWidget {
   final Future<void> Function(String name, String phone)? onSubmitProfile;
   final VoidCallback? onSkip;
   final VoidCallback? onBack;
+  final VoidCallback? onLogout;
 
   const RegistrationScreen({
     super.key,
@@ -21,6 +22,7 @@ class RegistrationScreen extends StatefulWidget {
     this.onSubmitProfile,
     this.onSkip,
     this.onBack,
+    this.onLogout,
   });
 
   @override
@@ -476,6 +478,32 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                                         fontSize: 14,
                                         fontWeight: FontWeight.w600,
                                       ),
+                                    ),
+                                  ),
+                                ],
+                                if (AuthService().isAuthenticated &&
+                                    widget.onLogout != null) ...[
+                                  const SizedBox(height: 8),
+                                  TextButton(
+                                    onPressed: widget.onLogout,
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(
+                                          LucideIcons.logOut,
+                                          size: 14,
+                                          color: colorRed500,
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Text(
+                                          "Log out",
+                                          style: GoogleFonts.outfit(
+                                            color: colorRed500,
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
                                 ],

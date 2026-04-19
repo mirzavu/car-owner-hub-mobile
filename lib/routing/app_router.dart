@@ -239,6 +239,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                             .read(appFlowProvider.notifier)
                             .skipRegistrationForNow()
                       : null,
+                  onLogout: () =>
+                      ref.read(appFlowProvider.notifier).logoutToSplash(),
                 );
               },
             ),
