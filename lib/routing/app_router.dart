@@ -154,6 +154,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               builder: (context, ref, _) => LoginScreen(
                 onLoginGoogle: () =>
                     ref.read(appFlowProvider.notifier).loginWithGoogle(),
+                onLoginApple: () =>
+                    ref.read(appFlowProvider.notifier).loginWithApple(),
                 onSkip: () =>
                     ref.read(appFlowProvider.notifier).skipLoginForNow(),
                 setStep: (nextStep, [data, mode, doc]) =>

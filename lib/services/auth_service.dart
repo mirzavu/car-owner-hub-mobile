@@ -141,6 +141,61 @@ class AuthService extends ChangeNotifier {
     }
   }
 
+  // 2b. Login with Apple (OAuth2)
+  Future<void> loginWithApple() async {
+    debugPrint("[AUTH] Starting Apple OAuth...");
+    try {
+      final authMethods = await pb.collection('users').listAuthMethods();
+      final providers = authMethods.oauth2.providers;
+
+      final appleProvider = providers.firstWhere(
+        (p) => p.name == 'apple',
+        orElse: () => throw Exception('Apple OAuth provider not configured'),
+      );
+
+      final originalUri = Uri.parse(appleProvider.authURL);
+      final newParams = Map<String, String>.from(originalUri.queryParameters);
+      newParams['redirect_uri'] = _mobileOauthRedirectUri;
+
+      final authUrl = originalUri
+          .replace(queryParameters: newParams)
+          .toString();
+
+      debugPrint('[AUTH] Opening auth URL: $authUrl');
+
+      final result = await FlutterWebAuth2.authenticate(
+        url: authUrl,
+        callbackUrlScheme: _oauthCallbackScheme,
+      );
+
+      debugPrint('[AUTH] Callback result received.');
+      final callbackUri = Uri.parse(result);
+      final code = callbackUri.queryParameters['code'];
+      final state = callbackUri.queryParameters['state'];
+
+      if (code == null) throw Exception('No code in callback');
+      if (state != appleProvider.state) {
+        throw Exception('OAuth state mismatch');
+      }
+
+      debugPrint('[AUTH] Exchanging code for token...');
+      await pb
+          .collection('users')
+          .authWithOAuth2Code(
+            'apple',
+            code,
+            appleProvider.codeVerifier,
+            _mobileOauthRedirectUri,
+          );
+
+      debugPrint('[AUTH] Apple login successful: $userId');
+      notifyListeners();
+    } catch (e) {
+      debugPrint('[AUTH] Apple Login Error: $e');
+      throw Exception('Apple Sign In Failed: $e');
+    }
+  }
+
   // 3. Request Custom Email OTP
   Future<void> requestCustomOtp(String email) async {
     debugPrint("[AUTH] Requesting custom OTP for: $email");

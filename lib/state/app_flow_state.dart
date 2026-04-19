@@ -267,6 +267,23 @@ class AppFlowNotifier extends StateNotifier<AppFlowState> {
     }
   }
 
+  Future<void> loginWithApple() async {
+    debugPrint('[AUTH] loginWithApple flow started');
+    setStep('loading');
+
+    try {
+      await AuthService().loginWithApple();
+      debugPrint('[AUTH] Apple login backend successful');
+      await handleSuccessfulAuthentication();
+    } catch (e, stackTrace) {
+      debugPrint('[AUTH] Apple Login Error: $e');
+      debugPrint('[AUTH] Stack Trace: $stackTrace');
+      // Revert to login screen on error so user can try again
+      setStep('auth-login');
+      rethrow; // Re-throw so UI can show a snackbar if needed
+    }
+  }
+
   void setActiveTab(String tab, {int? stepDelta}) {
     state = state.copyWith(
       activeTab: tab,

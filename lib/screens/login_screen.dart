@@ -6,6 +6,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 class LoginScreen extends StatelessWidget {
   final Function(String, [Map<String, dynamic>?, String?, String?]) setStep;
   final Future<void> Function()? onLoginGoogle;
+  final Future<void> Function()? onLoginApple;
   final Future<void> Function()? onSkip;
   final VoidCallback? onBack;
 
@@ -13,14 +14,14 @@ class LoginScreen extends StatelessWidget {
     super.key,
     required this.setStep,
     this.onLoginGoogle,
+    this.onLoginApple,
     this.onSkip,
     this.onBack,
   });
 
   @override
   Widget build(BuildContext context) {
-    final showGoogleLogin =
-        !kIsWeb && defaultTargetPlatform != TargetPlatform.iOS;
+    final showSocialLogins = !kIsWeb;
 
     // Tailwind Color Palette Mapping
     const colorSlate50 = Color(0xFFF8FAFC);
@@ -101,7 +102,7 @@ class LoginScreen extends StatelessWidget {
                                   ),
                                   const SizedBox(height: 12), // mb-3
                                   Text(
-                                    showGoogleLogin
+                                    showSocialLogins
                                         ? "Create a secure account to track your equity and unlock refinance offers."
                                         : "Create a secure account with email to track your equity and unlock refinance offers.",
                                     textAlign: TextAlign.center,
@@ -117,7 +118,58 @@ class LoginScreen extends StatelessWidget {
                                     width: double.infinity,
                                     child: Column(
                                       children: [
-                                        if (showGoogleLogin) ...[
+                                        if (showSocialLogins) ...[
+                                          if (defaultTargetPlatform ==
+                                              TargetPlatform.iOS) ...[
+                                            _LoginButton(
+                                              onTap: () async {
+                                                if (onLoginApple != null) {
+                                                  try {
+                                                    await onLoginApple!();
+                                                  } catch (e) {
+                                                    if (context.mounted) {
+                                                      ScaffoldMessenger.of(
+                                                        context,
+                                                      ).showSnackBar(
+                                                        SnackBar(
+                                                          content: Text(
+                                                            "Apple Login failed: $e",
+                                                          ),
+                                                          backgroundColor:
+                                                              Colors.red,
+                                                        ),
+                                                      );
+                                                    }
+                                                  }
+                                                }
+                                              },
+                                              backgroundColor: Colors.black,
+                                              shadowColor: Colors.black
+                                                  .withValues(alpha: 0.1),
+                                              child: Row(
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment.center,
+                                                children: [
+                                                  const Icon(
+                                                    LucideIcons.apple,
+                                                    color: Colors.white,
+                                                    size: 22,
+                                                  ),
+                                                  const SizedBox(width: 12),
+                                                  Text(
+                                                    "Sign in with Apple",
+                                                    style: GoogleFonts.outfit(
+                                                      color: Colors.white,
+                                                      fontSize: 18,
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                            const SizedBox(height: 16),
+                                          ],
                                           _LoginButton(
                                             onTap: () async {
                                               if (onLoginGoogle != null) {
@@ -130,7 +182,7 @@ class LoginScreen extends StatelessWidget {
                                                     ).showSnackBar(
                                                       SnackBar(
                                                         content: Text(
-                                                          "Login failed: $e",
+                                                          "Google Login failed: $e",
                                                         ),
                                                         backgroundColor:
                                                             Colors.red,
@@ -203,7 +255,7 @@ class LoginScreen extends StatelessWidget {
                                               ),
                                               const SizedBox(width: 12),
                                               Text(
-                                                showGoogleLogin
+                                                showSocialLogins
                                                     ? "Continue with Email"
                                                     : "Continue with Secure Email",
                                                 style: GoogleFonts.outfit(
