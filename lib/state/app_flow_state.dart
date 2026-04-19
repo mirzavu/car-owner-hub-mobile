@@ -6,6 +6,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import '../services/app_data.dart';
 import '../services/auth_service.dart';
 import '../services/data_service.dart';
+import '../services/api_service.dart';
 import '../services/push_token_service.dart';
 import 'financials_state.dart';
 import 'user_state.dart';
@@ -19,6 +20,8 @@ class AppFlowState {
   final String? detailsBackTarget;
   final bool loading;
   final String loadingText;
+  final String scannerMode; // 'onboarding' or 'garage'
+  final String? pendingDocType;
 
   const AppFlowState({
     required this.step,
@@ -28,6 +31,8 @@ class AppFlowState {
     required this.detailsBackTarget,
     required this.loading,
     required this.loadingText,
+    this.scannerMode = 'onboarding',
+    this.pendingDocType,
   });
 
   factory AppFlowState.initial() {
@@ -39,6 +44,8 @@ class AppFlowState {
       detailsBackTarget: null,
       loading: false,
       loadingText: '',
+      scannerMode: 'onboarding',
+      pendingDocType: null,
     );
   }
 
@@ -50,6 +57,8 @@ class AppFlowState {
     String? detailsBackTarget,
     bool? loading,
     String? loadingText,
+    String? scannerMode,
+    String? pendingDocType,
     bool keepOverlay = true,
     bool keepShopDelta = true,
     bool keepDetailsBackTarget = true,
@@ -68,6 +77,8 @@ class AppFlowState {
           : detailsBackTarget,
       loading: loading ?? this.loading,
       loadingText: loadingText ?? this.loadingText,
+      scannerMode: scannerMode ?? this.scannerMode,
+      pendingDocType: pendingDocType ?? this.pendingDocType,
     );
   }
 }
@@ -137,8 +148,8 @@ class AppFlowNotifier extends StateNotifier<AppFlowState> {
     debugPrint('--------------------------');
   }
 
-  void setStep(String newStep, [Map<String, dynamic>? data]) {
-    if (state.step == newStep && data == null) return;
+  void setStep(String newStep, [Map<String, dynamic>? data, String? scannerMode, String? pendingDocType]) {
+    if (state.step == newStep && data == null && scannerMode == null && pendingDocType == null) return;
 
     debugPrint('[STEP] Transition: ${state.step} -> $newStep');
     if (data != null) {
@@ -158,6 +169,8 @@ class AppFlowNotifier extends StateNotifier<AppFlowState> {
       step: newStep,
       detailsBackTarget: detailsBackTarget,
       keepDetailsBackTarget: newStep == 'details',
+      scannerMode: scannerMode ?? (newStep == 'scanner' ? state.scannerMode : 'onboarding'),
+      pendingDocType: pendingDocType ?? state.pendingDocType,
     );
 
     final carDetails = ref.read(vehicleProvider).carDetails;
@@ -169,7 +182,16 @@ class AppFlowNotifier extends StateNotifier<AppFlowState> {
 
     if (newStep == 'main-app') {
       final user = ref.read(userProvider);
-      if (user.isGuest && _hasLoanCompletionPayload(data)) {
+      if (data != null && data['loanId'] != null) {
+        debugPrint('[STEP] Valid loanId received in payload: ${data['loanId']}');
+        ref.read(financialsProvider.notifier).setLoanId(data['loanId'] as String);
+        if (user.isGuest) {
+          ref.read(userProvider.notifier).setProfile(
+                onboardingStatus: AppOnboardingStatus.completed,
+                dataSource: AppDataSource.guestLocal,
+              );
+        }
+      } else if (user.isGuest && _hasLoanCompletionPayload(data)) {
         debugPrint(
           '[STEP] Guest loan completion detected. Promoting in-memory state to main dashboard.',
         );
@@ -183,6 +205,31 @@ class AppFlowNotifier extends StateNotifier<AppFlowState> {
       }
       ref.read(userProvider.notifier).clearTempPhone();
       ref.read(vehicleProvider.notifier).clearLastScanData();
+    }
+  }
+
+  Future<void> handleGarageScanComplete(String filePath) async {
+    final docType = state.pendingDocType;
+    final loanId = ref.read(financialsProvider).loanId;
+
+    if (docType == null) {
+      debugPrint("[GARAGE] No pending doc type for scan complete");
+      setStep('main-app');
+      return;
+    }
+
+    state = state.copyWith(loading: true, loadingText: "Uploading document...");
+
+    try {
+      await ApiService.uploadGarageDocument(filePath, docType, loanId: loanId);
+      debugPrint("[GARAGE] Scan upload success: $docType");
+      state = state.copyWith(loading: false, pendingDocType: null);
+      setStep('main-app');
+    } catch (e) {
+      debugPrint("[GARAGE] Scan upload failed: $e");
+      state = state.copyWith(loading: false);
+      // Maybe stay on main-app but show error snackbar
+      setStep('main-app');
     }
   }
 

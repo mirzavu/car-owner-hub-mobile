@@ -4,7 +4,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import '../services/auth_service.dart';
 
 class AuthOtpScreen extends StatefulWidget {
-  final Function(String) setStep;
+  final Function(String, [Map<String, dynamic>?, String?, String?]) setStep;
   final VoidCallback onBack;
   final String email;
   final Future<void> Function()? onAuthSuccess;

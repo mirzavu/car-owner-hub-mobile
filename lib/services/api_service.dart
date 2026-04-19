@@ -245,8 +245,7 @@ class ApiService {
     }
   }
 
-  // 1d. Sync all onboarding data (Vehicle + Loan) to PocketBase
-  static Future<void> syncOnboardingData({
+  static Future<String> syncOnboardingData({
     required Map<String, String> carDetails,
     required Map<String, dynamic> scanData,
     required double estimatedValue,
@@ -254,10 +253,10 @@ class ApiService {
     String? documentId,
   }) async {
     final auth = AuthService();
-    if (!auth.isAuthenticated) return;
+    if (!auth.isAuthenticated) return '';
 
     final userId = auth.userId;
-    if (userId.isEmpty) return;
+    if (userId.isEmpty) return '';
 
     debugPrint("[SYNC] Starting Onboarding Data Sync...");
     debugPrint("[SYNC] Car Details: $carDetails");
@@ -404,6 +403,7 @@ class ApiService {
         }
       }
       debugPrint("[SYNC] Sync Complete Success.");
+      return loanId;
     } catch (e) {
       debugPrint("[SYNC] Error syncing onboarding data: $e");
       rethrow;

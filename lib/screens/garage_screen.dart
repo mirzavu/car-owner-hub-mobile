@@ -3,18 +3,21 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter/services.dart';
 import '../services/api_service.dart';
 
 class GarageScreen extends StatefulWidget {
   final Map<String, String> carDetails;
   final String? loanId;
   final void Function(String, {int? stepDelta}) setActiveTab;
+  final void Function(String, [Map<String, dynamic>? data, String? scannerMode, String? pendingDocType]) setStep;
 
   const GarageScreen({
     super.key,
     required this.carDetails,
     this.loanId,
     required this.setActiveTab,
+    required this.setStep,
   });
 
   @override
@@ -47,7 +50,7 @@ class _GarageScreenState extends State<GarageScreen> {
     final docList = _documents.where((d) => d['doc_type'] == docType).toList();
     final isUploaded = docList.isNotEmpty;
 
-    if (isUploaded) {
+     if (isUploaded) {
       // 1. View Document
       final url = Uri.parse(docList.first['file_url']);
       if (await canLaunchUrl(url)) {
@@ -59,30 +62,79 @@ class _GarageScreenState extends State<GarageScreen> {
         );
       }
     } else {
-      // 2. Upload Document
-      FilePickerResult? result = await FilePicker.platform.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: ['jpg', 'jpeg', 'png', 'pdf'],
-      );
+      _showDocumentOptionsSheet(docType);
+    }
+  }
 
-      if (result != null && result.files.single.path != null) {
-        _showLoadingDialog("Uploading document...");
-        try {
-          await ApiService.uploadGarageDocument(
-            result.files.single.path!,
-            docType,
-            loanId: widget.loanId,
-          );
-          if (!mounted) return;
-          Navigator.pop(context); // Close dialog
-          _fetchDocuments(); // Refresh the list
-        } catch (e) {
-          if (!mounted) return;
-          Navigator.pop(context); // Close dialog
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text("Upload failed: $e")));
-        }
+  void _showDocumentOptionsSheet(String docType) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Text(
+                  "Add Document",
+                  style: GoogleFonts.outfit(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: const Color(0xFF1E293B),
+                  ),
+                ),
+              ),
+              ListTile(
+                leading: const Icon(LucideIcons.camera),
+                title: const Text("Take Photo"),
+                onTap: () {
+                  Navigator.pop(context);
+                  widget.setStep('scanner', null, 'garage', docType);
+                },
+              ),
+              ListTile(
+                leading: const Icon(LucideIcons.image),
+                title: const Text("Choose from Library"),
+                onTap: () {
+                  Navigator.pop(context);
+                  _handleFileUpload(docType);
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _handleFileUpload(String docType) async {
+    FilePickerResult? result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['jpg', 'jpeg', 'png', 'pdf'],
+    );
+
+    if (result != null && result.files.single.path != null) {
+      _showLoadingDialog("Uploading document...");
+      try {
+        await ApiService.uploadGarageDocument(
+          result.files.single.path!,
+          docType,
+          loanId: widget.loanId,
+        );
+        if (!mounted) return;
+        Navigator.pop(context); // Close loading dialog
+        _fetchDocuments(); // Refresh the list
+      } catch (e) {
+        if (!mounted) return;
+        Navigator.pop(context); // Close loading dialog
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("Upload failed: $e")));
       }
     }
   }
@@ -273,7 +325,20 @@ class _GarageScreenState extends State<GarageScreen> {
                                   ],
                                 ),
                                 InkWell(
-                                  onTap: () {},
+                                  onTap: () {
+                                    Clipboard.setData(ClipboardData(text: vin));
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          "VIN copied to clipboard",
+                                          style: GoogleFonts.outfit(),
+                                        ),
+                                        behavior: SnackBarBehavior.floating,
+                                        width: 200,
+                                        duration: const Duration(seconds: 2),
+                                      ),
+                                    );
+                                  },
                                   child: const Padding(
                                     padding: EdgeInsets.all(8.0),
                                     child: Icon(
@@ -393,7 +458,7 @@ class _GarageScreenState extends State<GarageScreen> {
                   child: Icon(
                     isUploaded
                         ? LucideIcons.checkCircle2
-                        : LucideIcons.fileText,
+                        : LucideIcons.image,
                     size: 18,
                     color: isUploaded
                         ? const Color(0xFF00CA50)
@@ -423,7 +488,7 @@ class _GarageScreenState extends State<GarageScreen> {
                         )
                       else
                         Text(
-                          "Tap to upload",
+                          "Tap to upload photo",
                           style: GoogleFonts.outfit(
                             fontSize: 11,
                             color: Colors.blueGrey.shade400,
@@ -434,7 +499,7 @@ class _GarageScreenState extends State<GarageScreen> {
                   ),
                 ),
                 Icon(
-                  isUploaded ? LucideIcons.externalLink : LucideIcons.upload,
+                  isUploaded ? LucideIcons.externalLink : LucideIcons.camera,
                   size: 16,
                   color: isUploaded
                       ? Colors.blueGrey.shade300

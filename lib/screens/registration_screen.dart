@@ -4,7 +4,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import '../services/auth_service.dart';
 
 class RegistrationScreen extends StatefulWidget {
-  final Function(String) setStep;
+  final Function(String, [Map<String, dynamic>?, String?, String?]) setStep;
   final String initialValue;
   final String initialName;
   final Function(String) onChanged;

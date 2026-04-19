@@ -6,7 +6,7 @@ import '../services/api_service.dart';
 import '../services/auth_service.dart';
 
 class ScanPromptScreen extends StatefulWidget {
-  final void Function(String, [Map<String, dynamic>?]) setStep;
+  final void Function(String, [Map<String, dynamic>?, String?, String?]) setStep;
   final VoidCallback? onBack;
   final Future<void> Function()? onSkip;
 
@@ -214,7 +214,7 @@ class _ScanPromptScreenState extends State<ScanPromptScreen>
                                           MainAxisAlignment.center,
                                       children: [
                                         const Icon(
-                                          LucideIcons.filePlus,
+                                          LucideIcons.imagePlus,
                                           size: 22,
                                           color: Colors.white,
                                         ),
@@ -370,8 +370,8 @@ class _ScanPromptScreenState extends State<ScanPromptScreen>
                   },
                 ),
                 ListTile(
-                  leading: const Icon(LucideIcons.uploadCloud),
-                  title: const Text("Upload File"),
+                  leading: const Icon(LucideIcons.image),
+                  title: const Text("Choose from Library"),
                   onTap: _handleFileUpload,
                 ),
               ],

@@ -155,7 +155,7 @@ class DataService {
     };
     final auth = AuthService();
     if (auth.isAuthenticated) {
-      await ApiService.syncOnboardingData(
+      final newLoanId = await ApiService.syncOnboardingData(
         carDetails: carDetails,
         scanData: scanDataForPersistence,
         estimatedValue: estimatedValue,
@@ -167,6 +167,7 @@ class DataService {
         resolvedBalance: balanceResolution.balance,
         balanceSource: balanceResolution.source,
         persistedScanData: scanDataForPersistence,
+        loanId: newLoanId,
       );
     }
 
@@ -208,6 +209,7 @@ class DataService {
       resolvedBalance: balanceResolution.balance,
       balanceSource: balanceResolution.source,
       persistedScanData: scanDataForPersistence,
+      loanId: current.loanId ?? 'guest-loan',
     );
   }
 
@@ -542,9 +544,11 @@ class OnboardingSaveResult {
     required this.resolvedBalance,
     required this.balanceSource,
     required this.persistedScanData,
+    this.loanId,
   });
 
   final double resolvedBalance;
   final String balanceSource;
   final Map<String, dynamic> persistedScanData;
+  final String? loanId;
 }

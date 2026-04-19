@@ -3,7 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 class LoginScreen extends StatelessWidget {
-  final Function(String) setStep;
+  final Function(String, [Map<String, dynamic>?, String?, String?]) setStep;
   final Future<void> Function()? onLoginGoogle;
   final Future<void> Function()? onSkip;
   final VoidCallback? onBack;
@@ -198,7 +198,7 @@ class LoginScreen extends StatelessWidget {
                                               ),
                                               const SizedBox(width: 12),
                                               Text(
-                                                "Sign up with Email",
+                                                "Continue with Email",
                                                 style: GoogleFonts.outfit(
                                                   color: Colors.white,
                                                   fontSize: 18,

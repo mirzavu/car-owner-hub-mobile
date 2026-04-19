@@ -4,7 +4,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import '../services/auth_service.dart';
 
 class AuthEmailScreen extends StatefulWidget {
-  final Function(String, [Map<String, dynamic>?]) setStep;
+  final Function(String, [Map<String, dynamic>?, String?, String?]) setStep;
   final VoidCallback onBack;
 
   const AuthEmailScreen({

@@ -12,10 +12,18 @@ import '../services/auth_service.dart';
 enum ScanPhase { align, scanning, complete, error }
 
 class ScannerScreen extends StatefulWidget {
-  final Function(String, Map<String, dynamic>?) setStep;
+  final Function(String, [Map<String, dynamic>?, String?, String?]) setStep;
   final Future<void> Function()? onSkip;
+  final Function(String)? onPhotoCaptured;
+  final String mode; // 'onboarding' or 'garage'
 
-  const ScannerScreen({super.key, required this.setStep, this.onSkip});
+  const ScannerScreen({
+    super.key,
+    required this.setStep,
+    this.onSkip,
+    this.onPhotoCaptured,
+    this.mode = 'onboarding',
+  });
 
   @override
   State<ScannerScreen> createState() => _ScannerScreenState();
@@ -134,6 +142,17 @@ class _ScannerScreenState extends State<ScannerScreen>
 
   Future<void> _runScanSequence(String filePath) async {
     try {
+      if (widget.mode == 'garage') {
+        setState(() => _statusText = "Photo captured!");
+        await Future.delayed(const Duration(milliseconds: 1000));
+        if (!mounted) return;
+        setState(() => _scanPhase = ScanPhase.complete);
+        await Future.delayed(const Duration(milliseconds: 500));
+        if (!mounted) return;
+        widget.onPhotoCaptured?.call(filePath);
+        return;
+      }
+
       setState(() => _statusText = "Enhancing image...");
       await Future.delayed(const Duration(milliseconds: 1000));
 

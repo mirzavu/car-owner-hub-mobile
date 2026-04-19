@@ -8,7 +8,7 @@ import '../services/data_service.dart';
 import '../widgets/login_prompt_dialog.dart';
 
 class VerifyScanScreen extends StatefulWidget {
-  final Function(String, [Map<String, dynamic>?]) setStep;
+  final Function(String, [Map<String, dynamic>?, String?, String?]) setStep;
   final Map<String, dynamic> scanData;
   final Map<String, String> carDetails;
   final double estimatedValue;
@@ -375,6 +375,7 @@ class _VerifyScanScreenState extends State<VerifyScanScreen>
         'estimatedValue': finalEstimate,
         'userEstimatedLoan': saveResult.resolvedBalance,
         'loanBalanceSource': saveResult.balanceSource,
+        if (saveResult.loanId != null) 'loanId': saveResult.loanId,
       });
     } catch (e) {
       debugPrint("[VERIFY] Sync Error: $e");
@@ -452,6 +453,7 @@ class _VerifyScanScreenState extends State<VerifyScanScreen>
         'estimatedValue': finalEstimate,
         'userEstimatedLoan': saveResult.resolvedBalance,
         'loanBalanceSource': saveResult.balanceSource,
+        if (saveResult.loanId != null) 'loanId': saveResult.loanId,
       });
     } catch (e) {
       debugPrint("[VERIFY] Sync Error: $e");

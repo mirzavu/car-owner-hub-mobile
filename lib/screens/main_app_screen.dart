@@ -60,6 +60,8 @@ class MainAppScreen extends ConsumerWidget {
         loanId: loanId,
         setActiveTab: (String tab, {int? stepDelta}) =>
             appFlowNotifier.setActiveTab(tab, stepDelta: stepDelta),
+        setStep: (String step, [Map<String, dynamic>? data, String? scannerMode, String? pendingDocType]) =>
+            appFlowNotifier.setStep(step, data, scannerMode, pendingDocType),
       );
     } else if (userType == 'owner' && (loanId == null || loanId.isEmpty)) {
       content = TeaserDashboardScreen(
