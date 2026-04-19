@@ -4,7 +4,11 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/services.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import '../services/api_service.dart';
+import '../services/push_token_service.dart';
+import '../services/auth_service.dart';
+import '../widgets/notif_soft_prompt.dart';
 
 class GarageScreen extends StatefulWidget {
   final Map<String, String> carDetails;
@@ -36,6 +40,58 @@ class _GarageScreenState extends State<GarageScreen> {
   void initState() {
     super.initState();
     _fetchDocuments();
+    _checkNotificationStatus();
+  }
+
+  Future<void> _checkNotificationStatus() async {
+    // 1. Small delay for better UX after screen entry
+    await Future.delayed(const Duration(milliseconds: 1200));
+    if (!mounted) return;
+
+    final pushService = PushTokenService();
+
+    // 2. Only show if we haven't shown it before in the Garage
+    final hasShown = await pushService.hasShownSoftPrompt();
+    if (hasShown) {
+      debugPrint("[PUSH] Soft prompt already shown previously. Skipping.");
+      return;
+    }
+
+    // 3. Check if system permission is still "notDetermined"
+    // If they already granted or denied via some other route, don't show.
+    final status = await pushService.getAuthorizationStatus();
+    if (status != AuthorizationStatus.notDetermined) {
+      debugPrint("[PUSH] Authorization status is $status. Skipping soft prompt.");
+      return;
+    }
+
+    // 4. Only prompt authenticated users
+    if (!AuthService().isAuthenticated) return;
+
+    _showNotificationSoftPrompt();
+  }
+
+  void _showNotificationSoftPrompt() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => NotificationSoftPrompt(
+        onAccept: () async {
+          Navigator.pop(context);
+          try {
+            await PushTokenService().enablePushNotifications();
+          } catch (e) {
+            debugPrint("[PUSH] Error enabling notifications: $e");
+          }
+          await PushTokenService().markSoftPromptShown();
+        },
+        onDecline: () async {
+          Navigator.pop(context);
+          await PushTokenService().markSoftPromptShown();
+        },
+      ),
+    );
   }
 
   Future<void> _fetchDocuments() async {

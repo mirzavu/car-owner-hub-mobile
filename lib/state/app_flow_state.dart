@@ -112,7 +112,7 @@ class AppFlowNotifier extends StateNotifier<AppFlowState> {
     _hydrateProviders(appData);
 
     if (auth.isAuthenticated) {
-      final fcmToken = await PushTokenService().initAndSyncToken();
+      final fcmToken = await PushTokenService().initAndSyncToken(requestPermission: false);
       if (fcmToken != null && fcmToken.isNotEmpty) {
         debugPrint('[PUSH] FCM Token: $fcmToken');
 
@@ -164,6 +164,23 @@ class AppFlowNotifier extends StateNotifier<AppFlowState> {
     final detailsBackTarget = newStep == 'details'
         ? (state.step == 'main-app' ? 'main-app' : 'user-type')
         : null;
+
+    final user = ref.read(userProvider);
+    if (newStep == 'teaser' && state.step == 'details' && user.userType == 'buyer') {
+      debugPrint('[STEP] Promoting user from Buyer to Owner after vehicle captured');
+      ref.read(userProvider.notifier).setUserType('owner');
+      ref.read(userProvider.notifier).setProfile(
+            onboardingStatus: AppOnboardingStatus.vehicleCaptured,
+            dataSource: user.dataSource,
+          );
+
+      if (!AuthService().isAuthenticated) {
+        unawaited(DataService().updateGuestIdentity(
+          userType: 'owner',
+          onboardingStatus: AppOnboardingStatus.vehicleCaptured,
+        ));
+      }
+    }
 
     state = state.copyWith(
       step: newStep,
@@ -335,7 +352,7 @@ class AppFlowNotifier extends StateNotifier<AppFlowState> {
     );
     _hydrateProviders(appData);
 
-    final fcmToken = await PushTokenService().initAndSyncToken();
+    final fcmToken = await PushTokenService().initAndSyncToken(requestPermission: false);
     if (fcmToken != null && fcmToken.isNotEmpty) {
       debugPrint('[PUSH] FCM Token synced: $fcmToken');
     }
@@ -411,22 +428,6 @@ class AppFlowNotifier extends StateNotifier<AppFlowState> {
   }
 
   Future<void> startOwnerVehicleFlow() async {
-    final user = ref.read(userProvider);
-    ref.read(userProvider.notifier).setUserType('owner');
-    ref
-        .read(userProvider.notifier)
-        .setProfile(
-          onboardingStatus: AppOnboardingStatus.newUser,
-          dataSource: user.dataSource,
-        );
-
-    if (!AuthService().isAuthenticated) {
-      await DataService().updateGuestIdentity(
-        userType: 'owner',
-        onboardingStatus: AppOnboardingStatus.newUser,
-      );
-    }
-
     state = state.copyWith(activeTab: 'home');
     setStep('details');
   }

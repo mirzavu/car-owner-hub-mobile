@@ -14,12 +14,16 @@ class PushTokenService {
   factory PushTokenService() => _instance;
   static const String _pushEnabledPrefKeyBase = 'push_notifications_enabled';
   static const String _guestPendingTokenKey = 'guest_pending_fcm_token';
+  static const String _softPromptShownKey = 'notification_soft_prompt_shown';
 
   bool _initialized = false;
   String _lastSyncedToken = '';
   StreamSubscription<String>? _tokenRefreshSubscription;
 
-  Future<String?> initAndSyncToken({bool force = false}) async {
+  Future<String?> initAndSyncToken({
+    bool force = false,
+    bool requestPermission = true,
+  }) async {
     if (!force) {
       final shouldSync = await _shouldSyncToken();
       if (!shouldSync) {
@@ -36,7 +40,9 @@ class PushTokenService {
         _initialized = true;
       }
 
-      await _requestPermission();
+      if (requestPermission) {
+        await _requestPermission();
+      }
       final token = await _syncCurrentToken();
       if (token != null && token.isNotEmpty) {
         await _setPushPreference(true);
@@ -103,6 +109,21 @@ class PushTokenService {
     }
 
     await _setPushPreference(false);
+  }
+
+  Future<AuthorizationStatus> getAuthorizationStatus() async {
+    final settings = await FirebaseMessaging.instance.getNotificationSettings();
+    return settings.authorizationStatus;
+  }
+
+  Future<bool> hasShownSoftPrompt() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_softPromptShownKey) ?? false;
+  }
+
+  Future<void> markSoftPromptShown() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_softPromptShownKey, true);
   }
 
   Future<bool> _shouldSyncToken() async {
