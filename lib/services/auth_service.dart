@@ -8,8 +8,8 @@ import 'config.dart';
 
 class AuthService extends ChangeNotifier {
   static const String _oauthCallbackScheme = 'carownershub';
-  static const String _mobileOauthRedirectUri =
-      'https://pb.carowner.demotesting.co.uk/oauth2-mobile-redirect.html';
+  static final String _mobileOauthRedirectUri =
+      '${Config.pbUrl}/oauth2-mobile-redirect.html';
 
   // Singleton instance
   static final AuthService _instance = AuthService._internal();
