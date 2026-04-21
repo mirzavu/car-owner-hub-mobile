@@ -394,7 +394,7 @@ class AppFlowNotifier extends StateNotifier<AppFlowState> {
           onboardingStatus: AppOnboardingStatus.loginSkipped,
           dataSource: AppDataSource.guestLocal,
         );
-    setStep(user.userType == 'buyer' ? 'main-app' : 'scan-intro');
+    setStep('main-app');
   }
 
   Future<void> skipRegistrationForNow() async {
@@ -413,7 +413,7 @@ class AppFlowNotifier extends StateNotifier<AppFlowState> {
               : AppOnboardingStatus.profileCaptured,
           dataSource: user.dataSource,
         );
-    setStep(user.userType == 'buyer' ? 'main-app' : 'scan-intro');
+    setStep('main-app');
   }
 
   Future<void> skipLoanVerification() async {
@@ -511,7 +511,7 @@ class AppFlowNotifier extends StateNotifier<AppFlowState> {
         return 'teaser';
       case AppOnboardingStatus.loginSkipped:
       case AppOnboardingStatus.profileCaptured:
-        return 'scan-intro';
+        return 'main-app';
       case AppOnboardingStatus.verificationSkipped:
         return 'main-app';
       case AppOnboardingStatus.loanCaptured:
@@ -540,7 +540,7 @@ class AppFlowNotifier extends StateNotifier<AppFlowState> {
         return 'teaser';
       case AppOnboardingStatus.loginSkipped:
       case AppOnboardingStatus.profileCaptured:
-        return 'scan-intro';
+        return 'main-app';
       case AppOnboardingStatus.verificationSkipped:
         return 'main-app';
       case AppOnboardingStatus.loanCaptured:
