@@ -174,6 +174,42 @@ class ApiService {
     }
   }
 
+  static Future<Map<String, dynamic>> parseLoanDetails({
+    required String vehicleText,
+    required String vinText,
+    required String lenderText,
+    required String contractDateText,
+    required String termText,
+    required String aprText,
+    required String paymentText,
+    required String financedAmountText,
+  }) async {
+    final response = await http.post(
+      Uri.parse(Config.parseLoanDetails),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'vehicle_text': vehicleText,
+        'vin_text': vinText,
+        'lender_text': lenderText,
+        'contract_date_text': contractDateText,
+        'term_text': termText,
+        'apr_text': aprText,
+        'payment_text': paymentText,
+        'financed_amount_text': financedAmountText,
+      }),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to parse loan details: ${response.body}');
+    }
+
+    final decoded = jsonDecode(response.body);
+    if (decoded is! Map<String, dynamic>) {
+      throw Exception('Unexpected parse-loan-details response format');
+    }
+    return decoded;
+  }
+
   // 1b. Decode VIN using NHTSA vPIC
   static Future<Map<String, String>> decodeVin(String vin) async {
     final normalized = vin

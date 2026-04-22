@@ -38,6 +38,7 @@ class _VerifyScanScreenState extends State<VerifyScanScreen>
   bool _isVinLookupInProgress = false;
   String? _vinLookupError;
   bool _isSubmitting = false;
+  Map<String, String> _fieldErrors = {};
 
   bool _isEditing = false;
   late TextEditingController _vehicleController;
@@ -280,60 +281,130 @@ class _VerifyScanScreenState extends State<VerifyScanScreen>
     return conflict;
   }
 
+  Map<String, String> _mapFieldErrors(dynamic rawFieldErrors) {
+    if (rawFieldErrors is! Map) return {};
+    final mapped = <String, String>{};
+    rawFieldErrors.forEach((key, value) {
+      final k = key.toString().trim();
+      final v = value?.toString().trim() ?? '';
+      if (k.isNotEmpty && v.isNotEmpty) {
+        mapped[k] = v;
+      }
+    });
+    return mapped;
+  }
+
+  int? _toInt(dynamic value) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    if (value is String) return int.tryParse(value);
+    return null;
+  }
+
+  double? _toDouble(dynamic value) {
+    if (value is double) return value;
+    if (value is num) return value.toDouble();
+    if (value is String) return double.tryParse(value);
+    return null;
+  }
+
+  Future<bool> _normalizeEditedDetailsWithParser() async {
+    final parsed = await ApiService.parseLoanDetails(
+      vehicleText: _vehicleController.text.trim(),
+      vinText: _vinController.text.trim(),
+      lenderText: _lenderController.text.trim(),
+      contractDateText: _dateController.text.trim(),
+      termText: _termController.text.trim(),
+      aprText: _aprController.text.trim(),
+      paymentText: _paymentController.text.trim(),
+      financedAmountText: _balanceController.text.trim(),
+    );
+
+    final fieldErrors = _mapFieldErrors(parsed['fieldErrors']);
+    if (fieldErrors.isNotEmpty) {
+      if (mounted) {
+        setState(() {
+          _fieldErrors = fieldErrors;
+          _isSubmitting = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Fix the highlighted fields before continuing.'),
+          ),
+        );
+      }
+      return false;
+    }
+
+    final normalized = parsed['normalized'];
+    if (normalized is! Map) {
+      throw Exception('Parser response missing normalized object');
+    }
+
+    final normalizedMap = Map<String, dynamic>.from(
+      normalized.map((key, value) => MapEntry(key.toString(), value)),
+    );
+
+    final year = _toInt(normalizedMap['year']);
+    final make = (normalizedMap['make'] ?? '').toString().trim();
+    final model = (normalizedMap['model'] ?? '').toString().trim();
+    final trim = (normalizedMap['trim'] ?? '').toString().trim();
+    final vin = _normalizeVin(normalizedMap['vin']?.toString());
+    final lenderName = (normalizedMap['lender_name'] ?? '').toString().trim();
+    final contractDate = (normalizedMap['contract_date_iso'] ?? '')
+        .toString()
+        .trim();
+    final termMonths = _toInt(normalizedMap['term_months']);
+    final aprPercent = _toDouble(normalizedMap['interest_rate_percent']);
+    final monthlyPayment = _toDouble(normalizedMap['monthly_payment']);
+    final financedAmount = _toDouble(normalizedMap['original_amount_financed']);
+
+    widget.scanData['vin'] = vin;
+    widget.scanData['lender_name'] = lenderName;
+    widget.scanData['contract_date'] = contractDate;
+    widget.scanData['term_months'] = termMonths;
+    widget.scanData['interest_rate'] = aprPercent;
+    widget.scanData['monthly_payment'] = monthlyPayment;
+    widget.scanData.remove('bi_weekly_payment');
+    widget.scanData['original_amount_financed'] = financedAmount;
+    widget.scanData['current_balance'] = financedAmount;
+
+    final updates = <String, String>{};
+    if (year != null) updates['year'] = year.toString();
+    if (make.isNotEmpty) updates['make'] = make;
+    if (model.isNotEmpty) updates['model'] = model;
+    if (trim.isNotEmpty) updates['trim'] = trim;
+    if (vin.isNotEmpty) updates['vin'] = vin;
+    if (updates.isNotEmpty) {
+      widget.onUpdateCarDetails(updates);
+    }
+
+    if (mounted) {
+      setState(() {
+        _fieldErrors = {};
+      });
+    }
+    return true;
+  }
+
   void _handleVerify() async {
     debugPrint("[VERIFY] _handleVerify called. isSubmitting: $_isSubmitting");
     if (_isSubmitting) return;
 
     setState(() {
       _isSubmitting = true;
+      _fieldErrors = {};
     });
 
     try {
-      // 1. If editing, we must capture manual inputs from controllers back into scanData
+      // 1. If editing/manual, normalize raw user text first via backend parser.
       if (_isEditing) {
-        debugPrint("[VERIFY] Capturing manual input before sync...");
-
-        final balanceText = _balanceController.text.replaceAll(
-          RegExp(r'[^0-9.]'),
-          '',
+        debugPrint(
+          "[VERIFY] Normalizing edited loan details via backend parser",
         );
-        final paymentText = _paymentController.text.replaceAll(
-          RegExp(r'[^0-9.]'),
-          '',
-        );
-        final aprText = _aprController.text.replaceAll(RegExp(r'[^0-9.]'), '');
-        final termText = _termController.text.replaceAll(RegExp(r'[^0-9]'), '');
-
-        widget.scanData['vin'] = _vinController.text.trim();
-        widget.scanData['contract_date'] = _dateController.text.trim();
-        widget.scanData['term_months'] = int.tryParse(termText);
-        widget.scanData['lender_name'] = _lenderController.text.trim();
-        widget.scanData['interest_rate'] = double.tryParse(aprText);
-
-        if (widget.scanData['bi_weekly_payment'] != null) {
-          widget.scanData['bi_weekly_payment'] = double.tryParse(paymentText);
-        } else {
-          widget.scanData['monthly_payment'] = double.tryParse(paymentText);
-        }
-
-        // Update both just in case
-        double? bVal = double.tryParse(balanceText);
-        widget.scanData['original_amount_financed'] = bVal;
-        widget.scanData['current_balance'] = bVal;
-
-        // Update Vehicle details if changed
-        final vehicleText = _vehicleController.text.trim();
-        final vehicleParts = vehicleText.split(' ');
-        if (vehicleParts.length >= 3) {
-          final updates = {
-            'year': vehicleParts[0],
-            'make': vehicleParts[1],
-            'model': vehicleParts.sublist(2).join(' '),
-          };
-          debugPrint(
-            "[VERIFY] Updating car details from manual vehicle text: $updates",
-          );
-          widget.onUpdateCarDetails(updates);
+        final readyToSubmit = await _normalizeEditedDetailsWithParser();
+        if (!readyToSubmit) {
+          return;
         }
       }
 
@@ -398,6 +469,7 @@ class _VerifyScanScreenState extends State<VerifyScanScreen>
 
     setState(() {
       _isSubmitting = true;
+      _fieldErrors = {};
     });
 
     try {
@@ -872,6 +944,7 @@ class _VerifyScanScreenState extends State<VerifyScanScreen>
                                             colorSlate100: colorSlate100,
                                             colorSlate500: colorSlate500,
                                             colorSlate800: colorSlate800,
+                                            errorText: _fieldErrors['vehicle'],
                                           ),
                                           _DetailRow(
                                             label: "VIN",
@@ -884,6 +957,7 @@ class _VerifyScanScreenState extends State<VerifyScanScreen>
                                             colorSlate100: colorSlate100,
                                             colorSlate500: colorSlate500,
                                             colorSlate800: colorSlate800,
+                                            errorText: _fieldErrors['vin'],
                                           ),
                                           _DetailRow(
                                             label: "Term",
@@ -897,6 +971,7 @@ class _VerifyScanScreenState extends State<VerifyScanScreen>
                                             colorSlate100: colorSlate100,
                                             colorSlate500: colorSlate500,
                                             colorSlate800: colorSlate800,
+                                            errorText: _fieldErrors['term'],
                                           ),
                                           _DetailRow(
                                             label: "Lender",
@@ -909,6 +984,7 @@ class _VerifyScanScreenState extends State<VerifyScanScreen>
                                             colorSlate100: colorSlate100,
                                             colorSlate500: colorSlate500,
                                             colorSlate800: colorSlate800,
+                                            errorText: _fieldErrors['lender'],
                                           ),
                                           _DetailRow(
                                             label: "Contract Date",
@@ -921,6 +997,8 @@ class _VerifyScanScreenState extends State<VerifyScanScreen>
                                             colorSlate100: colorSlate100,
                                             colorSlate500: colorSlate500,
                                             colorSlate800: colorSlate800,
+                                            errorText:
+                                                _fieldErrors['contract_date'],
                                           ),
                                           _DetailRow(
                                             label: "APR Rate",
@@ -940,6 +1018,7 @@ class _VerifyScanScreenState extends State<VerifyScanScreen>
                                             colorSlate800: colorSlate800,
                                             colorRed100: colorRed100,
                                             colorRed700: colorRed700,
+                                            errorText: _fieldErrors['apr'],
                                           ),
                                           _DetailRow(
                                             label: "Payment",
@@ -956,6 +1035,7 @@ class _VerifyScanScreenState extends State<VerifyScanScreen>
                                             colorSlate100: colorSlate100,
                                             colorSlate500: colorSlate500,
                                             colorSlate800: colorSlate800,
+                                            errorText: _fieldErrors['payment'],
                                           ),
                                           _DetailRow(
                                             label: "Financed Amount",
@@ -978,6 +1058,8 @@ class _VerifyScanScreenState extends State<VerifyScanScreen>
                                             colorSlate100: colorSlate100,
                                             colorSlate500: colorSlate500,
                                             colorSlate800: colorSlate800,
+                                            errorText:
+                                                _fieldErrors['financed_amount'],
                                           ),
                                         ],
                                       ),
@@ -1033,6 +1115,9 @@ class _VerifyScanScreenState extends State<VerifyScanScreen>
                                             onPressed: () {
                                               setState(() {
                                                 _isEditing = !_isEditing;
+                                                if (!_isEditing) {
+                                                  _fieldErrors = {};
+                                                }
                                               });
                                             },
                                             style: TextButton.styleFrom(
@@ -1119,6 +1204,7 @@ class _DetailRow extends StatelessWidget {
   final bool isMono;
   final bool isEditing;
   final TextEditingController? controller;
+  final String? errorText;
   final Color colorSlate50 = const Color(0xFFF8FAFC);
   final Color colorSlate100;
   final Color colorSlate500;
@@ -1133,6 +1219,7 @@ class _DetailRow extends StatelessWidget {
     this.isMono = false,
     this.isEditing = false,
     this.controller,
+    this.errorText,
     required this.colorSlate100,
     required this.colorSlate500,
     required this.colorSlate800,
@@ -1142,94 +1229,119 @@ class _DetailRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final hasError = isEditing && (errorText?.trim().isNotEmpty ?? false);
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 14),
+      padding: EdgeInsets.only(top: 14, bottom: hasError ? 8 : 14),
       decoration: BoxDecoration(
         border: Border(bottom: BorderSide(color: colorSlate100)),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            label,
-            style: GoogleFonts.outfit(color: colorSlate500, fontSize: 16),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                if (isHigh && !isEditing) ...[
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 6,
-                      vertical: 2,
-                    ),
-                    margin: const EdgeInsets.only(right: 8),
-                    decoration: BoxDecoration(
-                      color: colorRed100,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text(
-                      "HIGH",
-                      style: GoogleFonts.outfit(
-                        color: colorRed700,
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ],
-                if (isEditing && controller != null)
-                  Flexible(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: colorSlate50,
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: TextField(
-                        controller: controller,
-                        textAlign: TextAlign.right,
-                        style:
-                            (isMono
-                                    ? GoogleFonts.robotoMono()
-                                    : GoogleFonts.outfit())
-                                .copyWith(
-                                  color: colorSlate800,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                        decoration: const InputDecoration(
-                          isDense: true,
-                          border: InputBorder.none,
-                          contentPadding: EdgeInsets.zero,
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                label,
+                style: GoogleFonts.outfit(color: colorSlate500, fontSize: 16),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    if (isHigh && !isEditing) ...[
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        margin: const EdgeInsets.only(right: 8),
+                        decoration: BoxDecoration(
+                          color: colorRed100,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          "HIGH",
+                          style: GoogleFonts.outfit(
+                            color: colorRed700,
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
-                    ),
-                  )
-                else
-                  Flexible(
-                    child: Text(
-                      value,
-                      textAlign: TextAlign.right,
-                      style:
-                          (isMono
-                                  ? GoogleFonts.robotoMono()
-                                  : GoogleFonts.outfit())
-                              .copyWith(
-                                color: colorSlate800,
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                              ),
-                    ),
-                  ),
-              ],
-            ),
+                    ],
+                    if (isEditing && controller != null)
+                      Flexible(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: colorSlate50,
+                            borderRadius: BorderRadius.circular(6),
+                            border: hasError
+                                ? Border.all(
+                                    color: const Color(0xFFDC2626),
+                                    width: 1,
+                                  )
+                                : null,
+                          ),
+                          child: TextField(
+                            controller: controller,
+                            textAlign: TextAlign.right,
+                            style:
+                                (isMono
+                                        ? GoogleFonts.robotoMono()
+                                        : GoogleFonts.outfit())
+                                    .copyWith(
+                                      color: colorSlate800,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                            decoration: const InputDecoration(
+                              isDense: true,
+                              border: InputBorder.none,
+                              contentPadding: EdgeInsets.zero,
+                            ),
+                          ),
+                        ),
+                      )
+                    else
+                      Flexible(
+                        child: Text(
+                          value,
+                          textAlign: TextAlign.right,
+                          style:
+                              (isMono
+                                      ? GoogleFonts.robotoMono()
+                                      : GoogleFonts.outfit())
+                                  .copyWith(
+                                    color: colorSlate800,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
           ),
+          if (hasError)
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Text(
+                errorText!,
+                textAlign: TextAlign.right,
+                style: GoogleFonts.outfit(
+                  color: const Color(0xFFDC2626),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
         ],
       ),
     );

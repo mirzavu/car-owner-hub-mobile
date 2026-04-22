@@ -61,6 +61,7 @@ class Config {
 
   // API Endpoints
   static String get scanDoc => '$baseUrl/api/scan-document';
+  static String get parseLoanDetails => '$baseUrl/api/parse-loan-details';
   static String get dashboard => '$baseUrl/api/dashboard';
   static String get inventory => '$baseUrl/api/inventory';
   static String get tradeUpPreview => '$baseUrl/api/trade-up-preview';
