@@ -35,7 +35,7 @@ class _VerifyScanScreenState extends State<VerifyScanScreen>
   late Animation<double> _scaleAnimation;
   late Animation<double> _fadeAnimation;
   Map<String, String>? _vinDetails;
-  bool _isVinLookupInProgress = false;
+  final bool _isVinLookupInProgress = false;
   String? _vinLookupError;
   bool _isSubmitting = false;
   Map<String, String> _fieldErrors = {};
