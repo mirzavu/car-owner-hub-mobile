@@ -71,11 +71,36 @@ class _TeaserEquityScreenState extends State<TeaserEquityScreen> {
     const colorMidnightNavy = Color(0xFF003366);
     const colorNavyDark = Color(0xFF002244);
     const colorVibrantGreen = Color(0xFF00CA50);
+    final viewportHeight = MediaQuery.sizeOf(context).height;
+    final compact = viewportHeight < 840;
+    final veryCompact = viewportHeight < 740;
+
+    final headerTopPadding = veryCompact ? 24.0 : (compact ? 36.0 : 60.0);
+    final headerBottomPadding = veryCompact ? 44.0 : (compact ? 64.0 : 96.0);
+    final headerValueSize = veryCompact ? 40.0 : (compact ? 44.0 : 48.0);
+    final headerCarNameSize = veryCompact ? 16.0 : 18.0;
+    final overlapOffset = veryCompact ? -26.0 : (compact ? -34.0 : -48.0);
+    final contentHorizontalPadding = veryCompact ? 20.0 : 32.0;
+    final contentTopPadding = veryCompact ? 18.0 : (compact ? 24.0 : 40.0);
+    final contentBottomPadding = veryCompact ? 14.0 : 20.0;
+    final sectionTitleSize = veryCompact ? 18.0 : 20.0;
+    final sectionGap = veryCompact ? 14.0 : (compact ? 20.0 : 32.0);
+    final cardPadding = veryCompact ? 16.0 : (compact ? 20.0 : 24.0);
+    final loanValueSize = veryCompact ? 24.0 : (compact ? 26.0 : 30.0);
+    final sliderTrackHeight = veryCompact ? 12.0 : 16.0;
+    final sliderThumbRadius = veryCompact ? 14.0 : 16.0;
+    final sliderThumbBorderWidth = veryCompact ? 3.0 : 4.0;
+    final equityLabelSize = veryCompact ? 12.0 : 14.0;
+    final equityValueSize = veryCompact ? 18.0 : 20.0;
+    final ctaHeight = veryCompact ? 50.0 : 56.0;
+    final ctaTextSize = veryCompact ? 16.0 : 18.0;
+    final showInsight = !veryCompact;
+    final showCreditNote = !veryCompact;
 
     return Scaffold(
       backgroundColor: colorIceBlue,
-      body: SizedBox(
-        height: MediaQuery.of(context).size.height,
+      body: SafeArea(
+        bottom: false,
         child: Column(
           children: [
             // --- 1. THE ORGANIC HEADER (Red Surface) ---
@@ -84,11 +109,11 @@ class _TeaserEquityScreenState extends State<TeaserEquityScreen> {
                 // Background Gradient
                 Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.only(
-                    top: 60,
-                    bottom: 96,
-                    left: 32,
-                    right: 32,
+                  padding: EdgeInsets.only(
+                    top: headerTopPadding,
+                    bottom: headerBottomPadding,
+                    left: contentHorizontalPadding,
+                    right: contentHorizontalPadding,
                   ),
                   decoration: const BoxDecoration(
                     gradient: LinearGradient(
@@ -147,7 +172,7 @@ class _TeaserEquityScreenState extends State<TeaserEquityScreen> {
                         fmt(widget.financials.estimatedValue),
                         style: GoogleFonts.outfit(
                           color: Colors.white,
-                          fontSize: 48,
+                          fontSize: headerValueSize,
                           fontWeight: FontWeight.bold,
                           letterSpacing: -1.0,
                           height: 1.0,
@@ -160,7 +185,7 @@ class _TeaserEquityScreenState extends State<TeaserEquityScreen> {
                         "${widget.carDetails.year} ${widget.carDetails.make} ${widget.carDetails.model}",
                         style: GoogleFonts.outfit(
                           color: colorIceBlue.withValues(alpha: 0.9),
-                          fontSize: 18,
+                          fontSize: headerCarNameSize,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -223,7 +248,7 @@ class _TeaserEquityScreenState extends State<TeaserEquityScreen> {
             // --- 2. THE OVERLAPPING SHEET (Content Layer) ---
             Expanded(
               child: Transform.translate(
-                offset: const Offset(0, -48),
+                offset: Offset(0, overlapOffset),
                 child: Container(
                   width: double.infinity,
                   decoration: BoxDecoration(
@@ -233,18 +258,18 @@ class _TeaserEquityScreenState extends State<TeaserEquityScreen> {
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.1),
-                        blurRadius: 40,
-                        offset: const Offset(0, -10),
+                        color: Colors.black.withValues(alpha: 0.04),
+                        blurRadius: 14,
+                        offset: const Offset(0, -2),
                       ),
                     ],
                   ),
                   child: Padding(
-                    padding: const EdgeInsets.only(
-                      top: 40,
-                      left: 32,
-                      right: 32,
-                      bottom: 24,
+                    padding: EdgeInsets.only(
+                      top: contentTopPadding,
+                      left: contentHorizontalPadding,
+                      right: contentHorizontalPadding,
+                      bottom: contentBottomPadding,
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -254,7 +279,7 @@ class _TeaserEquityScreenState extends State<TeaserEquityScreen> {
                           child: Container(
                             width: 48,
                             height: 6,
-                            margin: const EdgeInsets.only(bottom: 30),
+                            margin: EdgeInsets.only(bottom: compact ? 14 : 24),
                             decoration: BoxDecoration(
                               color: const Color(0xFFE2E8F0),
                               borderRadius: BorderRadius.circular(3),
@@ -269,7 +294,7 @@ class _TeaserEquityScreenState extends State<TeaserEquityScreen> {
                             Text(
                               "What do you owe?",
                               style: GoogleFonts.outfit(
-                                fontSize: 20,
+                                fontSize: sectionTitleSize,
                                 fontWeight: FontWeight.bold,
                                 color: colorNearBlack,
                               ),
@@ -295,11 +320,11 @@ class _TeaserEquityScreenState extends State<TeaserEquityScreen> {
                           ],
                         ),
 
-                        const SizedBox(height: 32),
+                        SizedBox(height: sectionGap),
 
                         // Interactive Slider Card
                         Container(
-                          padding: const EdgeInsets.all(24),
+                          padding: EdgeInsets.all(cardPadding),
                           decoration: BoxDecoration(
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(24),
@@ -332,7 +357,7 @@ class _TeaserEquityScreenState extends State<TeaserEquityScreen> {
                                     fmt(sliderValue),
                                     style: GoogleFonts.outfit(
                                       color: colorNearBlack,
-                                      fontSize: 30,
+                                      fontSize: loanValueSize,
                                       fontWeight: FontWeight.bold,
                                       letterSpacing: -0.5,
                                     ),
@@ -340,21 +365,21 @@ class _TeaserEquityScreenState extends State<TeaserEquityScreen> {
                                 ],
                               ),
 
-                              const SizedBox(height: 24),
+                              SizedBox(height: compact ? 16 : 24),
                               // Custom Slider
                               SizedBox(
-                                height: 32, // Height for thumb touch target
+                                height: compact ? 28 : 32,
                                 child: SliderTheme(
                                   data: SliderTheme.of(context).copyWith(
-                                    trackHeight: 16,
+                                    trackHeight: sliderTrackHeight,
                                     activeTrackColor: colorVibrantGreen,
                                     inactiveTrackColor: const Color(0xFFF1F5F9),
                                     overlayColor: Colors.transparent,
                                     trackShape: const CustomSliderTrackShape(),
                                     // Custom thumb shape with green accent
-                                    thumbShape: const CustomSliderThumbShape(
-                                      thumbRadius: 16, // w-8 = 32px diameter
-                                      borderWidth: 4, // border-4
+                                    thumbShape: CustomSliderThumbShape(
+                                      thumbRadius: sliderThumbRadius,
+                                      borderWidth: sliderThumbBorderWidth,
                                       borderColor: colorVibrantGreen,
                                     ),
                                   ),
@@ -386,8 +411,7 @@ class _TeaserEquityScreenState extends State<TeaserEquityScreen> {
                                       "YOUR EQUITY",
                                       style: GoogleFonts.outfit(
                                         color: const Color(0xFF94A3B8),
-                                        // FIXED: Changed to 14px to match React text-sm
-                                        fontSize: 14,
+                                        fontSize: equityLabelSize,
                                         fontWeight: FontWeight.bold,
                                         letterSpacing: 1.0,
                                       ),
@@ -398,7 +422,7 @@ class _TeaserEquityScreenState extends State<TeaserEquityScreen> {
                                         color: widget.financials.equity > 0
                                             ? colorVibrantGreen
                                             : const Color(0xFF94A3B8),
-                                        fontSize: 20,
+                                        fontSize: equityValueSize,
                                         fontWeight: FontWeight.bold,
                                       ),
                                     ),
@@ -409,35 +433,38 @@ class _TeaserEquityScreenState extends State<TeaserEquityScreen> {
                           ),
                         ),
 
-                        const SizedBox(height: 16),
+                        SizedBox(height: compact ? 10 : 16),
 
                         // Insight Text
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          child: Text(
-                            "Based on this balance, you could qualify for lower monthly payments.",
-                            textAlign: TextAlign.center,
-                            style: GoogleFonts.outfit(
-                              color: const Color(0xFF94A3B8),
-                              fontSize: 14,
+                        if (showInsight)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: Text(
+                              "Based on this balance, you could qualify for lower monthly payments.",
+                              textAlign: TextAlign.center,
+                              style: GoogleFonts.outfit(
+                                color: const Color(0xFF94A3B8),
+                                fontSize: compact ? 12 : 14,
+                              ),
                             ),
                           ),
-                        ),
 
-                        const Spacer(),
+                        SizedBox(height: compact ? 12 : 24),
 
                         // --- 3. CTA BUTTON ---
                         Container(
                           width: double.infinity,
-                          height: 56,
+                          height: ctaHeight,
                           decoration: BoxDecoration(
                             color: colorVibrantGreen,
                             borderRadius: BorderRadius.circular(16),
                             boxShadow: [
                               BoxShadow(
-                                color: colorVibrantGreen.withValues(alpha: 0.3),
-                                blurRadius: 20,
-                                offset: const Offset(0, 10),
+                                color: colorVibrantGreen.withValues(
+                                  alpha: 0.14,
+                                ),
+                                blurRadius: 8,
+                                offset: const Offset(0, 0),
                               ),
                             ],
                           ),
@@ -453,7 +480,7 @@ class _TeaserEquityScreenState extends State<TeaserEquityScreen> {
                                     "Check My Actual Rate",
                                     style: GoogleFonts.outfit(
                                       color: Colors.white,
-                                      fontSize: 18,
+                                      fontSize: ctaTextSize,
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
@@ -469,18 +496,19 @@ class _TeaserEquityScreenState extends State<TeaserEquityScreen> {
                           ),
                         ),
 
-                        const SizedBox(height: 8),
+                        SizedBox(height: compact ? 6 : 8),
 
-                        Text(
-                          "NO IMPACT TO CREDIT SCORE",
-                          textAlign: TextAlign.center,
-                          style: GoogleFonts.outfit(
-                            color: const Color(0xFFCBD5E1),
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 1.5,
+                        if (showCreditNote)
+                          Text(
+                            "NO IMPACT TO CREDIT SCORE",
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.outfit(
+                              color: const Color(0xFFCBD5E1),
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 1.5,
+                            ),
                           ),
-                        ),
                       ],
                     ),
                   ),

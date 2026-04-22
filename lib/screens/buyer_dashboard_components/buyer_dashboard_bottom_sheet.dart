@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
@@ -6,6 +7,7 @@ import '../../services/api_service.dart';
 import '../../services/auth_service.dart';
 import '../../services/data_service.dart';
 import '../../widgets/login_prompt_dialog.dart';
+import '../../components/custom_slider_components.dart';
 import 'buyer_dashboard_constants.dart';
 import 'buyer_dashboard_view_model.dart';
 
@@ -31,6 +33,8 @@ class BuyerDashboardBottomSheet extends StatefulWidget {
 class _BuyerDashboardBottomSheetState extends State<BuyerDashboardBottomSheet>
     with SingleTickerProviderStateMixin {
   late final TextEditingController _homeAddressController;
+  TextEditingController? _guestEmailController;
+  TextEditingController? _guestPhoneController;
   late final TextEditingController _empCompanyController;
   late final TextEditingController _empTitleController;
   late final TextEditingController _notesController;
@@ -51,6 +55,12 @@ class _BuyerDashboardBottomSheetState extends State<BuyerDashboardBottomSheet>
     _homeAddressController = TextEditingController(
       text: widget.viewModel.homeAddress,
     );
+    _guestEmailController = TextEditingController(
+      text: widget.viewModel.guestEmail,
+    );
+    _guestPhoneController = TextEditingController(
+      text: widget.viewModel.guestPhone,
+    );
     _empCompanyController = TextEditingController(
       text: widget.viewModel.empCompany,
     );
@@ -61,6 +71,14 @@ class _BuyerDashboardBottomSheetState extends State<BuyerDashboardBottomSheet>
 
     _homeAddressController.addListener(() {
       widget.viewModel.homeAddress = _homeAddressController.text;
+      widget.viewModel.saveDraft();
+    });
+    _guestEmailController?.addListener(() {
+      widget.viewModel.guestEmail = _guestEmailController?.text;
+      widget.viewModel.saveDraft();
+    });
+    _guestPhoneController?.addListener(() {
+      widget.viewModel.guestPhone = _guestPhoneController?.text;
       widget.viewModel.saveDraft();
     });
     _empCompanyController.addListener(() {
@@ -81,6 +99,8 @@ class _BuyerDashboardBottomSheetState extends State<BuyerDashboardBottomSheet>
   void dispose() {
     _entryController.dispose();
     _homeAddressController.dispose();
+    _guestEmailController?.dispose();
+    _guestPhoneController?.dispose();
     _empCompanyController.dispose();
     _empTitleController.dispose();
     _notesController.dispose();
@@ -94,17 +114,37 @@ class _BuyerDashboardBottomSheetState extends State<BuyerDashboardBottomSheet>
     return '\$${value.toInt()}';
   }
 
+  bool _isValidEmail(String email) {
+    return RegExp(
+      r"^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$",
+    ).hasMatch(email);
+  }
+
+  bool _isValidPhone(String phone) {
+    final digits = phone.replaceAll(RegExp(r'\D'), '');
+    return digits.length == 10;
+  }
+
+  String _normalizePhone(String phone) {
+    final digits = phone.replaceAll(RegExp(r'\D'), '');
+    return '+1$digits';
+  }
+
   Future<void> _submitLead() async {
     if (_isSubmittingLead || !widget.viewModel.acceptedTerms) return;
 
     setState(() => _isSubmittingLead = true);
 
     final auth = AuthService();
+    final isGuest = !auth.isAuthenticated;
+    final guestEmail = _guestEmailController?.text.trim() ?? '';
+    final guestPhone = _guestPhoneController?.text.trim() ?? '';
 
     final extraDetails =
         '''
 DOB: ${widget.viewModel.dobMonth ?? ''}/${widget.viewModel.dobDay ?? ''}/${widget.viewModel.dobYear ?? ''}
 Address: ${_homeAddressController.text}
+${isGuest ? 'Guest Email: $guestEmail\nGuest Phone: $guestPhone' : ''}
 Employment: ${_empCompanyController.text}, ${_empTitleController.text} (${widget.viewModel.incomeYears ?? '0'}y ${widget.viewModel.incomeMonths ?? '0'}m)
 Housing: ${_formatCurrency(widget.viewModel.housingCost)}/mo
 Downpayment: ${_formatCurrency(widget.viewModel.downpayment)}
@@ -117,12 +157,19 @@ Notes: ${_notesController.text}
     final messenger = ScaffoldMessenger.of(context);
 
     try {
-      if (!auth.isAuthenticated) {
-        final wantsToSignUp = await showLoginPromptDialog(context);
-        if (!mounted) return;
-        if (wantsToSignUp) {
-          navigator.pop();
-          widget.onRequireLogin?.call();
+      if (isGuest) {
+        if (guestEmail.isEmpty || !_isValidEmail(guestEmail)) {
+          setState(() => _isSubmittingLead = false);
+          messenger.showSnackBar(
+            const SnackBar(content: Text('Enter a valid email address.')),
+          );
+          return;
+        }
+        if (guestPhone.isEmpty || !_isValidPhone(guestPhone)) {
+          setState(() => _isSubmittingLead = false);
+          messenger.showSnackBar(
+            const SnackBar(content: Text('Enter a valid phone number.')),
+          );
           return;
         }
       }
@@ -130,15 +177,23 @@ Notes: ${_notesController.text}
       final appData = await DataService().loadAppData(
         fallbackUserType: 'buyer',
       );
+      final fallbackPhone = appData.profilePhone.trim();
+      final resolvedName = auth.userName.isNotEmpty
+          ? auth.userName
+          : (appData.profileName.isEmpty ? 'Guest Lead' : appData.profileName);
+      final resolvedPhone = isGuest
+          ? _normalizePhone(guestPhone)
+          : (auth.userPhone.isNotEmpty
+                ? auth.userPhone
+                : (fallbackPhone.isEmpty ? '0000000000' : fallbackPhone));
+      final resolvedEmail = isGuest
+          ? guestEmail
+          : (auth.userEmail.isNotEmpty ? auth.userEmail : null);
+
       await ApiService.submitBuyerPreapprovalLead(
-        name: auth.userName.isNotEmpty
-            ? auth.userName
-            : (appData.profileName.isEmpty ? 'User' : appData.profileName),
-        phone: auth.userPhone.isNotEmpty
-            ? auth.userPhone
-            : (appData.profilePhone.isEmpty
-                  ? '0000000000'
-                  : appData.profilePhone),
+        name: resolvedName,
+        phone: resolvedPhone,
+        email: resolvedEmail,
         monthlyBudgetTarget: widget.viewModel.budget,
         incomeRange: widget.viewModel.income!,
         employmentStatus: widget.viewModel.employment!,
@@ -153,6 +208,12 @@ Notes: ${_notesController.text}
       messenger.showSnackBar(
         const SnackBar(content: Text('Request sent successfully.')),
       );
+
+      if (!isGuest) return;
+      final wantsToSignUp = await showLoginPromptDialog(navigator.context);
+      if (wantsToSignUp) {
+        widget.onRequireLogin?.call();
+      }
     } catch (e) {
       if (!mounted) return;
       setState(() => _isSubmittingLead = false);
@@ -165,6 +226,9 @@ Notes: ${_notesController.text}
   @override
   Widget build(BuildContext context) {
     final vm = widget.viewModel;
+    final isGuest = !AuthService().isAuthenticated;
+    _guestEmailController ??= TextEditingController(text: vm.guestEmail);
+    _guestPhoneController ??= TextEditingController(text: vm.guestPhone);
     final showEmploymentDetails =
         vm.employment == 'Full-time' ||
         vm.employment == 'Part-time' ||
@@ -274,6 +338,7 @@ Notes: ${_notesController.text}
                       icon: LucideIcons.user,
                       title: 'Personal Details',
                       child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           _buildSheetLabel('Date of Birth'),
                           Row(
@@ -343,6 +408,69 @@ Notes: ${_notesController.text}
                               ),
                             ),
                           ),
+                          if (isGuest) ...[
+                            const SizedBox(height: 14),
+                            _buildSheetLabel('Email'),
+                            TextField(
+                              controller: _guestEmailController,
+                              keyboardType: TextInputType.emailAddress,
+                              style: GoogleFonts.outfit(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: cDarkBg,
+                              ),
+                              decoration: _buildInputDecoration(
+                                'you@email.com',
+                                prefix: const Icon(
+                                  LucideIcons.mail,
+                                  size: 16,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            _buildSheetLabel('Phone'),
+                            TextField(
+                              controller: _guestPhoneController,
+                              keyboardType: TextInputType.phone,
+                              inputFormatters: [
+                                FilteringTextInputFormatter.digitsOnly,
+                                LengthLimitingTextInputFormatter(10),
+                              ],
+                              style: GoogleFonts.outfit(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: cDarkBg,
+                              ),
+                              decoration: _buildInputDecoration(
+                                '(555) 123-4567',
+                                prefix: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(
+                                        LucideIcons.phone,
+                                        size: 16,
+                                        color: Colors.grey,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        '+1',
+                                        style: GoogleFonts.outfit(
+                                          fontWeight: FontWeight.w800,
+                                          color: Colors.grey[700],
+                                          fontSize: 13,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                     ),
@@ -352,6 +480,7 @@ Notes: ${_notesController.text}
                         icon: LucideIcons.briefcase,
                         title: 'Employment Details',
                         child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             _buildSheetLabel('Company / Institution'),
                             TextField(
@@ -580,8 +709,8 @@ Notes: ${_notesController.text}
                         ? null
                         : _submitLead,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: cDarkBg,
-                      foregroundColor: Colors.white,
+                      backgroundColor: cNeon,
+                      foregroundColor: cDarkBg,
                       disabledBackgroundColor: Colors.grey[200],
                       disabledForegroundColor: Colors.grey[400],
                       padding: const EdgeInsets.symmetric(vertical: 16),
@@ -589,7 +718,7 @@ Notes: ${_notesController.text}
                         borderRadius: BorderRadius.circular(16),
                       ),
                       elevation: vm.acceptedTerms ? 6 : 0,
-                      shadowColor: cDarkBg.withValues(alpha: 0.25),
+                      shadowColor: cNeon.withValues(alpha: 0.3),
                     ),
                     child: _isSubmittingLead
                         ? const SizedBox(
@@ -597,7 +726,7 @@ Notes: ${_notesController.text}
                             height: 20,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
-                              color: Colors.white,
+                              color: cDarkBg,
                             ),
                           )
                         : Text(
@@ -750,6 +879,7 @@ Notes: ${_notesController.text}
             activeTrackColor: cDarkBg,
             inactiveTrackColor: Colors.grey[200],
             trackHeight: 7,
+            trackShape: const CustomSliderTrackShape(),
             thumbShape: const RoundSliderThumbShape(
               enabledThumbRadius: 11,
               elevation: 2,
@@ -771,15 +901,19 @@ Notes: ${_notesController.text}
   }
 
   Widget _buildSheetLabel(String text) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 2, bottom: 6),
-      child: Text(
-        text,
-        style: GoogleFonts.outfit(
-          fontSize: 11,
-          fontWeight: FontWeight.w800,
-          color: Colors.grey[500],
-          letterSpacing: 1.0,
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Padding(
+        padding: const EdgeInsets.only(left: 2, bottom: 6),
+        child: Text(
+          text,
+          textAlign: TextAlign.left,
+          style: GoogleFonts.outfit(
+            fontSize: 11,
+            fontWeight: FontWeight.w800,
+            color: Colors.grey[500],
+            letterSpacing: 1.0,
+          ),
         ),
       ),
     );

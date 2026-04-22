@@ -762,6 +762,7 @@ class ApiService {
   static Future<void> submitBuyerPreapprovalLead({
     required String name,
     required String phone,
+    String? email,
     required double monthlyBudgetTarget,
     required String incomeRange,
     required String employmentStatus,
@@ -776,6 +777,7 @@ class ApiService {
       'source': 'car_owners_hub_buyer_dashboard',
       'name': name,
       'phone': phone,
+      if (email != null && email.trim().isNotEmpty) 'email': email.trim(),
       'monthly_budget_target': monthlyBudgetTarget,
       'income_range': incomeRange,
       'employment_status': employmentStatus,

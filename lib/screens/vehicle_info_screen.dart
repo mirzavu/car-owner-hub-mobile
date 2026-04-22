@@ -58,7 +58,7 @@ class _VehicleInfoScreenState extends State<VehicleInfoScreen> {
 
     try {
       final data = await ApiService.getVehicleOptions(type: 'makes');
-      debugPrint("[VEHICLE-INFO] API returned makes: $data");
+      debugPrint("[VEHICLE-INFO] API success. Loaded ${data.length} makes.");
       if (mounted) {
         setState(() {
           makes = data;
@@ -66,11 +66,17 @@ class _VehicleInfoScreenState extends State<VehicleInfoScreen> {
         });
       }
     } catch (e) {
-      debugPrint("[VEHICLE-INFO] Error loading makes: $e");
+      debugPrint("[VEHICLE-INFO] CRITICAL: Error loading makes: $e");
       if (mounted) {
         setState(() {
           isLoadingMakes = false;
         });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Failed to load car makes. Check your connection."),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
       }
     }
   }
@@ -87,7 +93,7 @@ class _VehicleInfoScreenState extends State<VehicleInfoScreen> {
         type: 'models',
         make: make,
       );
-      debugPrint("[VEHICLE-INFO] API returned models for $make: $data");
+      debugPrint("[VEHICLE-INFO] API success. Loaded ${data.length} models for $make.");
       if (mounted) {
         setState(() {
           models = data;
@@ -95,11 +101,17 @@ class _VehicleInfoScreenState extends State<VehicleInfoScreen> {
         });
       }
     } catch (e) {
-      debugPrint("[VEHICLE-INFO] Error loading models for $make: $e");
+      debugPrint("[VEHICLE-INFO] CRITICAL: Error loading models for $make: $e");
       if (mounted) {
         setState(() {
           isLoadingModels = false;
         });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Failed to load models for $make."),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
       }
     }
   }

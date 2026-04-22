@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/foundation.dart';
 
 class Config {
@@ -22,13 +21,16 @@ class Config {
       return 'https://api.carownershub.app';
     }
 
-    // Development URLs
-    if (Platform.isAndroid) {
-      return 'http://$androidLanHost:3077';
-    } else if (Platform.isIOS) {
-      return 'http://127.0.0.1:3077';
-    } else {
-      return 'http://localhost:3077';
+    // Web and desktop dev builds should talk to localhost by default.
+    if (kIsWeb) return 'http://localhost:3077';
+
+    switch (defaultTargetPlatform) {
+      case TargetPlatform.android:
+        return 'http://$androidLanHost:3077';
+      case TargetPlatform.iOS:
+        return 'http://127.0.0.1:3077';
+      default:
+        return 'http://localhost:3077';
     }
   }
 
@@ -45,12 +47,15 @@ class Config {
       return 'https://pb.carownershub.app';
     }
 
-    if (Platform.isAndroid) {
-      return 'http://$androidLanHost:8077';
-    } else if (Platform.isIOS) {
-      return 'http://127.0.0.1:8077';
-    } else {
-      return 'http://localhost:8077';
+    if (kIsWeb) return 'http://localhost:8077';
+
+    switch (defaultTargetPlatform) {
+      case TargetPlatform.android:
+        return 'http://$androidLanHost:8077';
+      case TargetPlatform.iOS:
+        return 'http://127.0.0.1:8077';
+      default:
+        return 'http://localhost:8077';
     }
   }
 

@@ -26,6 +26,8 @@ class BuyerDashboardViewModel extends ChangeNotifier {
   String? dobDay;
   String? dobYear;
   String? homeAddress;
+  String? guestEmail;
+  String? guestPhone;
   String? empCompany;
   String? empTitle;
   String? incomeYears;
@@ -107,6 +109,8 @@ class BuyerDashboardViewModel extends ChangeNotifier {
       }
 
       homeAddress = (profile['address'] ?? '').toString();
+      guestEmail = (profile['guest_email'] ?? '').toString();
+      guestPhone = (profile['guest_phone'] ?? '').toString();
       empCompany = (profile['employer_name'] ?? '').toString();
       empTitle = (profile['job_title'] ?? '').toString();
 
@@ -141,6 +145,8 @@ class BuyerDashboardViewModel extends ChangeNotifier {
             ? '$dobMonth/$dobDay/$dobYear'
             : '',
         'address': homeAddress,
+        'guest_email': guestEmail,
+        'guest_phone': guestPhone,
         'employer_name': empCompany,
         'job_title': empTitle,
         'employment_duration': '$incomeYears|$incomeMonths',
