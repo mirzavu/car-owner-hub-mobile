@@ -8,11 +8,8 @@ import 'config.dart';
 
 class AuthService extends ChangeNotifier {
   static const String _oauthCallbackScheme = 'carownershub';
-  static final String _googleMobileOauthRedirectUri =
+  static final String _mobileOauthRedirectUri =
       '${Config.pbUrl}/oauth2-mobile-redirect.html';
-  // Temporary Apple fallback while Services ID return URL access is pending.
-  static final String _appleOauthRedirectUri =
-      '${Config.pbUrl}/api/oauth2-redirect';
 
   // Singleton instance
   static final AuthService _instance = AuthService._internal();
@@ -103,7 +100,7 @@ class AuthService extends ChangeNotifier {
 
       final originalUri = Uri.parse(googleProvider.authURL);
       final newParams = Map<String, String>.from(originalUri.queryParameters);
-      newParams['redirect_uri'] = _googleMobileOauthRedirectUri;
+      newParams['redirect_uri'] = _mobileOauthRedirectUri;
 
       final authUrl = originalUri
           .replace(queryParameters: newParams)
@@ -133,7 +130,7 @@ class AuthService extends ChangeNotifier {
             'google',
             code,
             googleProvider.codeVerifier,
-            _googleMobileOauthRedirectUri,
+            _mobileOauthRedirectUri,
           );
 
       debugPrint('[AUTH] Google login successful: $userId');
@@ -158,7 +155,7 @@ class AuthService extends ChangeNotifier {
 
       final originalUri = Uri.parse(appleProvider.authURL);
       final newParams = Map<String, String>.from(originalUri.queryParameters);
-      newParams['redirect_uri'] = _appleOauthRedirectUri;
+      newParams['redirect_uri'] = _mobileOauthRedirectUri;
 
       final authUrl = originalUri
           .replace(queryParameters: newParams)
@@ -188,7 +185,7 @@ class AuthService extends ChangeNotifier {
             'apple',
             code,
             appleProvider.codeVerifier,
-            _appleOauthRedirectUri,
+            _mobileOauthRedirectUri,
           );
 
       debugPrint('[AUTH] Apple login successful: $userId');
