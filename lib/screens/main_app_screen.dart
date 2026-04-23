@@ -12,6 +12,7 @@ import 'dashboard_screen.dart';
 import 'garage_screen.dart';
 import 'shop_screen.dart';
 import 'teaser_dashboard_screen.dart';
+import '../widgets/connectivity_banner.dart';
 
 class MainAppScreen extends ConsumerWidget {
   const MainAppScreen({super.key});
@@ -113,6 +114,12 @@ class MainAppScreen extends ConsumerWidget {
     return Stack(
       children: [
         content,
+        const Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          child: ConnectivityBanner(),
+        ),
         if (userType != 'buyer')
           Positioned(
             left: 48,

@@ -112,7 +112,9 @@ class AppFlowNotifier extends StateNotifier<AppFlowState> {
     _hydrateProviders(appData);
 
     if (auth.isAuthenticated) {
-      final fcmToken = await PushTokenService().initAndSyncToken(requestPermission: false);
+      final fcmToken = await PushTokenService().initAndSyncToken(
+        requestPermission: false,
+      );
       if (fcmToken != null && fcmToken.isNotEmpty) {
         debugPrint('[PUSH] FCM Token: $fcmToken');
 
@@ -148,8 +150,18 @@ class AppFlowNotifier extends StateNotifier<AppFlowState> {
     debugPrint('--------------------------');
   }
 
-  void setStep(String newStep, [Map<String, dynamic>? data, String? scannerMode, String? pendingDocType]) {
-    if (state.step == newStep && data == null && scannerMode == null && pendingDocType == null) return;
+  void setStep(
+    String newStep, [
+    Map<String, dynamic>? data,
+    String? scannerMode,
+    String? pendingDocType,
+  ]) {
+    if (state.step == newStep &&
+        data == null &&
+        scannerMode == null &&
+        pendingDocType == null) {
+      return;
+    }
 
     debugPrint('[STEP] Transition: ${state.step} -> $newStep');
     if (data != null) {
@@ -166,19 +178,27 @@ class AppFlowNotifier extends StateNotifier<AppFlowState> {
         : null;
 
     final user = ref.read(userProvider);
-    if (newStep == 'teaser' && state.step == 'details' && user.userType == 'buyer') {
-      debugPrint('[STEP] Promoting user from Buyer to Owner after vehicle captured');
+    if (newStep == 'teaser' &&
+        state.step == 'details' &&
+        user.userType == 'buyer') {
+      debugPrint(
+        '[STEP] Promoting user from Buyer to Owner after vehicle captured',
+      );
       ref.read(userProvider.notifier).setUserType('owner');
-      ref.read(userProvider.notifier).setProfile(
+      ref
+          .read(userProvider.notifier)
+          .setProfile(
             onboardingStatus: AppOnboardingStatus.vehicleCaptured,
             dataSource: user.dataSource,
           );
 
       if (!AuthService().isAuthenticated) {
-        unawaited(DataService().updateGuestIdentity(
-          userType: 'owner',
-          onboardingStatus: AppOnboardingStatus.vehicleCaptured,
-        ));
+        unawaited(
+          DataService().updateGuestIdentity(
+            userType: 'owner',
+            onboardingStatus: AppOnboardingStatus.vehicleCaptured,
+          ),
+        );
       }
     }
 
@@ -186,7 +206,9 @@ class AppFlowNotifier extends StateNotifier<AppFlowState> {
       step: newStep,
       detailsBackTarget: detailsBackTarget,
       keepDetailsBackTarget: newStep == 'details' || newStep == 'teaser',
-      scannerMode: scannerMode ?? (newStep == 'scanner' ? state.scannerMode : 'onboarding'),
+      scannerMode:
+          scannerMode ??
+          (newStep == 'scanner' ? state.scannerMode : 'onboarding'),
       pendingDocType: pendingDocType ?? state.pendingDocType,
     );
 
@@ -200,10 +222,16 @@ class AppFlowNotifier extends StateNotifier<AppFlowState> {
     if (newStep == 'main-app') {
       final user = ref.read(userProvider);
       if (data != null && data['loanId'] != null) {
-        debugPrint('[STEP] Valid loanId received in payload: ${data['loanId']}');
-        ref.read(financialsProvider.notifier).setLoanId(data['loanId'] as String);
+        debugPrint(
+          '[STEP] Valid loanId received in payload: ${data['loanId']}',
+        );
+        ref
+            .read(financialsProvider.notifier)
+            .setLoanId(data['loanId'] as String);
         if (user.isGuest) {
-          ref.read(userProvider.notifier).setProfile(
+          ref
+              .read(userProvider.notifier)
+              .setProfile(
                 onboardingStatus: AppOnboardingStatus.completed,
                 dataSource: AppDataSource.guestLocal,
               );
@@ -369,7 +397,9 @@ class AppFlowNotifier extends StateNotifier<AppFlowState> {
     );
     _hydrateProviders(appData);
 
-    final fcmToken = await PushTokenService().initAndSyncToken(requestPermission: false);
+    final fcmToken = await PushTokenService().initAndSyncToken(
+      requestPermission: false,
+    );
     if (fcmToken != null && fcmToken.isNotEmpty) {
       debugPrint('[PUSH] FCM Token synced: $fcmToken');
     }
@@ -421,9 +451,10 @@ class AppFlowNotifier extends StateNotifier<AppFlowState> {
     final currentStatus = user.onboardingStatus;
 
     // Only set skipped if it is not already higher (loanCaptured or completed)
-    final bool shouldUpdateStatus = !(currentStatus == AppOnboardingStatus.completed ||
-        currentStatus == AppOnboardingStatus.loanCaptured ||
-        currentStatus == AppOnboardingStatus.verificationSkipped);
+    final bool shouldUpdateStatus =
+        !(currentStatus == AppOnboardingStatus.completed ||
+            currentStatus == AppOnboardingStatus.loanCaptured ||
+            currentStatus == AppOnboardingStatus.verificationSkipped);
 
     if (shouldUpdateStatus) {
       final nextStatus = user.userType == 'owner'
@@ -433,7 +464,12 @@ class AppFlowNotifier extends StateNotifier<AppFlowState> {
         userType: user.userType,
         status: nextStatus,
       );
-      ref.read(userProvider.notifier).setProfile(onboardingStatus: nextStatus, dataSource: user.dataSource);
+      ref
+          .read(userProvider.notifier)
+          .setProfile(
+            onboardingStatus: nextStatus,
+            dataSource: user.dataSource,
+          );
     }
 
     setStep('main-app');
@@ -559,26 +595,7 @@ class AppFlowNotifier extends StateNotifier<AppFlowState> {
   }
 
   String _scanIntroBackTarget(UserState user, {required bool hasPhone}) {
-    if (user.isGuest && user.userType == 'owner') {
-      switch (user.onboardingStatus) {
-        case AppOnboardingStatus.profileCaptured:
-          return 'auth-phone';
-        case AppOnboardingStatus.verificationSkipped:
-          return 'main-app';
-        case AppOnboardingStatus.loginSkipped:
-        case AppOnboardingStatus.vehicleCaptured:
-        case AppOnboardingStatus.newUser:
-          return 'teaser';
-        case AppOnboardingStatus.loanCaptured:
-        case AppOnboardingStatus.completed:
-          return 'main-app';
-      }
-    }
-
-    if (hasPhone) {
-      return 'main-app';
-    }
-    return 'auth-phone';
+    return scanIntroBackTargetFor(user, hasPhone: hasPhone);
   }
 
   bool _hasLoanCompletionPayload(Map<String, dynamic>? data) {
@@ -602,3 +619,28 @@ class AppFlowNotifier extends StateNotifier<AppFlowState> {
 final appFlowProvider = StateNotifierProvider<AppFlowNotifier, AppFlowState>(
   (ref) => AppFlowNotifier(ref),
 );
+
+@visibleForTesting
+String scanIntroBackTargetFor(UserState user, {required bool hasPhone}) {
+  if (user.isGuest && user.userType == 'owner') {
+    switch (user.onboardingStatus) {
+      case AppOnboardingStatus.profileCaptured:
+        return 'auth-phone';
+      case AppOnboardingStatus.verificationSkipped:
+        return 'main-app';
+      case AppOnboardingStatus.loginSkipped:
+        return 'main-app';
+      case AppOnboardingStatus.vehicleCaptured:
+      case AppOnboardingStatus.newUser:
+        return 'teaser';
+      case AppOnboardingStatus.loanCaptured:
+      case AppOnboardingStatus.completed:
+        return 'main-app';
+    }
+  }
+
+  if (hasPhone) {
+    return 'main-app';
+  }
+  return 'auth-phone';
+}
