@@ -296,19 +296,18 @@ class AppFlowNotifier extends StateNotifier<AppFlowState> {
   }
 
   Future<void> loginWithApple() async {
-    debugPrint('[AUTH] loginWithApple flow started');
+    debugPrint('[AUTH-FLOW] 0. loginWithApple requested');
     setStep('loading');
 
     try {
       await AuthService().loginWithApple();
-      debugPrint('[AUTH] Apple login backend successful');
+      debugPrint('[AUTH-FLOW] 12. AuthService completion signal received');
       await handleSuccessfulAuthentication();
     } catch (e, stackTrace) {
-      debugPrint('[AUTH] Apple Login Error: $e');
-      debugPrint('[AUTH] Stack Trace: $stackTrace');
-      // Revert to login screen on error so user can try again
+      debugPrint('[AUTH-FLOW] ERROR: Apple Login failed in state machine: $e');
+      debugPrint('[AUTH-FLOW] STACK: $stackTrace');
       setStep('auth-login');
-      rethrow; // Re-throw so UI can show a snackbar if needed
+      rethrow;
     }
   }
 

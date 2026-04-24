@@ -143,15 +143,17 @@ class AuthService extends ChangeNotifier {
 
   // 2b. Login with Apple (OAuth2)
   Future<void> loginWithApple() async {
-    debugPrint("[AUTH] Starting Apple OAuth...");
+    debugPrint("[AUTH-A2Z] 1. Starting Apple OAuth flow...");
     try {
       final authMethods = await pb.collection('users').listAuthMethods();
       final providers = authMethods.oauth2.providers;
+      debugPrint("[AUTH-A2Z] 2. Auth methods fetched. Available providers: ${providers.map((p) => p.name).join(', ')}");
 
       final appleProvider = providers.firstWhere(
         (p) => p.name == 'apple',
         orElse: () => throw Exception('Apple OAuth provider not configured'),
       );
+      debugPrint("[AUTH-A2Z] 3. Apple provider found. State: ${appleProvider.state}");
 
       final originalUri = Uri.parse(appleProvider.authURL);
       final newParams = Map<String, String>.from(originalUri.queryParameters);
@@ -161,26 +163,37 @@ class AuthService extends ChangeNotifier {
           .replace(queryParameters: newParams)
           .toString();
 
-      debugPrint('[AUTH] Opening auth URL: $authUrl');
+      debugPrint('[AUTH-A2Z] 4. Opening auth URL: $authUrl');
+      debugPrint('[AUTH-A2Z] 5. Redirect URI expected: $_mobileOauthRedirectUri');
 
       final result = await FlutterWebAuth2.authenticate(
         url: authUrl,
         callbackUrlScheme: _oauthCallbackScheme,
       );
 
-      debugPrint('[AUTH] Callback result received.');
+      debugPrint('[AUTH-A2Z] 6. Callback result received: $result');
       final callbackUri = Uri.parse(result);
       final code = callbackUri.queryParameters['code'];
       final state = callbackUri.queryParameters['state'];
 
-      if (code == null) throw Exception('No code in callback');
+      debugPrint('[AUTH-A2Z] 7. Parsed from callback - Code: ${code?.substring(0, 5)}..., State: $state');
+
+      if (code == null) {
+        debugPrint('[AUTH-A2Z] ERROR: No code in callback!');
+        throw Exception('No code in callback');
+      }
+      
       if (state != appleProvider.state) {
-        debugPrint('[AUTH] State mismatch warning - callback: $state, expected: ${appleProvider.state}');
-        // Don't throw - PocketBase validates the exchange server-side
+        debugPrint('[AUTH-A2Z] WARNING: State mismatch! Expected: ${appleProvider.state}, Got: $state');
+        // We log it but continue per previous fix
+      } else {
+        debugPrint('[AUTH-A2Z] 8. State check passed.');
       }
 
-      debugPrint('[AUTH] Exchanging code for token...');
-      await pb
+      debugPrint('[AUTH-A2Z] 9. Exchanging code for token...');
+      debugPrint('[AUTH-A2Z] 10. Exchange Params: provider=apple, code=${code.substring(0, 5)}..., verifier=${appleProvider.codeVerifier}, redirect=$_mobileOauthRedirectUri');
+      
+      final authData = await pb
           .collection('users')
           .authWithOAuth2Code(
             'apple',
@@ -189,11 +202,12 @@ class AuthService extends ChangeNotifier {
             _mobileOauthRedirectUri,
           );
 
-      debugPrint('[AUTH] Apple login successful: $userId');
+      debugPrint('[AUTH-A2Z] 11. Apple login final success! User ID: ${authData.record.id}');
       notifyListeners();
-    } catch (e) {
-      debugPrint('[AUTH] Apple Login Error: $e');
-      throw Exception('Apple Sign In Failed: $e');
+    } catch (e, stack) {
+      debugPrint('[AUTH-A2Z] SEVERE ERROR during Apple Login: $e');
+      debugPrint('[AUTH-A2Z] Stack Trace: $stack');
+      rethrow;
     }
   }
 
