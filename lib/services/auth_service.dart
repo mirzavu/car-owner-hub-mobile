@@ -157,6 +157,7 @@ class AuthService extends ChangeNotifier {
       final newParams = Map<String, String>.from(originalUri.queryParameters);
       newParams['redirect_uri'] = _mobileOauthRedirectUri;
       newParams['response_mode'] = 'query';
+      newParams['scope'] = 'openid';
 
       final authUrl = originalUri
           .replace(queryParameters: newParams)
