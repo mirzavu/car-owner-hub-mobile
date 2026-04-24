@@ -63,6 +63,38 @@ class AuthService extends ChangeNotifier {
   String get userName => pb.authStore.record?.getStringValue('name') ?? '';
   String get userPhone => pb.authStore.record?.getStringValue('phone') ?? '';
 
+  String _preview(String? value, {int keep = 8}) {
+    if (value == null || value.isEmpty) return '';
+    return value.length <= keep ? value : value.substring(0, keep);
+  }
+
+  Future<void> logAppleAuthDiagnostic(
+    String step, {
+    Map<String, dynamic>? data,
+  }) async {
+    final payload = <String, dynamic>{
+      'step': step,
+      'timestamp': DateTime.now().toIso8601String(),
+      'userId': userId,
+      'userEmail': userEmail,
+      if (data != null) 'data': data,
+    };
+
+    debugPrint('[AUTH-A2Z] REMOTE $step ${jsonEncode(payload)}');
+
+    try {
+      await http
+          .post(
+            Uri.parse(Config.appleDiagLog),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode(payload),
+          )
+          .timeout(const Duration(seconds: 5));
+    } catch (error) {
+      debugPrint('[AUTH-A2Z] REMOTE LOG FAILED: $error');
+    }
+  }
+
   String? getAvatarUrl({String? thumb}) {
     final record = pb.authStore.record;
     if (record == null) return null;
@@ -145,15 +177,29 @@ class AuthService extends ChangeNotifier {
   Future<void> loginWithApple() async {
     debugPrint("[AUTH-A2Z] 1. Starting Apple OAuth flow...");
     try {
+      await logAppleAuthDiagnostic('start');
       final authMethods = await pb.collection('users').listAuthMethods();
       final providers = authMethods.oauth2.providers;
       debugPrint("[AUTH-A2Z] 2. Auth methods fetched. Available providers: ${providers.map((p) => p.name).join(', ')}");
+      await logAppleAuthDiagnostic(
+        'auth_methods_fetched',
+        data: {'providers': providers.map((p) => p.name).toList()},
+      );
 
       final appleProvider = providers.firstWhere(
         (p) => p.name == 'apple',
         orElse: () => throw Exception('Apple OAuth provider not configured'),
       );
       debugPrint("[AUTH-A2Z] 3. Apple provider found. State: ${appleProvider.state}");
+      await logAppleAuthDiagnostic(
+        'apple_provider_found',
+        data: {
+          'state': appleProvider.state,
+          'stateLength': appleProvider.state.length,
+          'codeVerifier': appleProvider.codeVerifier,
+          'codeVerifierLength': appleProvider.codeVerifier.length,
+        },
+      );
 
       final originalUri = Uri.parse(appleProvider.authURL);
       final newParams = Map<String, String>.from(originalUri.queryParameters);
@@ -165,6 +211,13 @@ class AuthService extends ChangeNotifier {
 
       debugPrint('[AUTH-A2Z] 4. Opening auth URL: $authUrl');
       debugPrint('[AUTH-A2Z] 5. Redirect URI expected: $_mobileOauthRedirectUri');
+      await logAppleAuthDiagnostic(
+        'opening_auth_url',
+        data: {
+          'authUrl': authUrl,
+          'redirectUri': _mobileOauthRedirectUri,
+        },
+      );
 
       final result = await FlutterWebAuth2.authenticate(
         url: authUrl,
@@ -175,23 +228,64 @@ class AuthService extends ChangeNotifier {
       final callbackUri = Uri.parse(result);
       final code = callbackUri.queryParameters['code'];
       final state = callbackUri.queryParameters['state'];
+      final callbackError = callbackUri.queryParameters['error'];
+      final callbackErrorDescription =
+          callbackUri.queryParameters['error_description'];
 
       debugPrint('[AUTH-A2Z] 7. Parsed from callback - Code: ${code?.substring(0, 5)}..., State: $state');
+      await logAppleAuthDiagnostic(
+        'callback_received',
+        data: {
+          'result': result,
+          'code': code,
+          'state': state,
+          'error': callbackError,
+          'errorDescription': callbackErrorDescription,
+          'codePreview': _preview(code),
+          'stateMatches': state == appleProvider.state,
+        },
+      );
 
       if (code == null) {
         debugPrint('[AUTH-A2Z] ERROR: No code in callback!');
+        await logAppleAuthDiagnostic(
+          'callback_missing_code',
+          data: {'state': state, 'result': result},
+        );
         throw Exception('No code in callback');
       }
       
       if (state != appleProvider.state) {
         debugPrint('[AUTH-A2Z] WARNING: State mismatch! Expected: ${appleProvider.state}, Got: $state');
+        await logAppleAuthDiagnostic(
+          'state_mismatch',
+          data: {
+            'expectedState': appleProvider.state,
+            'receivedState': state,
+            'code': code,
+          },
+        );
         // We log it but continue per previous fix
       } else {
         debugPrint('[AUTH-A2Z] 8. State check passed.');
+        await logAppleAuthDiagnostic(
+          'state_ok',
+          data: {'state': state, 'code': code},
+        );
       }
 
       debugPrint('[AUTH-A2Z] 9. Exchanging code for token...');
       debugPrint('[AUTH-A2Z] 10. Exchange Params: provider=apple, code=${code.substring(0, 5)}..., verifier=${appleProvider.codeVerifier}, redirect=$_mobileOauthRedirectUri');
+      await logAppleAuthDiagnostic(
+        'exchange_start',
+        data: {
+          'provider': 'apple',
+          'code': code,
+          'codePreview': _preview(code),
+          'codeVerifier': appleProvider.codeVerifier,
+          'redirectUri': _mobileOauthRedirectUri,
+        },
+      );
       
       final authData = await pb
           .collection('users')
@@ -203,10 +297,24 @@ class AuthService extends ChangeNotifier {
           );
 
       debugPrint('[AUTH-A2Z] 11. Apple login final success! User ID: ${authData.record.id}');
+      await logAppleAuthDiagnostic(
+        'exchange_success',
+        data: {
+          'authRecordId': authData.record.id,
+          'authEmail': authData.record.getStringValue('email'),
+        },
+      );
       notifyListeners();
     } catch (e, stack) {
       debugPrint('[AUTH-A2Z] SEVERE ERROR during Apple Login: $e');
       debugPrint('[AUTH-A2Z] Stack Trace: $stack');
+      await logAppleAuthDiagnostic(
+        'exception',
+        data: {
+          'error': e.toString(),
+          'stack': stack.toString(),
+        },
+      );
       rethrow;
     }
   }
