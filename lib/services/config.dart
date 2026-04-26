@@ -74,8 +74,6 @@ class Config {
   static String get activity => '$baseUrl/api/activity';
   static String get uploadGarageDoc => '$baseUrl/api/upload-garage-doc';
   static String get deleteAccount => '$baseUrl/api/account/delete';
-  static String get appleDiagLog => '$baseUrl/api/debug/apple-auth-log';
-
   // OTP Endpoints
   static String get requestOtp => '$baseUrl/api/auth/request-otp';
   static String get verifyOtp => '$baseUrl/api/auth/verify-otp';

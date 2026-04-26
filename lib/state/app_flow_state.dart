@@ -302,26 +302,10 @@ class AppFlowNotifier extends StateNotifier<AppFlowState> {
     try {
       await AuthService().loginWithApple();
       debugPrint('[AUTH-FLOW] 12. AuthService completion signal received');
-      await AuthService().logAppleAuthDiagnostic(
-        'auth_service_completed',
-        data: {'hasPhone': AuthService().hasPhone, 'userId': AuthService().userId},
-      );
       await handleSuccessfulAuthentication();
-      await AuthService().logAppleAuthDiagnostic(
-        'handle_successful_authentication_completed',
-        data: {'step': state.step},
-      );
     } catch (e, stackTrace) {
       debugPrint('[AUTH-FLOW] ERROR: Apple Login failed in state machine: $e');
       debugPrint('[AUTH-FLOW] STACK: $stackTrace');
-      await AuthService().logAppleAuthDiagnostic(
-        'app_flow_exception',
-        data: {
-          'error': e.toString(),
-          'stack': stackTrace.toString(),
-          'stepBeforeReset': state.step,
-        },
-      );
       setStep('auth-login');
       rethrow;
     }
