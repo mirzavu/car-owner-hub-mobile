@@ -68,6 +68,23 @@ class AuthService extends ChangeNotifier {
     return value.length <= keep ? value : value.substring(0, keep);
   }
 
+  void _clearStaleAuthForSocialLogin(String provider) {
+    final existingUserId = userId;
+    final existingUserEmail = userEmail;
+
+    if (!pb.authStore.isValid &&
+        existingUserId.isEmpty &&
+        existingUserEmail.isEmpty) {
+      return;
+    }
+
+    debugPrint(
+      '[AUTH] Clearing stale auth before $provider OAuth. '
+      'Existing user: $existingUserEmail ($existingUserId)',
+    );
+    pb.authStore.clear();
+  }
+
   Future<void> logAppleAuthDiagnostic(
     String step, {
     Map<String, dynamic>? data,
@@ -122,6 +139,7 @@ class AuthService extends ChangeNotifier {
   Future<void> loginWithGoogle() async {
     debugPrint("[AUTH] Starting Google OAuth...");
     try {
+      _clearStaleAuthForSocialLogin('google');
       final authMethods = await pb.collection('users').listAuthMethods();
       final providers = authMethods.oauth2.providers;
 
@@ -177,6 +195,22 @@ class AuthService extends ChangeNotifier {
   Future<void> loginWithApple() async {
     debugPrint("[AUTH-A2Z] 1. Starting Apple OAuth flow...");
     try {
+      final staleUserId = userId;
+      final staleUserEmail = userEmail;
+
+      if (pb.authStore.isValid ||
+          staleUserId.isNotEmpty ||
+          staleUserEmail.isNotEmpty) {
+        await logAppleAuthDiagnostic(
+          'clearing_stale_auth',
+          data: {
+            'existingUserId': staleUserId,
+            'existingUserEmail': staleUserEmail,
+          },
+        );
+      }
+
+      _clearStaleAuthForSocialLogin('apple');
       await logAppleAuthDiagnostic('start');
       final authMethods = await pb.collection('users').listAuthMethods();
       final providers = authMethods.oauth2.providers;
