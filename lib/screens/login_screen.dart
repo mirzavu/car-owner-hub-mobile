@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
@@ -39,11 +40,13 @@ class LoginScreen extends StatelessWidget {
         if (didPop) return;
         onBack?.call();
       },
-      child: Scaffold(
-        backgroundColor: Colors.white,
-        body: SafeArea(
-          child: Stack(
-            children: [
+      child: AnnotatedRegion<SystemUiOverlayStyle>(
+        value: SystemUiOverlayStyle.dark,
+        child: Scaffold(
+          backgroundColor: Colors.white,
+          body: SafeArea(
+            child: Stack(
+              children: [
               Positioned.fill(
                 child: CustomScrollView(
                   slivers: [
@@ -309,7 +312,8 @@ class LoginScreen extends StatelessWidget {
                     onPressed: onBack,
                   ),
                 ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

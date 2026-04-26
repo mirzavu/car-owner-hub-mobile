@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:file_picker/file_picker.dart';
@@ -243,11 +244,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
     const colorSlate900 = Color(0xFF0F172A);
     const colorNavy = Color(0xFF003366);
 
-    return Scaffold(
-      backgroundColor: colorSlate50,
-      body: SafeArea(
-        child: Column(
-          children: [
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle.dark,
+      child: Scaffold(
+        backgroundColor: colorSlate50,
+        body: SafeArea(
+          child: Column(
+            children: [
             // Custom Header
             Padding(
               padding: const EdgeInsets.all(24.0),
@@ -427,9 +430,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         icon: LucideIcons.phone,
                         title: "Phone Number",
                         subtitle: phone.isNotEmpty ? phone : "Not set",
-                        trailing: widget.isGuest
-                            ? null
-                            : const Icon(LucideIcons.chevronRight, size: 16),
                       ),
                       if (!widget.isGuest)
                         _buildListTile(
@@ -584,7 +584,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
               ),
             ),
-          ],
+            ],
+          ),
         ),
       ),
     );

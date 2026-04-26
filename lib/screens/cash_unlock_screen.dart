@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:intl/intl.dart';
@@ -107,11 +108,13 @@ class _CashUnlockScreenState extends State<CashUnlockScreen> {
           selectedCashAmount: _cashNeeded,
         );
 
-    return Scaffold(
-      backgroundColor: colorBg,
-      body: SafeArea(
-        child: Column(
-          children: [
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle.dark,
+      child: Scaffold(
+        backgroundColor: colorBg,
+        body: SafeArea(
+          child: Column(
+            children: [
             // --- 1. Header ---
             Padding(
               padding: const EdgeInsets.symmetric(
@@ -633,7 +636,8 @@ class _CashUnlockScreenState extends State<CashUnlockScreen> {
                 ),
               ),
             ),
-          ],
+            ],
+          ),
         ),
       ),
     );
