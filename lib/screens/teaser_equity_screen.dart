@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:intl/intl.dart' hide TextDirection; // <--- ADD THIS HIDE
@@ -71,11 +72,13 @@ class _TeaserEquityScreenState extends State<TeaserEquityScreen> {
     const colorMidnightNavy = Color(0xFF003366);
     const colorNavyDark = Color(0xFF002244);
     const colorVibrantGreen = Color(0xFF00CA50);
+    final statusBarTop = MediaQuery.paddingOf(context).top;
     final viewportHeight = MediaQuery.sizeOf(context).height;
     final compact = viewportHeight < 840;
     final veryCompact = viewportHeight < 740;
 
-    final headerTopPadding = veryCompact ? 24.0 : (compact ? 36.0 : 60.0);
+    final headerTopPadding =
+        statusBarTop + (veryCompact ? 24.0 : (compact ? 36.0 : 60.0));
     final headerBottomPadding = veryCompact ? 44.0 : (compact ? 64.0 : 96.0);
     final headerValueSize = veryCompact ? 40.0 : (compact ? 44.0 : 48.0);
     final headerCarNameSize = veryCompact ? 16.0 : 18.0;
@@ -97,11 +100,11 @@ class _TeaserEquityScreenState extends State<TeaserEquityScreen> {
     final showInsight = !veryCompact;
     final showCreditNote = !veryCompact;
 
-    return Scaffold(
-      backgroundColor: colorIceBlue,
-      body: SafeArea(
-        bottom: false,
-        child: Column(
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle.light,
+      child: Scaffold(
+        backgroundColor: colorIceBlue,
+        body: Column(
           children: [
             // --- 1. THE ORGANIC HEADER (Red Surface) ---
             Stack(
@@ -231,7 +234,7 @@ class _TeaserEquityScreenState extends State<TeaserEquityScreen> {
 
                 // Back Button (Moved to end to be on top)
                 Positioned(
-                  top: 48,
+                  top: statusBarTop + 8,
                   left: 16,
                   child: IconButton(
                     icon: const Icon(
