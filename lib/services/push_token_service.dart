@@ -41,7 +41,11 @@ class PushTokenService {
       }
 
       if (requestPermission) {
-        await _requestPermission();
+        final status = await _requestPermission();
+        if (status == AuthorizationStatus.denied) {
+          debugPrint('[PUSH] Permission denied during initAndSyncToken');
+          return null;
+        }
       }
       final token = await _syncCurrentToken();
       if (token != null && token.isNotEmpty) {
@@ -79,10 +83,30 @@ class PushTokenService {
   }
 
   Future<void> enablePushNotifications() async {
-    final token = await initAndSyncToken(force: true);
-    if (token == null || token.isEmpty) {
+    // 1. Check current status
+    final settings = await FirebaseMessaging.instance.getNotificationSettings();
+    if (settings.authorizationStatus == AuthorizationStatus.denied) {
       throw Exception(
-        'Unable to enable push notifications. Please allow notification permission and try again.',
+        'Notification permission is denied. Please enable it in your device settings to receive push notifications.',
+      );
+    }
+
+    // 2. Request/Refresh token
+    final token = await initAndSyncToken(force: true);
+
+    if (token == null || token.isEmpty) {
+      // iOS specific check: APNS token might be missing due to config/entitlements
+      if (defaultTargetPlatform == TargetPlatform.iOS) {
+        final apnsToken = await FirebaseMessaging.instance.getAPNSToken();
+        if (apnsToken == null) {
+          throw Exception(
+            'Unable to fetch APNS token. If this is a real device, please check your internet connection and ensure the app has push capabilities configured.',
+          );
+        }
+      }
+
+      throw Exception(
+        'Unable to enable push notifications. Please ensure you have allowed notification permissions and try again.',
       );
     }
     await _setPushPreference(true);
@@ -164,16 +188,21 @@ class PushTokenService {
     }
   }
 
-  Future<void> _requestPermission() async {
+  Future<AuthorizationStatus> _requestPermission() async {
     try {
-      await FirebaseMessaging.instance.requestPermission(
+      final settings = await FirebaseMessaging.instance.requestPermission(
         alert: true,
         badge: true,
         sound: true,
         provisional: false,
       );
+      debugPrint(
+        '[PUSH] Permission requested. Status: ${settings.authorizationStatus}',
+      );
+      return settings.authorizationStatus;
     } catch (error) {
       debugPrint('[PUSH] requestPermission failed: $error');
+      return AuthorizationStatus.notDetermined;
     }
   }
 

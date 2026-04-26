@@ -55,5 +55,10 @@
 	<string>We need camera access to scan your documents.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>We need photo library access to select images for your documents.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>fetch</string>
+		<string>remote-notification</string>
+	</array>
 </dict>
 </plist>
