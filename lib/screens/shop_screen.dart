@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:lucide_icons/lucide_icons.dart';
@@ -190,11 +191,13 @@ class _ShopScreenState extends State<ShopScreen> {
       listItemCount = _inventory.length + 1;
     }
 
-    return Scaffold(
-      backgroundColor: colorBg,
-      body: SafeArea(
-        child: Column(
-          children: [
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle.dark,
+      child: Scaffold(
+        backgroundColor: colorBg,
+        body: SafeArea(
+          child: Column(
+            children: [
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
               child: Row(
@@ -296,7 +299,8 @@ class _ShopScreenState extends State<ShopScreen> {
                 },
               ),
             ),
-          ],
+            ],
+          ),
         ),
       ),
     );

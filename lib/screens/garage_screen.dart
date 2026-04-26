@@ -240,11 +240,13 @@ class _GarageScreenState extends State<GarageScreen> {
     final plate = (car['plate'] ?? '').trim();
     final vin = (car['vin'] ?? '').trim();
 
-    return Scaffold(
-      backgroundColor: colorBg,
-      body: SafeArea(
-        child: Column(
-          children: [
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle.dark,
+      child: Scaffold(
+        backgroundColor: colorBg,
+        body: SafeArea(
+          child: Column(
+            children: [
             // --- 1. Minimal Header ---
             Padding(
               padding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
@@ -469,7 +471,8 @@ class _GarageScreenState extends State<GarageScreen> {
                 ],
               ),
             ),
-          ],
+            ],
+          ),
         ),
       ),
     );

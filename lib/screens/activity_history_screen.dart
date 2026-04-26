@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
@@ -155,11 +156,13 @@ class _ActivityHistoryScreenState extends State<ActivityHistoryScreen> {
     const colorSlate800 = Color(0xFF1E293B);
     const colorSlate900 = Color(0xFF0F172A);
 
-    return Scaffold(
-      backgroundColor: colorSlate50,
-      body: SafeArea(
-        child: Column(
-          children: [
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle.dark,
+      child: Scaffold(
+        backgroundColor: colorSlate50,
+        body: SafeArea(
+          child: Column(
+            children: [
             Padding(
               padding: const EdgeInsets.all(24.0),
               child: Row(
@@ -341,7 +344,8 @@ class _ActivityHistoryScreenState extends State<ActivityHistoryScreen> {
                       ),
                     ),
             ),
-          ],
+            ],
+          ),
         ),
       ),
     );
