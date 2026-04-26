@@ -62,6 +62,28 @@ class AuthService extends ChangeNotifier {
   String get userEmail => pb.authStore.record?.getStringValue('email') ?? '';
   String get userName => pb.authStore.record?.getStringValue('name') ?? '';
   String get userPhone => pb.authStore.record?.getStringValue('phone') ?? '';
+  String get displayName {
+    final name = userName.trim();
+    if (name.isNotEmpty) return name;
+
+    final email = userEmail.trim();
+    if (email.isEmpty) return '';
+
+    final localPart = email.split('@').first.trim();
+    if (localPart.isEmpty) return '';
+
+    final words = localPart
+        .split(RegExp(r'[._-]+'))
+        .where((part) => part.trim().isNotEmpty)
+        .map((part) {
+          final value = part.trim();
+          if (value.isEmpty) return value;
+          return value[0].toUpperCase() + value.substring(1);
+        })
+        .toList();
+
+    return words.isEmpty ? localPart : words.join(' ');
+  }
 
   void _clearStaleAuthForSocialLogin(String provider) {
     final existingUserId = userId;

@@ -603,9 +603,9 @@ class _DashboardScreenState extends State<DashboardScreen>
         ? widget.profileName
         : (widget.isGuest
               ? 'Guest User'
-              : (AuthService().userName.isNotEmpty
-                    ? AuthService().userName
-                    : 'Car Owner'));
+              : (AuthService().displayName.isNotEmpty
+                    ? AuthService().displayName
+                    : AuthService().userEmail));
     final avatarUrl = widget.isGuest
         ? null
         : AuthService().getAvatarUrl(thumb: '100x100');

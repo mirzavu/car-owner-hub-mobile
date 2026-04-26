@@ -178,8 +178,8 @@ Notes: ${_notesController.text}
         fallbackUserType: 'buyer',
       );
       final fallbackPhone = appData.profilePhone.trim();
-      final resolvedName = auth.userName.isNotEmpty
-          ? auth.userName
+      final resolvedName = auth.displayName.isNotEmpty
+          ? auth.displayName
           : (appData.profileName.isEmpty ? 'Guest Lead' : appData.profileName);
       final resolvedPhone = isGuest
           ? _normalizePhone(guestPhone)

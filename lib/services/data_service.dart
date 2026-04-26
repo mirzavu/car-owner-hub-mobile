@@ -340,7 +340,7 @@ class DataService {
         vehicle: vehicle,
         snapshot: snapshot,
       ),
-      profileName: auth.userName,
+      profileName: auth.displayName,
       profilePhone: auth.userPhone,
       carDetails: {
         ...AppData.initial().carDetails,

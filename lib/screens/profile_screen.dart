@@ -234,7 +234,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final phone = widget.isGuest ? widget.profilePhone : _auth.userPhone;
     final name = widget.isGuest
         ? (widget.profileName.isNotEmpty ? widget.profileName : 'Guest User')
-        : (_auth.userName.isNotEmpty ? _auth.userName : "Car Owner");
+        : (_auth.displayName.isNotEmpty ? _auth.displayName : email);
 
     // Colors
     const colorSlate50 = Color(0xFFF8FAFC);
