@@ -35,10 +35,7 @@ class PushTokenService {
     }
 
     try {
-      if (!_initialized) {
-        await _initializeFirebase();
-        _initialized = true;
-      }
+      await _ensureFirebaseInitialized();
 
       if (requestPermission) {
         final status = await _requestPermission();
@@ -83,6 +80,8 @@ class PushTokenService {
   }
 
   Future<void> enablePushNotifications() async {
+    await _ensureFirebaseInitialized();
+
     // 1. Check current status
     final settings = await FirebaseMessaging.instance.getNotificationSettings();
     if (settings.authorizationStatus == AuthorizationStatus.denied) {
@@ -136,6 +135,7 @@ class PushTokenService {
   }
 
   Future<AuthorizationStatus> getAuthorizationStatus() async {
+    await _ensureFirebaseInitialized();
     final settings = await FirebaseMessaging.instance.getNotificationSettings();
     return settings.authorizationStatus;
   }
@@ -177,14 +177,28 @@ class PushTokenService {
   }
 
   Future<void> _initializeFirebase() async {
-    if (Firebase.apps.isNotEmpty) return;
+    if (Firebase.apps.isNotEmpty) {
+      _initialized = true;
+      return;
+    }
 
     try {
       await Firebase.initializeApp();
+      _initialized = true;
     } catch (error) {
       // Firebase config may be missing in local/dev until mobile setup is complete.
       debugPrint('[PUSH] Firebase initialization skipped: $error');
       rethrow;
+    }
+  }
+
+  Future<void> _ensureFirebaseInitialized() async {
+    if (_initialized && Firebase.apps.isNotEmpty) return;
+    await _initializeFirebase();
+    if (Firebase.apps.isEmpty) {
+      throw Exception(
+        'Firebase is not configured for this build. Initialize Firebase before using push notifications.',
+      );
     }
   }
 
