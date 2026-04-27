@@ -15,6 +15,8 @@ class PushTokenService {
   static const String _pushEnabledPrefKeyBase = 'push_notifications_enabled';
   static const String _guestPendingTokenKey = 'guest_pending_fcm_token';
   static const String _softPromptShownKey = 'notification_soft_prompt_shown';
+  static const int _apnsTokenMaxAttempts = 8;
+  static const Duration _apnsTokenRetryDelay = Duration(milliseconds: 750);
 
   bool _initialized = false;
   String _lastSyncedToken = '';
@@ -37,13 +39,28 @@ class PushTokenService {
     try {
       await _ensureFirebaseInitialized();
 
+      AuthorizationStatus? authorizationStatus;
       if (requestPermission) {
-        final status = await _requestPermission();
-        if (status == AuthorizationStatus.denied) {
+        authorizationStatus = await _requestPermission();
+        if (authorizationStatus == AuthorizationStatus.denied) {
           debugPrint('[PUSH] Permission denied during initAndSyncToken');
           return null;
         }
+      } else {
+        authorizationStatus = await _getAuthorizationStatusSafe();
       }
+
+      if (_shouldSkipTokenFetch(authorizationStatus)) {
+        debugPrint(
+          '[PUSH] Skipping token fetch until Apple notification permission is granted.',
+        );
+        return null;
+      }
+
+      if (_shouldWaitForApnsToken(authorizationStatus)) {
+        await _waitForApnsToken();
+      }
+
       final token = await _syncCurrentToken();
       if (token != null && token.isNotEmpty) {
         await _setPushPreference(true);
@@ -223,6 +240,49 @@ class PushTokenService {
       debugPrint('[PUSH] requestPermission failed: $error');
       return AuthorizationStatus.notDetermined;
     }
+  }
+
+  Future<AuthorizationStatus> _getAuthorizationStatusSafe() async {
+    try {
+      final settings = await FirebaseMessaging.instance.getNotificationSettings();
+      return settings.authorizationStatus;
+    } catch (error) {
+      debugPrint('[PUSH] getNotificationSettings failed: $error');
+      return AuthorizationStatus.notDetermined;
+    }
+  }
+
+  bool _shouldWaitForApnsToken(AuthorizationStatus? status) {
+    if (defaultTargetPlatform != TargetPlatform.iOS) return false;
+    return status == AuthorizationStatus.authorized ||
+        status == AuthorizationStatus.provisional;
+  }
+
+  bool _shouldSkipTokenFetch(AuthorizationStatus? status) {
+    if (defaultTargetPlatform != TargetPlatform.iOS) return false;
+    return status != AuthorizationStatus.authorized &&
+        status != AuthorizationStatus.provisional;
+  }
+
+  Future<String?> _waitForApnsToken() async {
+    for (var attempt = 0; attempt < _apnsTokenMaxAttempts; attempt++) {
+      try {
+        final apnsToken = await FirebaseMessaging.instance.getAPNSToken();
+        if (apnsToken != null && apnsToken.isNotEmpty) {
+          debugPrint('[PUSH] APNS token available on attempt ${attempt + 1}.');
+          return apnsToken;
+        }
+      } catch (error) {
+        debugPrint('[PUSH] getAPNSToken failed on attempt ${attempt + 1}: $error');
+      }
+
+      if (attempt < _apnsTokenMaxAttempts - 1) {
+        await Future.delayed(_apnsTokenRetryDelay);
+      }
+    }
+
+    debugPrint('[PUSH] APNS token still unavailable after waiting.');
+    return null;
   }
 
   Future<String?> _syncCurrentToken() async {
