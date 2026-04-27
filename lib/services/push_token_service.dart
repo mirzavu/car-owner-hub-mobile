@@ -135,9 +135,14 @@ class PushTokenService {
   }
 
   Future<AuthorizationStatus> getAuthorizationStatus() async {
-    await _ensureFirebaseInitialized();
-    final settings = await FirebaseMessaging.instance.getNotificationSettings();
-    return settings.authorizationStatus;
+    try {
+      await _ensureFirebaseInitialized();
+      final settings = await FirebaseMessaging.instance.getNotificationSettings();
+      return settings.authorizationStatus;
+    } catch (error) {
+      debugPrint('[PUSH] getAuthorizationStatus failed: $error');
+      return AuthorizationStatus.denied;
+    }
   }
 
   Future<bool> hasShownSoftPrompt() async {
